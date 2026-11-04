@@ -8,9 +8,11 @@ import {
   type History,
   type Rank,
   type Team,
+  type Participation,
 } from "./api";
 import { download } from "./utils";
 import Admin from "./Admin";
+import Quiz from "./Quiz";
 import logo from "./assets/logo-oficial.png";
 
 export default function App() {
@@ -61,8 +63,13 @@ export default function App() {
             )}
             {route === "ranking" ? (
               <Leaderboard classes={classes} />
-            ) : route === "admin" ? (
-              <Admin classes={classes} />
+            ) : route.startsWith("admin") ? (
+              <Admin
+                classes={classes}
+                resultsActivityId={
+                  route.match(/^admin\/atividades\/([^/]+)\/resultados$/)?.[1]
+                }
+              />
             ) : (
               <TeamFlow
                 key={route}
@@ -224,8 +231,12 @@ function TeamFlow({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [attempt, setAttempt] = useState("");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [attempt, setAttempt] = useState<Participation | null>(null);
+  const [result, setResult] = useState<{
+    points: number;
+    max_points: number;
+    feedback: string;
+  } | null>(null);
   const [submitted, setSubmitted] = useState(false);
   useEffect(() => {
     if (sessionId)
@@ -268,33 +279,62 @@ function TeamFlow({
     setBusy(true);
     setError("");
     try {
-      const r = await rpc<{ attempt_id: string }>("join_activity", {
+      const r = await rpc<Participation>("join_activity", {
         p_token: team.token,
         p_session_id: sessionId,
       });
-      setAttempt(r.attempt_id);
+      if (r.expired)
+        throw new Error(
+          "Participação expirada. Solicite uma nova tentativa ao professor.",
+        );
+      setAttempt(r);
+      setSubmitted(Boolean(r.submitted));
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
-  async function submit(e: FormEvent) {
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("hpde:team");
+      if (raw) {
+        const cached = JSON.parse(raw) as Team;
+        if (
+          typeof cached.token === "string" &&
+          typeof cached.team_id === "string"
+        ) {
+          setTeam(cached);
+          setSaved(true);
+          void refresh(cached).catch((e) => setError(e.message));
+        }
+      }
+    } catch {
+      /* Start a fresh login if browser storage is unavailable. */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      if (team && saved)
+        sessionStorage.setItem(
+          "hpde:team",
+          JSON.stringify({ ...team, credential: undefined }),
+        );
+      else sessionStorage.removeItem("hpde:team");
+    } catch {
+      /* The in-memory session still works. */
+    }
+  }, [team, saved]);
+  async function enterCode(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!team || !activity) return;
+    const f = new FormData(e.currentTarget);
     setBusy(true);
     setError("");
     try {
-      await rpc("submit_attempt", {
-        p_token: team.token,
-        p_attempt_id: attempt,
-        p_answers: activity.questions.map((q) => ({
-          question_id: q.id,
-          option_id: answers[q.id],
-        })),
+      const r = await rpc<{ session_id: string }>("resolve_assessment_code", {
+        p_code: f.get("activity_code"),
       });
-      setSubmitted(true);
-      await refresh(team);
+      location.hash = `atividade/${r.session_id}`;
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -313,6 +353,25 @@ function TeamFlow({
         <p className="error" role="alert">
           {error}
         </p>
+      )}
+      {!sessionId && (
+        <form className="card narrow" onSubmit={enterCode}>
+          <h2>Entrar em uma atividade</h2>
+          <label>
+            Código da atividade
+            <input
+              name="activity_code"
+              required
+              minLength={8}
+              maxLength={8}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+          <button className="primary" disabled={busy}>
+            Acessar atividade
+          </button>
+        </form>
       )}
       {!team ? (
         <section className="card narrow">
@@ -399,14 +458,14 @@ function TeamFlow({
                   />
                 </label>
                 <label>
-                  Credencial privada
+                  Código privado de recuperação
                   <input
                     name="credential"
                     type="password"
                     required
                     minLength={48}
                     maxLength={48}
-                    autoComplete="current-password"
+                    autoComplete="off"
                   />
                 </label>
                 <p>
@@ -479,9 +538,13 @@ function TeamFlow({
                   await rpc("logout_team", { p_token: team.token });
                   setTeam(null);
                   setHistory(null);
-                  setAttempt("");
+                  if (attempt)
+                    sessionStorage.removeItem(
+                      `hpde:attempt:${attempt.attempt_id}`,
+                    );
+                  setAttempt(null);
                   setSubmitted(false);
-                  setAnswers({});
+                  setResult(null);
                 } catch (e) {
                   setError((e as Error).message);
                 } finally {
@@ -505,42 +568,54 @@ function TeamFlow({
                 Participar desta atividade
               </button>
             ) : (
-              <form className="card" onSubmit={submit}>
-                {activity.questions.map((q, i) => (
-                  <fieldset key={q.id}>
-                    <legend>
-                      {i + 1}. {q.prompt} <small>({q.points} pontos)</small>
-                    </legend>
-                    {q.options.map((o) => (
-                      <label className="check" key={o.id}>
-                        <input
-                          type="radio"
-                          name={q.id}
-                          required
-                          value={o.id}
-                          checked={answers[q.id] === o.id}
-                          onChange={() =>
-                            setAnswers({ ...answers, [q.id]: o.id })
-                          }
-                        />
-                        {o.label}
-                      </label>
-                    ))}
-                  </fieldset>
-                ))}
-                <p>
-                  A entrega é definitiva. Apenas a administração pode autorizar
-                  outra tentativa.
-                </p>
-                <button className="primary" disabled={busy}>
-                  Enviar respostas
-                </button>
-              </form>
+              <Quiz
+                key={attempt.attempt_id}
+                activity={activity}
+                team={team}
+                participation={attempt}
+                onComplete={async () => {
+                  setSubmitted(true);
+                  await refresh(team);
+                }}
+              />
             ))}
           {submitted && (
             <p role="status" className="success">
               Entrega registrada. Sua participação está vinculada à dupla
               original.
+            </p>
+          )}
+          {submitted && attempt && (
+            <section className="card">
+              <button
+                onClick={async () => {
+                  setError("");
+                  try {
+                    setResult(
+                      await rpc("team_result", {
+                        p_token: team.token,
+                        p_attempt_id: attempt.attempt_id,
+                      }),
+                    );
+                  } catch (e) {
+                    setError((e as Error).message);
+                  }
+                }}
+              >
+                Consultar resultado liberado
+              </button>
+              {result && (
+                <p>
+                  Resultado liberado pelo professor: {result.points}/
+                  {result.max_points} · {result.feedback}
+                </p>
+              )}
+            </section>
+          )}
+          {result && !submitted && (
+            <p className="success">
+              Resultado liberado: {result.points}/{result.max_points} ·{" "}
+              {result.feedback}
             </p>
           )}
           <section className="card">
@@ -556,6 +631,25 @@ function TeamFlow({
                 <a href={`#atividade/${a.activity_session_id}`}>{a.title}</a> ·
                 tentativa {a.submission_no} ·{" "}
                 {a.submitted_at ? "Entregue" : "Em andamento"}
+                {a.submitted_at && (
+                  <button
+                    onClick={async () => {
+                      setError("");
+                      try {
+                        setResult(
+                          await rpc("team_result", {
+                            p_token: team.token,
+                            p_attempt_id: a.id,
+                          }),
+                        );
+                      } catch (e) {
+                        setError((e as Error).message);
+                      }
+                    }}
+                  >
+                    Consultar resultado desta entrega
+                  </button>
+                )}
               </p>
             ))}
           </section>

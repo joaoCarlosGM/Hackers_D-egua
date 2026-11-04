@@ -36,6 +36,7 @@ export function download(
 }
 export type DraftQuestion = {
   prompt: string;
+  explanation?: string;
   kind: "multiple_choice" | "true_false";
   points: number;
   options: { label: string; is_correct: boolean }[];

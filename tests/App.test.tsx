@@ -80,6 +80,7 @@ const activity = {
   ],
 };
 beforeEach(() => {
+  sessionStorage.clear();
   mock.rpc.mockReset();
   mock.ranks = [];
   mock.changed = undefined;
@@ -146,7 +147,7 @@ describe("permanent team workflow", () => {
     await screen.findByRole("heading", { name: activity.title });
     await user.type(screen.getByLabelText("Código da dupla"), team.access_code);
     await user.type(
-      screen.getByLabelText("Credencial privada"),
+      screen.getByLabelText("Código privado de recuperação"),
       "b".repeat(48),
     );
     await user.click(
@@ -155,8 +156,9 @@ describe("permanent team workflow", () => {
     await user.click(
       await screen.findByRole("button", { name: "Participar desta atividade" }),
     );
-    await user.click(await screen.findByRole("radio", { name: "4" }));
-    await user.click(screen.getByRole("button", { name: "Enviar respostas" }));
+    await user.click(await screen.findByRole("button", { name: /4/ }));
+    await user.click(screen.getByRole("button", { name: "Revisar e enviar" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar entrega" }));
     await screen.findByText(
       "Entrega registrada. Sua participação está vinculada à dupla original.",
     );
@@ -185,7 +187,7 @@ describe("permanent team workflow", () => {
     render(<App />);
     await user.type(screen.getByLabelText("Código da dupla"), team.access_code);
     await user.type(
-      screen.getByLabelText("Credencial privada"),
+      screen.getByLabelText("Código privado de recuperação"),
       "b".repeat(48),
     );
     await user.click(

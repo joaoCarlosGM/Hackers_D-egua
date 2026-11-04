@@ -433,3 +433,108 @@ footer {
     padding: 0.75rem;
   }
 }
+/* Evaluations share the approved palette; no assets or credentials are synthesized. */
+.quiz progress {
+  width: 100%;
+  height: 12px;
+  accent-color: var(--pink);
+  margin: 1.2rem 0;
+}
+.quiz-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.quiz-option {
+  min-height: 100px;
+  font-size: 1.15rem;
+  text-align: left;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  padding: 1.2rem;
+  color: var(--white);
+  transition: transform 0.12s ease;
+}
+.quiz-option span {
+  margin-right: 0.5rem;
+}
+.quiz-option.option-0 {
+  background: #793952;
+}
+.quiz-option.option-1 {
+  background: #244b98;
+}
+.quiz-option.option-2 {
+  background: #265f4c;
+}
+.quiz-option.option-3 {
+  background: var(--purple);
+}
+.quiz-option.selected {
+  border-color: var(--white);
+  box-shadow: 0 0 0 3px var(--pink);
+  transform: translateY(-2px);
+}
+.quiz-option[aria-pressed="true"]::after {
+  content: " ✓";
+  font-weight: bold;
+}
+.confirmation {
+  background: #4b2e8344;
+  border: 2px solid var(--pink);
+  padding: 1.25rem;
+  margin-top: 1.5rem;
+  border-radius: 8px;
+}
+.offline {
+  background: #4b2e8366;
+  border-left: 4px solid var(--pink);
+  padding: 1rem;
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+.stats .card {
+  margin: 0.5rem 0;
+}
+.stats strong {
+  font-size: 2.3rem;
+  color: var(--pink);
+}
+.stats p {
+  font-size: 0.85rem;
+}
+.projection {
+  text-align: center;
+}
+.projection .qr {
+  width: min(45vw, 380px);
+  display: block;
+  margin: 1.5rem auto;
+}
+.access-code {
+  display: block;
+  color: var(--pink);
+  font-size: clamp(2.4rem, 8vw, 6rem);
+  letter-spacing: 0.12em;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 650px) {
+  .quiz-options {
+    grid-template-columns: 1fr;
+  }
+  .quiz-options.binary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .quiz-option {
+    min-height: 90px;
+    padding: 0.8rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quiz-option {
+    transition: none;
+  }
+}

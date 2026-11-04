@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
+import Results from "./Results";
+import ActivityPreview from "./ActivityPreview";
 import { rpc, supabase, type Class } from "./api";
 import {
   activityLink,
@@ -14,12 +16,19 @@ type Act = {
   title: string;
   description: string;
   locked_at: string | null;
+  revision: number;
+  revision_of: string | null;
 };
 type Session = {
   id: string;
   activity_id: string;
   class_ids: string[];
   published: boolean;
+  status: "draft" | "published" | "open" | "closed" | "archived";
+  access_code: string;
+  time_limit_seconds: number | null;
+  allow_backtracking: boolean;
+  release_results: boolean;
   ctf_enabled: boolean;
   closes_at: string | null;
 };
@@ -48,6 +57,7 @@ type Q = {
   id: string;
   activity_id: string;
   prompt: string;
+  explanation: string;
   kind: DraftQuestion["kind"];
   points: number;
   position: number;
@@ -95,7 +105,13 @@ async function rows<T>(table: string, columns = "*"): Promise<T[]> {
     if (data.length < 500) return result;
   }
 }
-export default function Admin({ classes }: { classes: Class[] }) {
+export default function Admin({
+  classes,
+  resultsActivityId,
+}: {
+  classes: Class[];
+  resultsActivityId?: string;
+}) {
   const [identity, setIdentity] = useState<string | null>(null);
   const [role, setRole] = useState("");
   const [checking, setChecking] = useState(true);
@@ -105,7 +121,13 @@ export default function Admin({ classes }: { classes: Class[] }) {
   const [data, setData] = useState<Data>(empty);
   const [editing, setEditing] = useState<Act | null>(null);
   const [questions, setQuestions] = useState<DraftQuestion[]>([newQuestion()]);
-  const [qr, setQr] = useState<{ url: string; image: string } | null>(null);
+  const [qr, setQr] = useState<{
+    url: string;
+    image: string;
+    code: string;
+    title: string;
+  } | null>(null);
+  const [preview, setPreview] = useState(false);
   const [credential, setCredential] = useState<{
     access_code: string;
     credential: string;
@@ -187,7 +209,26 @@ export default function Admin({ classes }: { classes: Class[] }) {
     };
   }, []);
   useEffect(() => {
-    if (role) void load().catch((e) => setError(e.message));
+    if (!role) return;
+    const refresh = () => void load().catch((e) => setError(e.message));
+    refresh();
+    const channel = supabase!
+      .channel("staff-assessment-dashboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "assessment_updates" },
+        refresh,
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") refresh();
+      });
+    const timer = setInterval(refresh, 15000);
+    addEventListener("focus", refresh);
+    return () => {
+      clearInterval(timer);
+      removeEventListener("focus", refresh);
+      void supabase!.removeChannel(channel);
+    };
   }, [role, load]);
   async function action(work: () => Promise<void>) {
     setBusy(true);
@@ -217,16 +258,22 @@ export default function Admin({ classes }: { classes: Class[] }) {
     const form = e.currentTarget;
     const f = new FormData(form);
     await action(async () => {
-      await rpc("save_activity", {
+      await rpc("save_assessment", {
         p_title: f.get("title"),
         p_description: f.get("description"),
         p_class_ids: f.getAll("class"),
         p_questions: questions,
-        p_ctf: f.get("ctf") === "on",
+        p_settings: {
+          time_limit_seconds: f.get("time_limit")
+            ? Number(f.get("time_limit")) * 60
+            : null,
+          allow_backtracking: f.get("backtracking") === "on",
+          release_results: f.get("release") === "on",
+        },
         p_activity_id: editing?.id ?? null,
       });
       setNotice(
-        "Atividade salva como rascunho. Publique para disponibilizar o link.",
+        "Atividade salva como rascunho. Publique e inicie para receber as duplas.",
       );
       setEditing(null);
       setQuestions([newQuestion()]);
@@ -242,6 +289,7 @@ export default function Admin({ classes }: { classes: Class[] }) {
         .sort((a, b) => a.position - b.position)
         .map((q) => ({
           prompt: q.prompt,
+          explanation: q.explanation,
           kind: q.kind,
           points: q.points,
           options: data.options
@@ -305,6 +353,15 @@ export default function Admin({ classes }: { classes: Class[] }) {
       "text/csv;charset=utf-8",
     );
   }
+  if (role && !checking && resultsActivityId)
+    return (
+      <>
+        <Results activityId={resultsActivityId} />
+        <button onClick={() => void supabase!.auth.signOut()}>
+          Sair da administração
+        </button>
+      </>
+    );
   return (
     <>
       <div className="eyebrow">EQUIPE PEDAGÓGICA</div>
@@ -417,24 +474,54 @@ export default function Admin({ classes }: { classes: Class[] }) {
                     </label>
                   ))}
                 </fieldset>
+                <div className="grid">
+                  <label>
+                    Cronômetro em minutos (vazio desativa)
+                    <input
+                      name="time_limit"
+                      type="number"
+                      min={0.5}
+                      max={240}
+                      step={0.5}
+                      defaultValue={
+                        editing
+                          ? (data.sessions.find(
+                              (s) => s.activity_id === editing.id,
+                            )?.time_limit_seconds ?? 0) / 60 || ""
+                          : ""
+                      }
+                    />
+                  </label>
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      name="backtracking"
+                      defaultChecked={
+                        editing
+                          ? data.sessions.find(
+                              (s) => s.activity_id === editing.id,
+                            )?.allow_backtracking
+                          : true
+                      }
+                    />
+                    Permitir voltar às questões anteriores
+                  </label>
+                </div>
                 <label className="check">
                   <input
                     type="checkbox"
-                    name="ctf"
+                    name="release"
                     defaultChecked={
                       editing
                         ? data.sessions.find(
                             (s) => s.activity_id === editing.id,
-                          )?.ctf_enabled
+                          )?.release_results
                         : false
                     }
                   />
-                  Contabilizar primeiras resoluções no ranking CTF
+                  Liberar a própria nota para a dupla após o encerramento
                 </label>
-                <p>
-                  As notas são calculadas separadamente, inclusive quando o CTF
-                  está desativado.
-                </p>
+                <p>Notas pedagógicas não são convertidas em pontos CTF.</p>
                 {questions.map((q, i) => (
                   <fieldset key={i}>
                     <legend>Questão {i + 1}</legend>
@@ -446,6 +533,19 @@ export default function Admin({ classes }: { classes: Class[] }) {
                         value={q.prompt}
                         onChange={(e) =>
                           changeQuestion(i, { ...q, prompt: e.target.value })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Explicação opcional (privada durante a atividade)
+                      <textarea
+                        maxLength={5000}
+                        value={q.explanation ?? ""}
+                        onChange={(e) =>
+                          changeQuestion(i, {
+                            ...q,
+                            explanation: e.target.value,
+                          })
                         }
                       />
                     </label>
@@ -529,7 +629,7 @@ export default function Admin({ classes }: { classes: Class[] }) {
                     ))}
                     <small>Selecione a alternativa correta no círculo.</small>
                     <div className="toolbar">
-                      {q.kind === "multiple_choice" && q.options.length < 8 && (
+                      {q.kind === "multiple_choice" && q.options.length < 5 && (
                         <button
                           type="button"
                           onClick={() =>
@@ -543,6 +643,43 @@ export default function Admin({ classes }: { classes: Class[] }) {
                           }
                         >
                           Adicionar alternativa
+                        </button>
+                      )}
+                      {i > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = [...questions];
+                            [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                            setQuestions(next);
+                          }}
+                        >
+                          Mover questão para cima
+                        </button>
+                      )}
+                      {i < questions.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = [...questions];
+                            [next[i + 1], next[i]] = [next[i], next[i + 1]];
+                            setQuestions(next);
+                          }}
+                        >
+                          Mover questão para baixo
+                        </button>
+                      )}
+                      {q.kind === "multiple_choice" && q.options.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = q.options.slice(0, -1);
+                            if (!next.some((o) => o.is_correct))
+                              next[0] = { ...next[0], is_correct: true };
+                            changeQuestion(i, { ...q, options: next });
+                          }}
+                        >
+                          Remover última alternativa
                         </button>
                       )}
                       {questions.length > 1 && (
@@ -566,6 +703,9 @@ export default function Admin({ classes }: { classes: Class[] }) {
                   >
                     Adicionar questão
                   </button>
+                  <button type="button" onClick={() => setPreview(true)}>
+                    Visualizar antes de publicar
+                  </button>
                   <button className="primary" disabled={busy}>
                     Salvar rascunho
                   </button>
@@ -582,6 +722,12 @@ export default function Admin({ classes }: { classes: Class[] }) {
                   )}
                 </div>
               </form>
+              {preview && (
+                <ActivityPreview
+                  questions={questions}
+                  onClose={() => setPreview(false)}
+                />
+              )}
               <section className="card">
                 <h2>Atividades e publicação</h2>
                 {data.sessions.map((s) => {
@@ -595,11 +741,20 @@ export default function Admin({ classes }: { classes: Class[] }) {
                           .filter((c) => s.class_ids.includes(c.id))
                           .map((c) => c.name)
                           .join(" · ")}{" "}
-                        · {s.published ? "Publicada" : "Indisponível"} ·{" "}
-                        {s.ctf_enabled ? "Com CTF" : "Pedagógica"}
+                        ·{" "}
+                        {
+                          {
+                            draft: "Rascunho",
+                            published: "Publicada",
+                            open: "Aberta",
+                            closed: "Encerrada",
+                            archived: "Arquivada",
+                          }[s.status]
+                        }{" "}
+                        · revisão {a.revision}
                       </p>
                       <div className="toolbar">
-                        {!a.locked_at && (
+                        {s.status === "draft" && (
                           <button disabled={busy} onClick={() => edit(a, s)}>
                             Editar rascunho
                           </button>
@@ -608,61 +763,199 @@ export default function Admin({ classes }: { classes: Class[] }) {
                           disabled={busy}
                           onClick={() =>
                             void action(async () => {
-                              await rpc("set_session_publication", {
-                                p_session_id: s.id,
-                                p_published: !s.published,
-                                p_closes_at: s.closes_at,
+                              await rpc("duplicate_assessment", {
+                                p_activity_id: a.id,
                               });
+                              setNotice(
+                                "Revisão criada como rascunho, com novos identificadores e sem alterar as entregas anteriores.",
+                              );
                               await load();
                             })
                           }
                         >
-                          {s.published ? "Retirar publicação" : "Publicar"}
+                          Duplicar / criar revisão
                         </button>
                         <button
-                          disabled={!s.published || busy}
-                          onClick={() =>
-                            void action(async () => {
-                              const url = activityLink(s.id);
-                              setQr({
-                                url,
-                                image: await QRCode.toDataURL(url, {
-                                  width: 360,
-                                  errorCorrectionLevel: "M",
-                                }),
+                          disabled={busy}
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Excluir ${a.title}? Atividades com participações devem ser arquivadas.`,
+                              )
+                            )
+                              void action(async () => {
+                                await rpc("delete_assessment", {
+                                  p_activity_id: a.id,
+                                });
+                                await load();
                               });
-                            })
-                          }
+                          }}
                         >
-                          Link e QR Code
+                          Excluir atividade
                         </button>
+                        <a href={`#admin/atividades/${a.id}/resultados`}>
+                          Resultados e notas
+                        </a>
+                        {s.status === "draft" && (
+                          <button
+                            disabled={busy}
+                            onClick={() =>
+                              void action(async () => {
+                                await rpc("transition_assessment", {
+                                  p_session_id: s.id,
+                                  p_status: "published",
+                                });
+                                await load();
+                              })
+                            }
+                          >
+                            Publicar
+                          </button>
+                        )}
+                        {s.status === "published" && (
+                          <button
+                            disabled={busy}
+                            onClick={() =>
+                              void action(async () => {
+                                await rpc("transition_assessment", {
+                                  p_session_id: s.id,
+                                  p_status: "draft",
+                                });
+                                await load();
+                              })
+                            }
+                          >
+                            Voltar ao rascunho
+                          </button>
+                        )}
+                        {(s.status === "published" ||
+                          s.status === "closed") && (
+                          <button
+                            className="primary"
+                            disabled={busy}
+                            onClick={() =>
+                              void action(async () => {
+                                await rpc("transition_assessment", {
+                                  p_session_id: s.id,
+                                  p_status: "open",
+                                });
+                                const url = activityLink(s.id);
+                                setQr({
+                                  url,
+                                  image: await QRCode.toDataURL(url, {
+                                    width: 360,
+                                    errorCorrectionLevel: "M",
+                                  }),
+                                  code: s.access_code,
+                                  title: a.title,
+                                });
+                                await load();
+                              })
+                            }
+                          >
+                            {s.status === "closed"
+                              ? "Reabrir atividade"
+                              : "Iniciar atividade"}
+                          </button>
+                        )}
+                        {s.status === "open" && (
+                          <>
+                            <button
+                              disabled={busy}
+                              onClick={() =>
+                                void action(async () => {
+                                  await rpc("transition_assessment", {
+                                    p_session_id: s.id,
+                                    p_status: "closed",
+                                  });
+                                  await load();
+                                })
+                              }
+                            >
+                              Encerrar atividade
+                            </button>
+                            <button
+                              disabled={busy}
+                              onClick={() =>
+                                void action(async () => {
+                                  const url = activityLink(s.id);
+                                  setQr({
+                                    url,
+                                    image: await QRCode.toDataURL(url, {
+                                      width: 360,
+                                      errorCorrectionLevel: "M",
+                                    }),
+                                    code: s.access_code,
+                                    title: a.title,
+                                  });
+                                })
+                              }
+                            >
+                              Projetar código e QR Code
+                            </button>
+                          </>
+                        )}
+                        {s.status === "closed" && (
+                          <button
+                            disabled={busy}
+                            onClick={() =>
+                              void action(async () => {
+                                await rpc("transition_assessment", {
+                                  p_session_id: s.id,
+                                  p_status: "archived",
+                                });
+                                await load();
+                              })
+                            }
+                          >
+                            Arquivar
+                          </button>
+                        )}
+                        {s.status === "archived" && (
+                          <button
+                            disabled={busy}
+                            onClick={() =>
+                              void action(async () => {
+                                await rpc("transition_assessment", {
+                                  p_session_id: s.id,
+                                  p_status: "closed",
+                                });
+                                await load();
+                              })
+                            }
+                          >
+                            Retirar do arquivo
+                          </button>
+                        )}
                       </div>
-                      <form
-                        className="toolbar"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const f = new FormData(e.currentTarget);
-                          const close = String(f.get("close"));
-                          void action(async () => {
-                            await rpc("set_session_publication", {
-                              p_session_id: s.id,
-                              p_published: s.published,
-                              p_closes_at: close
-                                ? new Date(close).toISOString()
-                                : null,
+                      {s.status === "open" && (
+                        <form
+                          className="toolbar"
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const f = new FormData(e.currentTarget);
+                            const close = String(f.get("close"));
+                            void action(async () => {
+                              await rpc("transition_assessment", {
+                                p_session_id: s.id,
+                                p_status: "open",
+                                p_closes_at: close
+                                  ? new Date(close).toISOString()
+                                  : null,
+                              });
+                              await load();
                             });
-                            await load();
-                          });
-                        }}
-                      >
-                        <label>
-                          Encerramento (horário local)
-                          <input type="datetime-local" name="close" />
-                        </label>
-                        <button disabled={busy}>
-                          Definir prazo (vazio remove)
-                        </button>
-                      </form>
+                          }}
+                        >
+                          <label>
+                            Encerramento (horário local)
+                            <input type="datetime-local" name="close" />
+                          </label>
+                          <button disabled={busy}>
+                            Definir prazo (vazio remove)
+                          </button>
+                        </form>
+                      )}
                       {s.closes_at && (
                         <p>
                           Prazo atual:{" "}
@@ -674,8 +967,13 @@ export default function Admin({ classes }: { classes: Class[] }) {
                 })}
               </section>
               {qr && (
-                <section className="card">
-                  <h2>Compartilhar atividade</h2>
+                <section
+                  className="card projection"
+                  aria-label="Tela de projeção da atividade"
+                >
+                  <h2>{qr.title}</h2>
+                  <p>Acesse a plataforma e digite o código:</p>
+                  <strong className="access-code">{qr.code}</strong>
                   <img
                     className="qr"
                     src={qr.image}
@@ -789,7 +1087,7 @@ export default function Admin({ classes }: { classes: Class[] }) {
                           </button>
                         </form>
                       )}
-                      {role === "admin" && a.submitted_at && (
+                      {a.submitted_at && (
                         <button
                           disabled={busy || a.retry_available}
                           onClick={() =>

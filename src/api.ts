@@ -42,6 +42,9 @@ export type Activity = {
   class_ids: string[];
   closes_at: string | null;
   questions: Question[];
+  time_limit_seconds?: number | null;
+  allow_backtracking?: boolean;
+  access_code?: string;
 };
 export type Rank = {
   team_id: string;
@@ -57,6 +60,57 @@ export type History = {
     activity_session_id: string;
     title: string;
     submitted_at: string | null;
+    expired_at?: string | null;
     submission_no: number;
+  }[];
+};
+export type Participation = {
+  attempt_id: string;
+  submitted?: boolean;
+  expired?: boolean;
+  deadline?: string | null;
+  server_now?: string;
+  progress?: { answers: Record<string, string>; current_question: number };
+};
+export type AssessmentStatus =
+  "draft" | "published" | "open" | "closed" | "archived";
+export type AssessmentResults = {
+  title: string;
+  registered_teams: number;
+  sessions: {
+    id: string;
+    status: AssessmentStatus;
+    access_code: string;
+    release_results: boolean;
+  }[];
+  participants: {
+    attempt_id: string;
+    team_id: string;
+    public_name: string;
+    class_name: string;
+    members: string[];
+    started_at: string;
+    submitted_at: string | null;
+    expired_at?: string | null;
+    submission_no: number;
+    retry_available: boolean;
+    points: number | null;
+    max_points: number | null;
+    feedback: string | null;
+    answers:
+      | {
+          question_id: string;
+          prompt: string;
+          selected: string;
+          correct: boolean;
+          explanation: string;
+        }[]
+      | null;
+  }[];
+  question_stats: {
+    id: string;
+    prompt: string;
+    responses: number;
+    correct: number;
   }[];
 };
