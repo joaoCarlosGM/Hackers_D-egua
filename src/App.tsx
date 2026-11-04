@@ -11,6 +11,7 @@ import {
 } from "./api";
 import { download } from "./utils";
 import Admin from "./Admin";
+import logo from "./assets/logo-oficial.png";
 
 export default function App() {
   const [route, setRoute] = useState(location.hash.slice(1));
@@ -67,9 +68,7 @@ export default function App() {
                 key={route}
                 classes={classes}
                 sessionId={
-                  route.startsWith("atividade/")
-                    ? decodeURIComponent(route.slice(10))
-                    : undefined
+                  route.startsWith("atividade/") ? route.slice(10) : undefined
                 }
               />
             )}
@@ -83,6 +82,8 @@ export default function App() {
 function Leaderboard({ classes }: { classes: Class[] }) {
   const [rows, setRows] = useState<Rank[]>([]);
   const [filter, setFilter] = useState("");
+  const [projector, setProjector] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
     let alive = true;
@@ -97,6 +98,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
         if (error) setError(error.message);
         else {
           setRows(data ?? []);
+          setUpdatedAt(new Date());
           setError("");
         }
       }
@@ -125,12 +127,32 @@ function Leaderboard({ classes }: { classes: Class[] }) {
   }, []);
   const visible = rows.filter((r) => !filter || r.class_id === filter);
   return (
-    <>
-      <div className="eyebrow">DESAFIOS · CONQUISTAS · COMUNIDADE</div>
-      <h1>
-        Ranking <span>CTF</span>
-      </h1>
-      <p>O talento é da dupla. A conquista é de todos.</p>
+    <section
+      className={`ranking-board${projector ? " projector" : ""}`}
+      aria-label="Ranking público CTF"
+    >
+      <img
+        className="ranking-logo"
+        src={logo}
+        alt="Mascote original Hackers Pai D’égua"
+      />
+      <h1>HACKERS PAI D’ÉGUA</h1>
+      <p className="ranking-subtitle">
+        RANKING OFICIAL DO CTF · Projeto de Extensão
+      </p>
+      <p className="muted updated-at">
+        {updatedAt
+          ? `Última atualização: ${updatedAt.toLocaleTimeString("pt-BR")}`
+          : "Carregando ranking…"}
+      </p>
+      <div className="ranking-controls">
+        <button
+          aria-pressed={projector}
+          onClick={() => setProjector(!projector)}
+        >
+          Modo projetor
+        </button>
+      </div>
       {error && <p role="alert">{error}</p>}
       <label>
         Turma
@@ -163,18 +185,18 @@ function Leaderboard({ classes }: { classes: Class[] }) {
                 <th>Posição</th>
                 <th>Dupla</th>
                 <th>Turma</th>
-                <th>Pontos</th>
                 <th>Resolvidos</th>
+                <th>Pontos</th>
               </tr>
             </thead>
             <tbody>
               {visible.map((r, i) => (
                 <tr key={r.team_id}>
-                  <td>{i + 1}</td>
+                  <td>{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</td>
                   <td>{r.public_name}</td>
                   <td>{classes.find((c) => c.id === r.class_id)?.name}</td>
-                  <td>{r.points}</td>
                   <td>{r.solved_count}</td>
+                  <td className="score">{r.points}</td>
                 </tr>
               ))}
             </tbody>
@@ -184,7 +206,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
       <p className="muted">
         Ranking público de desafios. As notas pedagógicas são privadas.
       </p>
-    </>
+    </section>
   );
 }
 function TeamFlow({

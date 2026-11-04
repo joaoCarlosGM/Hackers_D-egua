@@ -2,7 +2,7 @@
 
 Cadastro permanente de duplas, atividades pedagógicas e ranking CTF. React + TypeScript no **GitHub Pages**, PostgreSQL/RPC + Supabase Auth + Realtime no **projeto Supabase Cloud já existente**. Não há servidor Node em produção nem chave secreta no frontend.
 
-O repositório original continha apenas o título e a licença: esta interface usa um tema inicial azul escuro, verde e dourado, com pódio, medalhas e tabela. Não havia arte, paleta oficial ou layout aprovado disponíveis para reproduzir. Substitua os tokens de `src/style.css` quando essas referências forem fornecidas.
+A interface utiliza a paleta oficial (#EE66A6, #E0E8F0, #5588FF, #44AA88, #222233 e #4B2E83) e a composição de pódio e tabela de `ranking_referencia.png`, recebidos em `hackers_pai_degua_referencias.zip`. O logo `referencia-2.png` é reutilizado intacto em `src/assets/logo-oficial.png`. Nenhuma equipe ou pontuação fictícia da referência é inserida no banco. O ranking inclui modo projetor e respeita a preferência por movimento reduzido.
 
 ## Desenvolvimento
 
