@@ -24,9 +24,11 @@ jobs:
           cache: npm
       - run: test -n "$VITE_SUPABASE_URL" && test -n "$VITE_SUPABASE_PUBLISHABLE_KEY"
       - run: npm ci
-      - run: npm run lint && npm run typecheck && npm test && npm run build && npm run test:pages
+      - name: Build and validate hackerspaidegua.com
+        run: npm run lint && npm run typecheck && npm test && npm run build && npm run test:pages
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload dist for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
   deploy:

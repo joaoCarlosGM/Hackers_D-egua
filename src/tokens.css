@@ -1,0 +1,29 @@
+/* Local font, OFL license included in public/assets/fonts. */
+@font-face {
+  font-family: "Courier Prime";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/assets/fonts/courier-prime-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Courier Prime";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/assets/fonts/courier-prime-latin-700-normal.woff2") format("woff2");
+}
+/* Exact swatches from public/assets/references/paleta-oficial.png. */
+:root {
+  --pink: #ee66a6;
+  --white: #e0e8f0;
+  --blue: #5588ff;
+  --green: #44aa88;
+  --void: #222233;
+  --purple: #4b2e83;
+  --font-retro: "Courier Prime", "Courier New", Courier, monospace;
+  --surface: color-mix(in srgb, var(--void) 86%, black);
+  --surface-raised: color-mix(in srgb, var(--void) 93%, var(--white));
+  --muted: color-mix(in srgb, var(--white) 75%, var(--void));
+  --line: color-mix(in srgb, var(--white) 28%, var(--void));
+}

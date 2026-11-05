@@ -13,7 +13,7 @@ import {
 import { download } from "./utils";
 import Admin from "./Admin";
 import Quiz from "./Quiz";
-import logo from "./assets/logo-oficial.png";
+import Brand, { brandAssets } from "./Brand";
 
 export default function App() {
   const [route, setRoute] = useState(location.hash.slice(1));
@@ -36,16 +36,22 @@ export default function App() {
   return (
     <>
       <header>
-        <a className="brand" href="#">
-          HACKERS <span>PAI D’ÉGUA</span>
-        </a>
+        <Brand />
         <nav>
           <a href="#">Minha dupla</a>
           <a href="#ranking">Ranking CTF</a>
           <a href="#admin">Administração</a>
         </nav>
       </header>
-      <main>
+      <main
+        className={
+          route === "ranking"
+            ? "ranking-page"
+            : route.startsWith("admin")
+              ? "admin-page"
+              : "student-page"
+        }
+      >
         {!configured ? (
           <section className="card">
             <h1>Conecte o Supabase</h1>
@@ -82,7 +88,12 @@ export default function App() {
           </>
         )}
       </main>
-      <footer>Hackers Pai D’égua · Aprender, criar e resolver juntos.</footer>
+      <footer>
+        <img src={brandAssets.mascot} alt="" width={1728} height={1975} />
+        <p>
+          Hackers Pai D’égua <span>· Aprender, criar e resolver juntos.</span>
+        </p>
+      </footer>
     </>
   );
 }
@@ -140,7 +151,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
     >
       <img
         className="ranking-logo"
-        src={logo}
+        src={brandAssets.mascot}
         alt="Mascote original Hackers Pai D’égua"
       />
       <h1>HACKERS PAI D’ÉGUA</h1>
@@ -152,7 +163,19 @@ function Leaderboard({ classes }: { classes: Class[] }) {
           ? `Última atualização: ${updatedAt.toLocaleTimeString("pt-BR")}`
           : "Carregando ranking…"}
       </p>
+      {error && <p role="alert">{error}</p>}
       <div className="ranking-controls">
+        <label>
+          Turma
+          <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="">Todas as turmas</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           aria-pressed={projector}
           onClick={() => setProjector(!projector)}
@@ -160,25 +183,12 @@ function Leaderboard({ classes }: { classes: Class[] }) {
           Modo projetor
         </button>
       </div>
-      {error && <p role="alert">{error}</p>}
-      <label>
-        Turma
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="">Todas as turmas</option>
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
       <div className="podium">
         {visible.slice(0, 3).map((r, i) => (
           <article className={`card place-${i + 1}`} key={r.team_id}>
             <div className="medal">{["🥇", "🥈", "🥉"][i]}</div>
             <h2>{r.public_name}</h2>
             <strong>{r.points} pontos</strong>
-            <p>{r.solved_count} desafios resolvidos</p>
           </article>
         ))}
       </div>
@@ -189,9 +199,10 @@ function Leaderboard({ classes }: { classes: Class[] }) {
           <table>
             <thead>
               <tr>
-                <th>Posição</th>
+                <th scope="col" aria-label="Posição">
+                  #
+                </th>
                 <th>Dupla</th>
-                <th>Turma</th>
                 <th>Resolvidos</th>
                 <th>Pontos</th>
               </tr>
@@ -200,8 +211,12 @@ function Leaderboard({ classes }: { classes: Class[] }) {
               {visible.map((r, i) => (
                 <tr key={r.team_id}>
                   <td>{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</td>
-                  <td>{r.public_name}</td>
-                  <td>{classes.find((c) => c.id === r.class_id)?.name}</td>
+                  <td>
+                    <span>{r.public_name}</span>
+                    <small className="team-class visually-hidden">
+                      {classes.find((c) => c.id === r.class_id)?.name}
+                    </small>
+                  </td>
                   <td>{r.solved_count}</td>
                   <td className="score">{r.points}</td>
                 </tr>

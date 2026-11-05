@@ -1,11 +1,6 @@
+@import "./tokens.css";
 :root {
-  --pink: #ee66a6;
-  --white: #e0e8f0;
-  --blue: #5588ff;
-  --green: #44aa88;
-  --void: #222233;
-  --purple: #4b2e83;
-  font-family: "Courier New", monospace;
+  font-family: var(--font-retro);
   color: var(--white);
   background: var(--void);
   line-height: 1.6;
@@ -24,7 +19,7 @@ header {
   justify-content: space-between;
   gap: 1rem;
   align-items: center;
-  background: #1c1c2b;
+  background: var(--surface);
   border-bottom: 1px solid #44445a;
 }
 a {
@@ -36,7 +31,7 @@ a {
   font-weight: 900;
   text-decoration: none;
   letter-spacing: 0.08em;
-  color: white;
+  color: var(--white);
 }
 .brand span {
   display: block;
@@ -75,12 +70,12 @@ p {
   color: var(--pink);
 }
 .card {
-  background: #29293c;
-  border: 1px solid #494963;
-  border-radius: 16px;
+  background: var(--surface);
+  border: 2px solid var(--purple);
+  border-radius: 0;
   padding: 1.6rem;
   margin: 1.5rem 0;
-  box-shadow: 0 12px 35px #0002;
+  box-shadow: 5px 5px 0 color-mix(in srgb, var(--purple) 75%, transparent);
 }
 .narrow {
   max-width: 650px;
@@ -101,10 +96,10 @@ button {
 input,
 select,
 textarea {
-  color: #f4f9fc;
-  background: #1c1c2b;
+  color: var(--white);
+  background: var(--surface);
   border: 1px solid #707086;
-  border-radius: 7px;
+  border-radius: 2px;
   padding: 0.7rem;
   min-width: 0;
   max-width: 100%;
@@ -116,8 +111,8 @@ textarea {
 button {
   background: var(--purple);
   border: 1px solid #827096;
-  color: white;
-  border-radius: 8px;
+  color: var(--white);
+  border-radius: 2px;
   padding: 0.65rem 1rem;
   cursor: pointer;
   margin: 0.2rem 0.3rem 0.2rem 0;
@@ -125,7 +120,7 @@ button {
 }
 button.primary {
   background: var(--green);
-  color: #101c18;
+  color: var(--void);
   border-color: var(--green);
 }
 button:hover {
@@ -164,22 +159,22 @@ button:disabled {
 .error {
   padding: 1rem;
   border-left: 4px solid var(--pink);
-  background: #462537;
+  background: color-mix(in srgb, var(--pink) 12%, var(--void));
 }
 .success {
   padding: 1rem;
   border-left: 4px solid var(--green);
-  background: #203b33;
+  background: color-mix(in srgb, var(--green) 12%, var(--void));
 }
 .muted,
 small {
-  color: #bec5d4;
+  color: var(--muted);
 }
 .credential {
   border: 1px solid var(--pink);
   border-radius: 10px;
   padding: 1rem;
-  background: #33243d;
+  background: color-mix(in srgb, var(--purple) 30%, var(--void));
 }
 .credential input {
   font-family: monospace;
@@ -216,7 +211,7 @@ small {
 table {
   width: 100%;
   border-collapse: collapse;
-  background: #29293c;
+  background: var(--surface);
 }
 td,
 th {
@@ -231,7 +226,7 @@ fieldset {
   margin: 1.5rem 0;
   padding: 1rem;
   border: 1px solid #555570;
-  border-radius: 8px;
+  border-radius: 2px;
 }
 legend {
   font-weight: 700;
@@ -268,7 +263,7 @@ legend {
 footer {
   padding: 2rem;
   text-align: center;
-  color: #bec5d4;
+  color: var(--muted);
   border-top: 1px solid #44445a;
 }
 @media (max-width: 650px) {
@@ -293,76 +288,109 @@ footer {
   }
 }
 
-/* Composition follows ranking_referencia.png; the supplied logo is unmodified. */
+/* ranking_referencia.png: centered crest, typewriter title, colored offset frames. */
+.ranking-page {
+  padding-top: 1.75rem;
+}
 .ranking-board {
-  max-width: 1000px;
+  position: relative;
+  max-width: 800px;
   margin: 0 auto;
 }
 .ranking-logo {
   display: block;
-  width: 104px;
+  width: 86px;
   height: auto;
-  margin: 0 auto 1.5rem;
-  border-radius: 4px;
+  margin: 0 auto 1rem;
 }
 .ranking-board h1 {
   color: var(--pink);
-  font-size: clamp(1.65rem, 3.4vw, 2.7rem);
+  font-size: clamp(1.4rem, 3.5vw, 2rem);
   text-align: center;
-  letter-spacing: 0.12em;
-  text-shadow: 0 0 18px #ee66a633;
+  letter-spacing: 0.22em;
+  line-height: 1.35;
+  margin: 0.5rem -1rem 0.4rem;
+  text-shadow: 0 0 15px #ee66a655;
 }
 .ranking-subtitle {
   color: var(--blue);
-  letter-spacing: 0.12em;
+  letter-spacing: 0.15em;
   text-align: center;
+  font-size: 0.9rem;
+  margin: 0 0 0.6rem;
 }
 .updated-at {
   text-align: center;
-  font-size: 0.85em;
+  font-size: 0.8rem;
+  margin: 0;
 }
 .ranking-controls {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
   justify-content: center;
+  align-items: end;
+  gap: 1rem;
+  margin: 0;
 }
-.ranking-board > label {
-  max-width: 280px;
-  margin: 1rem auto;
+.ranking-controls label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 0.8rem;
+}
+.ranking-controls select,
+.ranking-controls button {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+  margin: 0;
 }
 .ranking-board .podium {
-  gap: 1.2rem;
-  margin: 2.8rem auto;
-  max-width: 850px;
+  max-width: 640px;
+  grid-template-columns: 1.05fr 1.25fr 1fr;
+  gap: 16px;
+  margin: 2.4rem auto 1.7rem;
+  align-items: start;
 }
 .ranking-board .podium .card {
   border: 3px solid;
   border-radius: 0;
-  padding: 1.4rem 0.8rem;
+  padding: 13px 8px;
   background:
     repeating-linear-gradient(
       45deg,
       transparent 0,
       transparent 10px,
-      #e0e8f003 10px,
-      #e0e8f003 11px
+      #e0e8f004 10px,
+      #e0e8f004 11px
     ),
-    #20202d;
+    var(--surface);
+  min-height: 122px;
 }
 .ranking-board .podium .place-1 {
   border-color: var(--pink);
   box-shadow: 6px 6px 0 var(--pink);
-  min-height: 210px;
 }
 .ranking-board .podium .place-2 {
   border-color: var(--blue);
   box-shadow: 6px 6px 0 var(--blue);
+  margin-top: 14px;
 }
 .ranking-board .podium .place-3 {
   border-color: var(--purple);
   box-shadow: 6px 6px 0 var(--purple);
+  margin-top: 17px;
+}
+.ranking-board .medal {
+  font-size: 1.4rem;
+  line-height: 1.4;
 }
 .ranking-board .podium h2 {
-  font-size: 1.1rem;
+  font-size: 0.85rem;
+  margin: 0.3rem 0;
 }
 .ranking-board .place-1 h2 {
   color: var(--pink);
@@ -370,25 +398,51 @@ footer {
 .ranking-board .podium strong {
   color: var(--blue);
   font-weight: normal;
+  font-size: 0.95rem;
 }
 .ranking-board .podium p {
-  font-size: 0.85em;
+  margin: 0.4rem 0 0;
+  font-size: 0.7rem;
+  color: var(--muted);
 }
 .ranking-board .table-wrap {
   border: 3px solid var(--purple);
   box-shadow: 6px 6px 0 #4b2e8380;
 }
 .ranking-board table {
-  background: #20202d;
+  background: var(--surface);
+  table-layout: fixed;
 }
 .ranking-board th {
   text-transform: uppercase;
-  font-size: 0.8em;
+  font-size: 0.8rem;
   letter-spacing: 0.08em;
   background: #4b2e8315;
 }
+.ranking-board th:first-child {
+  width: 10%;
+}
+.ranking-board th:nth-child(2) {
+  width: 50%;
+}
+.ranking-board th:nth-child(3),
+.ranking-board th:nth-child(4) {
+  width: 20%;
+}
+.ranking-board td,
+.ranking-board th {
+  padding: 0.65rem 0.85rem;
+}
 .ranking-board td {
-  border-bottom: 1px dashed #55556b;
+  border-bottom: 1px dashed var(--line);
+}
+.ranking-board tr:last-child td {
+  border-bottom: 0;
+}
+.ranking-board .team-class {
+  display: block;
+  font-size: 0.65rem;
+  line-height: 1.2;
 }
 .ranking-board .score {
   color: var(--pink);
@@ -396,41 +450,74 @@ footer {
 }
 .ranking-board > .muted:last-child {
   text-align: center;
-  margin-top: 2rem;
+  margin-top: 1.75rem;
+  font-size: 0.8rem;
 }
 .ranking-board.projector {
   max-width: none;
   font-size: 1.25rem;
 }
 .projector .ranking-logo {
-  width: 140px;
+  width: 110px;
 }
 .projector td,
 .projector th {
-  padding: 1.2rem;
+  padding: 1rem;
 }
 @media (prefers-reduced-motion: no-preference) {
   .ranking-board .card {
-    animation: arrive 0.3s ease-out;
+    animation: arrive 0.25s ease-out;
   }
   @keyframes arrive {
     from {
       opacity: 0;
-      transform: translateY(5px);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
     }
   }
 }
 @media (max-width: 650px) {
-  .ranking-board .podium .place-1 {
-    min-height: 0;
+  .ranking-board h1 {
+    font-size: 1.4rem;
+    letter-spacing: 0.08em;
+    margin-inline: 0;
   }
-  .ranking-board th,
-  .ranking-board td {
-    padding: 0.75rem;
+  .ranking-subtitle {
+    font-size: 0.75rem;
+  }
+  .ranking-board .podium {
+    grid-template-columns: 1fr;
+    max-width: 340px;
+    gap: 1rem;
+  }
+  .ranking-board .podium .place-2,
+  .ranking-board .podium .place-3 {
+    margin-top: 0;
+  }
+  .ranking-board .podium .card {
+    min-height: 0;
+    padding: 1rem;
+  }
+  .ranking-board td,
+  .ranking-board th {
+    padding: 0.6rem 0.4rem;
+    font-size: 0.75rem;
+  }
+  .ranking-board th:nth-child(2) {
+    width: 40%;
+  }
+  .ranking-board th:nth-child(3),
+  .ranking-board th:nth-child(4) {
+    width: 25%;
+    font-size: 0.65rem;
+    letter-spacing: 0;
+  }
+  .ranking-controls {
+    position: static;
+    margin: 1rem 0 1.8rem;
+    align-items: center;
+    flex-wrap: wrap;
   }
 }
 /* Evaluations share the approved palette; no assets or credentials are synthesized. */
@@ -450,7 +537,7 @@ footer {
   font-size: 1.15rem;
   text-align: left;
   border: 3px solid transparent;
-  border-radius: 8px;
+  border-radius: 2px;
   padding: 1.2rem;
   color: var(--white);
   transition: transform 0.12s ease;
@@ -459,13 +546,13 @@ footer {
   margin-right: 0.5rem;
 }
 .quiz-option.option-0 {
-  background: #793952;
+  background: color-mix(in srgb, var(--pink) 48%, var(--void));
 }
 .quiz-option.option-1 {
-  background: #244b98;
+  background: color-mix(in srgb, var(--blue) 58%, var(--void));
 }
 .quiz-option.option-2 {
-  background: #265f4c;
+  background: color-mix(in srgb, var(--green) 55%, var(--void));
 }
 .quiz-option.option-3 {
   background: var(--purple);
@@ -484,7 +571,7 @@ footer {
   border: 2px solid var(--pink);
   padding: 1.25rem;
   margin-top: 1.5rem;
-  border-radius: 8px;
+  border-radius: 2px;
 }
 .offline {
   background: #4b2e8366;
@@ -537,4 +624,159 @@ footer {
   .quiz-option {
     transition: none;
   }
+}
+
+/* Shared official identity on home, registration, quiz, ranking and every staff route. */
+body {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 2px,
+      #0000000c 2px,
+      #0000000c 3px
+    ),
+    var(--void);
+}
+header {
+  border-bottom: 2px solid var(--purple);
+  padding: 0.85rem max(calc((100vw - 1080px) / 2), 1.25rem);
+  gap: 2rem;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex: 0 0 auto;
+}
+.brand-mascot {
+  width: 54px;
+  height: auto;
+  flex-shrink: 0;
+}
+.brand-wordmark {
+  font-size: 0.9rem;
+  line-height: 1.3;
+  letter-spacing: 0.12em;
+  color: var(--white);
+}
+.brand .brand-wordmark > span {
+  color: var(--pink);
+}
+nav {
+  justify-content: flex-end;
+  gap: 1.25rem;
+  font-size: 0.85rem;
+}
+nav a {
+  color: var(--white);
+  text-decoration: none;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid transparent;
+}
+nav a:hover,
+nav a:focus-visible {
+  color: var(--pink);
+  border-bottom-color: var(--pink);
+}
+main {
+  min-width: 0;
+}
+.student-page,
+.admin-page {
+  padding-top: 2rem;
+}
+.student-page > h1,
+.admin-page > h1 {
+  color: var(--pink);
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  letter-spacing: 0.035em;
+}
+.card > h2 {
+  color: var(--white);
+  margin-top: 0;
+}
+.card > h2::after {
+  content: "";
+  display: block;
+  width: 42px;
+  height: 3px;
+  background: var(--pink);
+  margin-top: 0.7rem;
+}
+.card .tabs {
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 1rem;
+}
+.tabs button[aria-pressed="true"] {
+  border-color: var(--pink);
+  color: var(--pink);
+}
+fieldset {
+  border-color: var(--line);
+}
+.quiz fieldset legend {
+  color: var(--white);
+}
+.results > h1 {
+  color: var(--pink);
+}
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem 1rem;
+  border-top: 2px solid var(--purple);
+  background: var(--surface);
+  font-size: 0.75rem;
+}
+footer img {
+  width: 32px;
+  height: auto;
+}
+footer p {
+  margin: 0;
+}
+@media (max-width: 650px) {
+  header {
+    gap: 1rem;
+    align-items: center;
+    padding: 0.85rem 1rem;
+  }
+  nav {
+    justify-content: center;
+    gap: 1rem;
+    font-size: 0.8rem;
+  }
+  main {
+    padding: 1.75rem 1rem;
+  }
+  .brand-mascot {
+    width: 46px;
+  }
+  footer p span {
+    display: block;
+  }
+  .option {
+    gap: 0.6rem;
+  }
+  .toolbar {
+    gap: 0.4rem;
+  }
+}
+
+.ranking-board .card > h2::after {
+  content: none;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

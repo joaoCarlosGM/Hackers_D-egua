@@ -2,7 +2,7 @@
 
 Cadastro permanente de duplas, atividades pedagógicas e ranking CTF. React + TypeScript no **GitHub Pages**, PostgreSQL/RPC + Supabase Auth + Realtime no **projeto Supabase Cloud já existente**. Não há servidor Node em produção nem chave secreta no frontend.
 
-A interface utiliza a paleta oficial (#EE66A6, #E0E8F0, #5588FF, #44AA88, #222233 e #4B2E83) e a composição de pódio e tabela de `ranking_referencia.png`, recebidos em `hackers_pai_degua_referencias.zip`. O logo `referencia-2.png` é reutilizado intacto em `src/assets/logo-oficial.png`. Nenhuma equipe ou pontuação fictícia da referência é inserida no banco. O ranking inclui modo projetor e respeita a preferência por movimento reduzido.
+A interface utiliza a paleta oficial (#EE66A6, #E0E8F0, #5588FF, #44AA88, #222233 e #4B2E83) e a composição de pódio e tabela de `ranking_referencia.png`, recebidos em `hackers_pai_degua_referencias.zip`. Todas as artes são extraídas para `public/assets/`, com origem e SHA-256 em `public/assets/manifest.json`. Os cabeçalhos de todas as páginas e o ranking utilizam o mascote transparente original da página 2 do PDF, com sua máscara original e proporções preservadas. As quatro propostas de logo permanecem disponíveis intactas. A fonte retro Courier Prime é hospedada localmente, com licença OFL. O navegador não acessa o ZIP. Nenhuma equipe ou pontuação fictícia da referência é inserida no banco. O ranking inclui modo projetor e respeita a preferência por movimento reduzido.
 
 ## Desenvolvimento
 
@@ -16,7 +16,7 @@ cp .env.example .env
 npm run dev
 ```
 
-O caminho base é `/Hackers_D-egua/`. Rotas usam hash (`#ranking`, `#admin`, `#atividade/UUID`), inclusive nos QR Codes, para não depender de reescrita de URLs no Pages. Não coloque `service_role`, secret key, senha do banco nem credenciais dos alunos em variáveis `VITE_*`.
+Em produção no domínio **https://hackerspaidegua.com/**, o caminho base é `/` (`base: "/"` no Vite). Rotas usam hash (`#ranking`, `#admin`, `#atividade/UUID`), inclusive nos QR Codes, para não depender de reescrita de URLs no Pages. Não coloque `service_role`, secret key, senha do banco nem credenciais dos alunos em variáveis `VITE_*`.
 
 ```bash
 npm run lint
@@ -25,6 +25,7 @@ npm test
 npm run test:db
 npm run build
 npm run test:pages
+npm run test:visual
 npm run preview
 ```
 
@@ -87,7 +88,7 @@ Professores podem criar/publicar atividades, consultar integrantes, respostas e 
 - API: copie a **Project URL** e a **publishable key** para `.env` local e para as variáveis de build do Pages. A segurança depende de RLS e das RPCs, não de esconder a publishable key.
 - Data API: mantenha `public` exposto. **Nunca exponha `app_private`** e não conceda execução de seus helpers a clientes. A aplicação não precisa expor `auth` ou `extensions` como schemas de API.
 - Realtime → Publications: confirme que `public.public_leaderboard` e `public.assessment_updates` pertencem a `supabase_realtime` (as migrations as adicionam se a publicação existir). Se ela não existir no projeto, habilite Realtime pelo Dashboard e adicione essas duas tabelas. `assessment_updates` contém somente UUID da sessão e timestamp, com leitura permitida apenas a `admin_users`; é o sinal para recarregar resultados privados por RPC. Não publique diretamente nomes completos, respostas, credenciais ou notas.
-- Authentication: habilite e-mail/senha para a equipe pedagógica e desabilite cadastros públicos se não forem usados. Defina Site URL para `https://joaocarlosgm.github.io/Hackers_D-egua/`. O login atual é por senha, sem OAuth ou magic links. Convites/redefinição de senha podem ser gerenciados pelo responsável no Dashboard; não há página pública de redefinição de senha Auth nesta versão.
+- Authentication: habilite e-mail/senha para a equipe pedagógica e desabilite cadastros públicos se não forem usados. Defina Site URL para `https://hackerspaidegua.com/`. O login atual é por senha, sem OAuth ou magic links. Convites/redefinição de senha podem ser gerenciados pelo responsável no Dashboard; não há página pública de redefinição de senha Auth nesta versão.
 - Nunca crie um segundo projeto para usar esta aplicação.
 
 ## Publicar exclusivamente no GitHub Pages
@@ -96,7 +97,7 @@ Professores podem criar/publicar atividades, consultar integrantes, respostas e 
 2. Settings → Secrets and variables → Actions → **Variables**, crie `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`. São configurações públicas de cliente, não credenciais administrativas.
 3. Faça merge do PR em `main` ou execute manualmente o workflow **GitHub Pages**. Sem as duas variáveis, o deploy falha explicitamente.
 4. O workflow compila `dist/` e publica somente no Pages. Não configura nem publica Vercel, Netlify ou outro host.
-5. Se mudar o nome do repositório/domínio, ajuste `base` em `vite.config.ts` e o Site URL no Supabase.
+5. Mantenha `base: "/"`, confirme o domínio `hackerspaidegua.com`, configure DNS e habilite HTTPS. O CNAME da raiz é preservado e `public/CNAME` é copiado para `dist/CNAME`. Consulte a sequência completa em [Domínio personalizado e DNS](docs/github-pages-domain.md).
 
 O workflow **Validate** executa lint, typecheck, testes da interface, integração SQL local e build em PRs e em `main`. O deploy também valida a interface antes de publicar; migrations remotas continuam sendo uma ação administrativa separada.
 
@@ -139,7 +140,7 @@ Os testes SQL cobrem o núcleo e a interface usa o SDK Supabase real. Antes de a
 5. Em um navegador anônimo, confirme que não consegue ler `team_members`, `grades`, `answers`, `teams` nem escrever pontos/notas. Confira também com uma conta Auth sem `admin_users`.
 6. Com professor/admin autorizado, confira notas, correção e CSV. Com admin, redefina a credencial, verifique que a antiga parou de funcionar e que as notas permaneceram.
 7. Abra `#ranking` em outra aba; cadastre uma dupla e registre um ajuste CTF autorizado. Confirme atualização por WebSocket, apenas com apelidos, e que entregar uma avaliação não altera pontos CTF. A tela também recarrega o ranking ao reconectar/recuperar foco.
-8. Abra no endereço publicado do Pages um link e QR Code de atividade. Confirme os assets sob `/Hackers_D-egua/`.
+8. Abra no endereço publicado do Pages um link e QR Code de atividade. Confirme os assets sob `/assets/` na raiz do domínio, incluindo o logo oficial e as fontes locais.
 
 Aplicação no Supabase Cloud, autenticação hospedada, eventos WebSocket reais e publicação no Pages dependem das configurações externas acima e não devem ser considerados validados apenas pelos testes locais.
 
@@ -162,3 +163,13 @@ A exportação CSV é o formato preparado para integração futura com a pasta p
 Valores reais de URL/publishable key devem ficar em `.env.local` ignorado pelo Git, ou nas Variables do GitHub Actions; `.env.example` contém apenas placeholders. Uma chave `sb_secret_*` ou `service_role` nunca é necessária no navegador e não dá acesso SQL arbitrário pela API REST. Se uma chave administrativa for compartilhada em chat, revogue-a no Dashboard e gere outra por canal seguro.
 
 A rede deste ambiente precisa permitir o hostname do projeto Supabase e `api.github.com` para validação hospedada e abertura do PR. Um rascunho salvo não altera a política em execução; revise/salve a configuração e publique o ambiente quando desejar aplicar a mudança. A execução local não comprova que as migrations já estão no Supabase Cloud. Não crie duplas fictícias em produção apenas para testar.
+
+## Identidade oficial e revisão visual
+
+A fonte de verdade é o ZIP do repositório: `ranking_referencia.png`, `paleta_oficial.png`, as quatro logos e o PDF com quatro páginas foram inspecionados. As seis cores exatas estão em `src/tokens.css`. `src/Brand.tsx` aplica o mesmo cabeçalho com o mascote original a início, cadastro, quiz, ranking, login, administração e resultados. Os caminhos usam `import.meta.env.BASE_URL` para funcionar no GitHub Pages.
+
+Os assets necessários já estão extraídos em `public/assets/brand/` e as referências em `public/assets/references/`. Não é necessário extrair o ZIP para instalar, compilar ou executar o site. Para reproduzir a extração durante manutenção, use `python3 scripts/extract-brand-assets.py` em um ambiente com PyMuPDF; o script copia as PNGs byte a byte e extrai as imagens e máscaras originais do PDF. Ele não recorta, redesenha, recolore ou altera as proporções do mascote.
+
+`npm run test:visual` executa 13 cenários Playwright em Chromium. No ambiente atual, usa `/usr/bin/chromium`; em outra máquina, execute `npx playwright install --with-deps chromium` antes. Também é possível selecionar o binário com `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. Os testes cobrem as sete páginas em desktop e celular, proporção do logo, tokens de cor, ausência de rolagem horizontal e arquivos originais por checksum. São gerados 17 PNGs em `artifacts/visual/`, incluindo `ranking-comparison.png`, comparação lado a lado com a referência enviada. Resultados e screenshots são publicados como artefato de CI, sem deploy do site.
+
+As fixtures de ranking, usuários e notas existem **apenas nos testes do navegador**, com todas as requisições Supabase interceptadas. Não são dados reais nem inserções no projeto Cloud. O servidor dos testes usa uma URL e chave fictícias explicitamente isoladas da configuração de produção. Consulte `docs/visual-review.md` para a revisão e as diferenças corrigidas.
