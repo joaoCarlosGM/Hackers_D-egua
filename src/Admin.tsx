@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
 import Results from "./Results";
 import ClassManagement from "./ClassManagement";
+import AdminNavigation, { type AdminSection } from "./AdminNavigation";
 import TeamManagement from "./TeamManagement";
 import ActivityPreview from "./ActivityPreview";
 import { rpc, supabase, type Class } from "./api";
@@ -111,10 +112,12 @@ export default function Admin({
   classes,
   resultsActivityId,
   onClassesChanged,
+  section = "overview",
 }: {
   classes: Class[];
   resultsActivityId?: string;
   onClassesChanged?: () => Promise<void>;
+  section?: AdminSection;
 }) {
   const [identity, setIdentity] = useState<string | null>(null);
   const [role, setRole] = useState("");
@@ -373,17 +376,24 @@ export default function Admin({
   }
   if (role && !checking && resultsActivityId)
     return (
-      <>
+      <AdminNavigation section="notas" role={role}>
+        <div className="admin-actions-bar">
+          <a href="#admin/notas">← Voltar às notas e entregas</a>
+          <button className="admin-signout" onClick={() => void supabase!.auth.signOut()}>
+            Sair da administração
+          </button>
+        </div>
         <Results activityId={resultsActivityId} />
-        <button onClick={() => void supabase!.auth.signOut()}>
-          Sair da administração
-        </button>
-      </>
+      </AdminNavigation>
     );
   return (
     <>
-      <div className="eyebrow">EQUIPE PEDAGÓGICA</div>
-      <h1>Administração</h1>
+      {!role && (
+        <>
+          <div className="eyebrow">EQUIPE PEDAGÓGICA</div>
+          <h1>Administração</h1>
+        </>
+      )}
       {error && (
         <p role="alert" className="error">
           {error}
@@ -419,53 +429,82 @@ export default function Admin({
         </form>
       ) : (
         <>
-          <button
-            onClick={() =>
-              void action(async () => {
-                const { error } = await supabase!.auth.signOut();
-                if (error) throw error;
-                setData(empty);
-                setCredential(null);
-                setRole("");
-                setIdentity(null);
-              })
-            }
-            disabled={busy}
-          >
-            Sair da administração
-          </button>
           {!role ? (
             <p role="alert">
               Esta conta não está autorizada. Solicite a inclusão do UUID em
               admin_users ao responsável pelo projeto.
             </p>
           ) : (
-            <>
-              <div className="toolbar">
-                <span>
-                  Perfil: {role === "admin" ? "Administrador" : "Professor"}
-                </span>
+            <AdminNavigation section={section} role={role}>
+              <div className="admin-actions-bar">
+                <span>Perfil: {role === "admin" ? "Administrador" : "Professor"}</span>
                 <button disabled={busy} onClick={() => void action(load)}>
-                  Atualizar entregas
+                  Atualizar dados
                 </button>
-                <button onClick={exportGrades}>
-                  Exportar notas CSV (privado)
+                {(section === "notas" || section === "overview") && (
+                  <button onClick={exportGrades}>
+                    Exportar notas CSV (privado)
+                  </button>
+                )}
+                <button
+                  className="admin-signout"
+                  disabled={busy}
+                  onClick={() =>
+                    void action(async () => {
+                      const { error } = await supabase!.auth.signOut();
+                      if (error) throw error;
+                      setData(empty);
+                      setCredential(null);
+                      setRole("");
+                      setIdentity(null);
+                    })
+                  }
+                >
+                  Sair da administração
                 </button>
               </div>
-              <ClassManagement
+              {section === "overview" && (
+                <>
+                  <div className="admin-overview-lead">
+                    <div className="eyebrow">CENTRAL DE AULAS · TEMPO REAL</div>
+                    <h2>Organize as atividades, acompanhe as turmas e pontue o CTF.</h2>
+                    <p>Escolha um módulo no menu. Cada operação fica no seu espaço, sem perder o acesso ao histórico de avaliações.</p>
+                  </div>
+                  <div className="admin-metrics" aria-label="Indicadores pedagógicos">
+                    {[
+                      { label: "Turmas ativas", value: classes.filter((c) => c.status === "active").length },
+                      { label: "Duplas cadastradas", value: data.teams.length },
+                      { label: "Atividades criadas", value: data.activities.length },
+                      { label: "Entregas concluídas", value: data.attempts.filter((a) => !!a.submitted_at).length },
+                    ].map((metric) => (
+                      <div className="admin-metric" key={metric.label}>
+                        <strong>{metric.value}</strong>
+                        <span>{metric.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="admin-quick-actions">
+                    <a href="#admin/atividades"><strong>+ Criar uma atividade</strong><span>Múltipla escolha, verdadeiro ou falso e QR Code para a turma.</span></a>
+                    <a href="#admin/turmas"><strong>Organizar turmas</strong><span>Gerenciar Poraquê, Pitiú e os demais grupos.</span></a>
+                    <a href="#admin/duplas"><strong>Consultar duplas</strong><span>Cadastro permanente, participantes e credenciais.</span></a>
+                    <a href="#admin/notas"><strong>Conferir entregas</strong><span>Resultados privados, correções e exportação.</span></a>
+                    {role === "admin" && <a href="#admin/ctf"><strong>Registrar pontos CTF</strong><span>Classificação pública independente das notas.</span></a>}
+                  </div>
+                </>
+              )}
+              {section === "turmas" && (
+                <ClassManagement
                 canManage={role === "admin"}
                 onChanged={onClassesChanged}
                 onInspect={(id) => {
                   setClassFilter(id);
-                  requestAnimationFrame(() =>
-                    document
-                      .getElementById("class-records")
-                      ?.scrollIntoView?.({ block: "start" }),
-                  );
+                  location.hash = "#admin/notas";
                 }}
               />
-              <label>
-                Consultar dados da turma
+              )}
+              {(["atividades", "duplas", "notas", "ctf"] as AdminSection[]).includes(section) && (
+              <label className="admin-filter">
+                Filtrar por turma
                 <select
                   value={classFilter}
                   onChange={(e) => setClassFilter(e.target.value)}
@@ -479,6 +518,9 @@ export default function Admin({
                   ))}
                 </select>
               </label>
+              )}
+              {section === "atividades" && (
+                <>
               <form key={editing?.id ?? "new"} onSubmit={save} className="card">
                 <h2>{editing ? "Editar rascunho" : "Nova atividade"}</h2>
                 <label>
@@ -1044,6 +1086,9 @@ export default function Admin({
                   <button onClick={() => setQr(null)}>Fechar</button>
                 </section>
               )}
+                </>
+              )}
+              {section === "notas" && (
               <section className="card">
                 <h2 id="class-records" tabIndex={-1}>
                   Entregas e notas privadas
@@ -1169,6 +1214,9 @@ export default function Admin({
                   );
                 })}
               </section>
+              )}
+              {section === "duplas" && (
+                <>
               <TeamManagement
                 classes={classes}
                 canManage={role === "admin"}
@@ -1203,7 +1251,12 @@ export default function Admin({
                   </button>
                 </section>
               )}
-              {role === "admin" && (
+                </>
+              )}
+              {section === "ctf" && role !== "admin" && (
+                <p role="alert" className="card">Somente administradores podem ajustar a pontuação do CTF.</p>
+              )}
+              {section === "ctf" && role === "admin" && (
                 <form
                   className="card"
                   onSubmit={(e) => {
@@ -1255,7 +1308,7 @@ export default function Admin({
                   <button disabled={busy}>Registrar ajuste auditado</button>
                 </form>
               )}
-            </>
+            </AdminNavigation>
           )}
         </>
       )}
