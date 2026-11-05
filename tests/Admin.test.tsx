@@ -23,6 +23,7 @@ vi.mock("../src/api", () => ({
       getSession: async () => ({
         data: { session: { user: { id: "teacher-1" } } },
       }),
+      getUser: async () => ({ data: { user: { id: "teacher-1" } }, error: null }),
       onAuthStateChange: () => ({
         data: { subscription: { unsubscribe: () => undefined } },
       }),
@@ -120,6 +121,17 @@ it("denies an Auth account without explicit authorization", async () => {
   expect(screen.queryByRole("heading", { name: "Nova atividade" })).toBeNull();
   expect(mock.rpc).not.toHaveBeenCalled();
 });
+it("rechecks permissions after an existing Auth account is authorized externally", async () => {
+  mock.role = null;
+  const user = userEvent.setup();
+  render(<Admin classes={classes} />);
+  await screen.findByText(/Esta conta não está autorizada/);
+  mock.role = "teacher";
+  await user.click(screen.getByRole("button", { name: "Verificar autorização novamente" }));
+  await screen.findByRole("heading", { name: "Visão geral" });
+  expect(screen.getByText(/Autorização reconhecida com sucesso/)).toBeTruthy();
+});
+
 it("lets a teacher create, preview, publish and start a quiz with a real activity link for QR generation", async () => {
   const user = userEvent.setup();
   render(<Admin classes={classes} section="atividades" />);

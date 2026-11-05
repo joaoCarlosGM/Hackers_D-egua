@@ -239,6 +239,20 @@ async function fixtures(
       },
       save_attempt_progress: null,
       assessment_results: results,
+      list_staff_accounts: role === "admin" ? [
+        {
+          user_id: "staff1",
+          email: "admin@example.test",
+          role: "admin",
+          granted_at: "2026-11-05T14:00:00Z",
+        },
+        {
+          user_id: "staff2",
+          email: "professor@example.test",
+          role: "teacher",
+          granted_at: "2026-11-05T14:05:00Z",
+        },
+      ] : [],
       list_teams_admin: ranking.map((t, i) => ({
         id: t.team_id,
         public_name: t.public_name,
@@ -513,6 +527,15 @@ for (const viewport of [
       await team.getByRole("button", { name: "Editar cadastro" }).click();
       await expect(manager.getByRole("combobox", { name: "Turma" })).toBeDisabled();
       await shot(page, viewport.name + "-team-management");
+    });
+    test("admin-only access management uses explicit Auth staff roles", async ({ page }) => {
+      await fixtures(page, "admin");
+      await page.goto("./#admin/usuarios");
+      await expect(page.getByRole("heading", { name: "Usuários e permissões" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Autorizar uma conta existente" })).toBeVisible();
+      const table = page.getByRole("region", { name: "Contas autorizadas" });
+      await expect(table.getByText("professor@example.test")).toBeVisible();
+      await shot(page, viewport.name + "-access-management");
     });
     test("private results use the same identity", async ({ page }) => {
       await fixtures(page, "staff");
