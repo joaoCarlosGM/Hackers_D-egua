@@ -5,8 +5,8 @@ import { createHash } from "node:crypto";
 // Browser-only visual fixtures. Every Supabase request is intercepted; no remote writes.
 const host = "https://visual-tests.supabase.co";
 const classes = [
-  { id: "c1", name: "Poraquê", slug: "poraque" },
-  { id: "c2", name: "Pitiú", slug: "pitiu" },
+  { id: "c1", name: "Poraquê", slug: "poraque", status: "active" as const },
+  { id: "c2", name: "Pitiú", slug: "pitiu", status: "active" as const },
 ];
 const names = [
   "Boto Cor-de-Rosa",
@@ -119,14 +119,17 @@ const results = {
   ],
 };
 
-async function fixtures(page: Page, role: "guest" | "team" | "staff") {
+async function fixtures(
+  page: Page,
+  role: "guest" | "team" | "staff" | "admin",
+) {
   await page.addInitScript(
     ({ role, team }) => {
       sessionStorage.clear();
       localStorage.clear();
       if (role === "team")
         sessionStorage.setItem("hpde:team", JSON.stringify(team));
-      if (role === "staff") {
+      if (role === "staff" || role === "admin") {
         const user = {
           id: "staff1",
           aud: "authenticated",
@@ -160,7 +163,14 @@ async function fixtures(page: Page, role: "guest" | "team" | "staff") {
       classes,
       public_leaderboard: ranking,
       admin_users:
-        role === "staff" ? [{ user_id: "staff1", role: "teacher" }] : [],
+        role === "staff" || role === "admin"
+          ? [
+              {
+                user_id: "staff1",
+                role: role === "admin" ? "admin" : "teacher",
+              },
+            ]
+          : [],
       activities: [
         {
           id: "a1",
@@ -229,6 +239,29 @@ async function fixtures(page: Page, role: "guest" | "team" | "staff") {
       },
       save_attempt_progress: null,
       assessment_results: results,
+      list_classes_admin: [
+        ...classes.map((c) => ({
+          ...c,
+          team_count: ranking.filter((t) => t.class_id === c.id).length,
+          attempt_count: 1,
+          activity_count: 1,
+          can_delete: false,
+        })),
+        ...(role === "admin"
+          ? [
+              {
+                id: "c-empty",
+                name: "Turma sem vínculos",
+                slug: "sem-vinculos",
+                status: "archived",
+                team_count: 0,
+                attempt_count: 0,
+                activity_count: 0,
+                can_delete: true,
+              },
+            ]
+          : []),
+      ],
     };
     if (url.pathname.includes("/rpc/") && Object.hasOwn(rpc, resource))
       return route.fulfill({ json: rpc[resource] });
@@ -420,6 +453,35 @@ for (const viewport of [
         page.getByRole("button", { name: "Encerrar atividade" }),
       ).toBeVisible();
       await shot(page, `${viewport.name}-admin`);
+    });
+    test("class management preserves official identity and requires explicit deletion confirmation", async ({
+      page,
+    }) => {
+      await fixtures(page, "admin");
+      await page.goto("./#admin");
+      const manager = page.getByRole("region", { name: "Gerenciar turmas" });
+      await expect(
+        manager.getByRole("heading", { name: "Nova turma" }),
+      ).toBeVisible();
+      const empty = manager.getByRole("row", { name: /Turma sem vínculos/ });
+      await empty.getByRole("button", { name: "Excluir turma" }).click();
+      const confirmation = page.getByRole("region", {
+        name: "Confirmar exclusão definitiva",
+      });
+      await expect(
+        confirmation.getByRole("button", { name: "Excluir definitivamente" }),
+      ).toBeDisabled();
+      await confirmation
+        .getByLabel("Digite EXCLUIR sem-vinculos")
+        .fill("EXCLUIR sem-vinculos");
+      await expect(
+        confirmation.getByRole("button", { name: "Excluir definitivamente" }),
+      ).toBeEnabled();
+      await shot(page, `${viewport.name}-class-management`);
+      await confirmation
+        .getByRole("button", { name: "Cancelar exclusão" })
+        .click();
+      await expect(empty).toBeVisible();
     });
     test("private results use the same identity", async ({ page }) => {
       await fixtures(page, "staff");

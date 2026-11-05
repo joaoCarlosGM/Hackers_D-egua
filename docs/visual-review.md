@@ -16,7 +16,7 @@ Arquivos gerados em `artifacts/visual/`:
 
 - `ranking-comparison.png`: referência e ranking implementado, lado a lado.
 - `desktop-ranking.png` e `mobile-ranking.png`: composição completa e adaptação ao celular.
-- `desktop-home.png`, `desktop-registration.png`, `desktop-quiz.png`, `desktop-admin-login.png`, `desktop-admin.png`, `desktop-results.png`, e suas versões `mobile-*`.
+- `desktop-home.png`, `desktop-registration.png`, `desktop-quiz.png`, `desktop-admin-login.png`, `desktop-admin.png`, `desktop-results.png`, e suas versões `mobile-*`. O gerenciamento de turmas e a confirmação de exclusão têm ainda `desktop-class-management.png` e `mobile-class-management.png`.
 - `desktop-ranking-board.png` e `mobile-ranking-board.png`: recortes feitos pelo próprio Playwright para facilitar a inspeção do ranking.
 
 ## Diferenças identificadas e corrigidas
@@ -34,4 +34,4 @@ Arquivos gerados em `artifacts/visual/`:
 
 O mascote aparece inteiro; o corte do topo presente na captura de referência não foi reproduzido. A tela real conserva filtro de turma, modo projetor, cabeçalho de navegação e aviso de privacidade das notas. O fundo usa Deep Void, da paleta obrigatória. Não se replicam o rótulo estático “MODO TESTE”, o horário da captura ou pontuações de exemplo na aplicação real. No celular, o pódio se empilha e os textos se ajustam à largura disponível.
 
-Os 13 cenários verificam cores exatas, carregamento e proporção do mascote, ausência de overflow horizontal, integridade das artes por SHA-256 e caminhos sob `/Hackers_D-egua/` no endereço gratuito do GitHub Pages. A inspeção humana dos screenshots complementa essas verificações; não se afirma equivalência pixel a pixel com uma captura de dimensões e controles diferentes.
+Os 15 cenários verificam cores exatas, carregamento e proporção do mascote, ausência de overflow horizontal, integridade das artes por SHA-256 e caminhos sob `/Hackers_D-egua/` no endereço gratuito do GitHub Pages. A inspeção humana dos screenshots complementa essas verificações; não se afirma equivalência pixel a pixel com uma captura de dimensões e controles diferentes.

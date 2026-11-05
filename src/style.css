@@ -780,3 +780,41 @@ footer p {
   white-space: nowrap;
   border: 0;
 }
+.class-management caption {
+  text-align: left;
+  font-weight: 700;
+  padding: 1rem 0;
+  color: var(--pink);
+}
+.class-management td {
+  vertical-align: top;
+}
+.class-management table {
+  min-width: 760px;
+}
+.class-management td:first-child {
+  min-width: 230px;
+}
+.class-slug {
+  display: block;
+}
+.class-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+.class-create {
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+.class-status {
+  border: 1px solid var(--green);
+  padding: 0.2rem 0.4rem;
+  white-space: nowrap;
+}
+.class-status.archived {
+  border-color: var(--pink);
+  color: var(--pink);
+}

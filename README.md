@@ -33,7 +33,7 @@ npm run preview
 
 ## Aplicar no Supabase existente
 
-Não use `supabase projects create`, `db reset`, `db push --include-all` indiscriminadamente nem scripts de teste no remoto. Faça backup antes de migrações em uma base que já tenha dados. As três primeiras migrations criam a fundação em um banco sem tabelas de aplicação. A quarta é uma atualização aditiva para o módulo de avaliações; se a fundação já foi aplicada, execute somente as migrations ainda pendentes.
+Não use `supabase projects create`, `db reset`, `db push --include-all` indiscriminadamente nem scripts de teste no remoto. Faça backup antes de migrações em uma base que já tenha dados. As três primeiras migrations criam a fundação em um banco sem tabelas de aplicação. A quarta adiciona avaliações e a quinta adiciona gerenciamento de turmas; se a fundação já foi aplicada, execute somente as migrations ainda pendentes.
 
 ### Opção A — SQL Editor (sem CLI)
 
@@ -43,6 +43,8 @@ No Dashboard do projeto **existente**, abra SQL Editor e execute **cada arquivo 
 2. `supabase/migrations/202611040002_team_and_activity_rpc.sql`: cadastro, login, histórico, inscrição, entrega, revogação e autorização de nova tentativa.
 3. `supabase/migrations/202611040003_admin_and_integrity.sql`: criação/edição/publicação de atividades, correção, ajustes CTF auditados e constraints adicionais.
 4. `supabase/migrations/202611040004_assessments.sql`: estados, código curto, cronômetro, navegação, revisões, progresso protegido, correção idempotente, resultados privados e notificações Realtime. Preserva duplas, notas e pontos CTF existentes; desativa a conversão automática de novas notas em pontos CTF.
+
+5. `supabase/migrations/202611050001_class_management.sql`: turmas ativas/arquivadas, novos slugs, RPCs administrativas auditadas, exclusão protegida e bloqueio de cadastro em turmas arquivadas. Se as quatro primeiras já foram aplicadas, execute somente esta migration nova.
 
 Execute cada arquivo em uma transação (`BEGIN;` antes e `COMMIT;` depois do conteúdo) se o editor não garantir uma transação única. O seed de turmas é idempotente; os arquivos DDL são migrations versionadas, não scripts para reaplicar integralmente. Não reaplique uma migration já concluída. Em caso de erro, reverta apenas a transação aberta e investigue antes de seguir.
 
@@ -54,14 +56,14 @@ Use uma versão atual da CLI oficial instalada conforme a documentação Supabas
 supabase login
 supabase link --project-ref SEU_PROJECT_REF_EXISTENTE
 supabase db push --dry-run
-# Revise: devem aparecer APENAS as migrations pendentes dentre as quatro acima.
+# Revise: devem aparecer APENAS as migrations pendentes dentre as cinco acima.
 supabase db push
 ```
 
-Se os arquivos já foram executados no SQL Editor, **não os aplique novamente** via CLI. Depois de confirmar os objetos criados, registre apenas as versões efetivamente aplicadas. Exemplo para um banco com as quatro migrations concluídas:
+Se os arquivos já foram executados no SQL Editor, **não os aplique novamente** via CLI. Depois de confirmar os objetos criados, registre apenas as versões efetivamente aplicadas. Exemplo para um banco com as cinco migrations concluídas:
 
 ```bash
-supabase migration repair --status applied 202611040001 202611040002 202611040003 202611040004
+supabase migration repair --status applied 202611040001 202611040002 202611040003 202611040004 202611050001
 supabase migration list
 ```
 
@@ -170,6 +172,10 @@ A fonte de verdade é o ZIP do repositório: `ranking_referencia.png`, `paleta_o
 
 Os assets necessários já estão extraídos em `public/assets/brand/` e as referências em `public/assets/references/`. Não é necessário extrair o ZIP para instalar, compilar ou executar o site. Para reproduzir a extração durante manutenção, use `python3 scripts/extract-brand-assets.py` em um ambiente com PyMuPDF; o script copia as PNGs byte a byte e extrai as imagens e máscaras originais do PDF. Ele não recorta, redesenha, recolore ou altera as proporções do mascote.
 
-`npm run test:visual` executa 13 cenários Playwright em Chromium. No ambiente atual, usa `/usr/bin/chromium`; em outra máquina, execute `npx playwright install --with-deps chromium` antes. Também é possível selecionar o binário com `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. Os testes cobrem as sete páginas em desktop e celular, proporção do logo, tokens de cor, ausência de rolagem horizontal e arquivos originais por checksum. São gerados 17 PNGs em `artifacts/visual/`, incluindo `ranking-comparison.png`, comparação lado a lado com a referência enviada. Resultados e screenshots são publicados como artefato de CI, sem deploy do site.
+`npm run test:visual` executa 15 cenários Playwright em Chromium. No ambiente atual, usa `/usr/bin/chromium`; em outra máquina, execute `npx playwright install --with-deps chromium` antes. Também é possível selecionar o binário com `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. Os testes cobrem as páginas existentes e o gerenciamento de turmas em desktop e celular, proporção do logo, tokens de cor, ausência de rolagem horizontal e arquivos originais por checksum. São gerados 19 PNGs em `artifacts/visual/`, incluindo `ranking-comparison.png`, comparação lado a lado com a referência enviada. Resultados e screenshots são publicados como artefato de CI, sem deploy do site.
 
 As fixtures de ranking, usuários e notas existem **apenas nos testes do navegador**, com todas as requisições Supabase interceptadas. Não são dados reais nem inserções no projeto Cloud. O servidor dos testes usa uma URL e chave fictícias explicitamente isoladas da configuração de produção. Consulte `docs/visual-review.md` para a revisão e as diferenças corrigidas.
+
+## Gerenciar turmas
+
+O painel administrativo lista turmas ativas/arquivadas e suas contagens de duplas, participações e atividades. Administradores podem criar além de Poraquê/Pitiú, renomear, arquivar e reativar. Exclusão exige confirmação digitada e ausência de qualquer vínculo, revalidada no servidor. Professores têm consulta de históricos; alunos não podem se cadastrar em turmas arquivadas. Arquivar preserva os UUIDs, integrantes, credenciais, notas e pontos CTF. Consulte [Gerenciamento de turmas e migration aditiva](docs/class-management.md) antes do deploy. As migrations anteriores não devem ser modificadas nem reaplicadas.

@@ -19,7 +19,19 @@ export async function rpc<T>(
     throw new Error(String(data.error));
   return data as T;
 }
-export type Class = { id: string; name: string; slug: string };
+export type ClassStatus = "active" | "archived";
+export type Class = {
+  id: string;
+  name: string;
+  slug: string;
+  status: ClassStatus;
+};
+export type ManagedClass = Class & {
+  team_count: number;
+  attempt_count: number;
+  activity_count: number;
+  can_delete: boolean;
+};
 export type Team = {
   team_id: string;
   class_id: string;

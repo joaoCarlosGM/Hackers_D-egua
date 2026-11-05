@@ -33,8 +33,24 @@ vi.mock("../src/api", () => ({
             data:
               name === "classes"
                 ? [
-                    { id: "c1", name: "Poraquê", slug: "poraque" },
-                    { id: "c2", name: "Pitiú", slug: "pitiu" },
+                    {
+                      id: "c1",
+                      name: "Poraquê",
+                      slug: "poraque",
+                      status: "active" as const,
+                    },
+                    {
+                      id: "c2",
+                      name: "Pitiú",
+                      slug: "pitiu",
+                      status: "active" as const,
+                    },
+                    {
+                      id: "c3",
+                      name: "Turma antiga",
+                      slug: "antiga",
+                      status: "archived" as const,
+                    },
                   ]
                 : mock.ranks,
             error: null,
@@ -106,6 +122,7 @@ describe("permanent team workflow", () => {
     );
     await screen.findByRole("option", { name: "Pitiú" });
     expect(screen.getByRole("option", { name: "Poraquê" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Turma antiga" })).toBeNull();
     await user.selectOptions(screen.getByLabelText("Turma"), "c1");
     await user.type(
       screen.getByLabelText("Nome público da dupla"),

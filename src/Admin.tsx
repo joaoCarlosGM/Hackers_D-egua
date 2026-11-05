@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
 import Results from "./Results";
+import ClassManagement from "./ClassManagement";
 import ActivityPreview from "./ActivityPreview";
 import { rpc, supabase, type Class } from "./api";
 import {
@@ -108,9 +109,11 @@ async function rows<T>(table: string, columns = "*"): Promise<T[]> {
 export default function Admin({
   classes,
   resultsActivityId,
+  onClassesChanged,
 }: {
   classes: Class[];
   resultsActivityId?: string;
+  onClassesChanged?: () => Promise<void>;
 }) {
   const [identity, setIdentity] = useState<string | null>(null);
   const [role, setRole] = useState("");
@@ -128,6 +131,20 @@ export default function Admin({
     title: string;
   } | null>(null);
   const [preview, setPreview] = useState(false);
+  const [classFilter, setClassFilter] = useState("");
+  const visibleTeams = data.teams.filter(
+    (t) => !classFilter || t.class_id === classFilter,
+  );
+  const visibleAttempts = data.attempts.filter(
+    (a) => !classFilter || visibleTeams.some((t) => t.id === a.team_id),
+  );
+  const visibleSessions = data.sessions.filter(
+    (s) => !classFilter || s.class_ids.includes(classFilter),
+  );
+  useEffect(() => {
+    if (classFilter && !classes.some((c) => c.id === classFilter))
+      setClassFilter("");
+  }, [classes, classFilter]);
   const [credential, setCredential] = useState<{
     access_code: string;
     credential: string;
@@ -309,7 +326,7 @@ export default function Admin({
     setQuestions(questions.map((q, j) => (i === j ? next : q)));
   }
   function exportGrades() {
-    const records = data.attempts.map((a) => {
+    const records = visibleAttempts.map((a) => {
       const t = data.teams.find((t) => t.id === a.team_id);
       const g = data.grades.find((g) => g.attempt_id === a.id);
       const s = data.sessions.find((s) => s.id === a.activity_session_id);
@@ -434,6 +451,33 @@ export default function Admin({
                   Exportar notas CSV (privado)
                 </button>
               </div>
+              <ClassManagement
+                canManage={role === "admin"}
+                onChanged={onClassesChanged}
+                onInspect={(id) => {
+                  setClassFilter(id);
+                  requestAnimationFrame(() =>
+                    document
+                      .getElementById("class-records")
+                      ?.scrollIntoView?.({ block: "start" }),
+                  );
+                }}
+              />
+              <label>
+                Consultar dados da turma
+                <select
+                  value={classFilter}
+                  onChange={(e) => setClassFilter(e.target.value)}
+                >
+                  <option value="">Todas as turmas</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.status === "archived" ? " (arquivada)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <form key={editing?.id ?? "new"} onSubmit={save} className="card">
                 <h2>{editing ? "Editar rascunho" : "Nova atividade"}</h2>
                 <label>
@@ -456,23 +500,34 @@ export default function Admin({
                 </label>
                 <fieldset>
                   <legend>Turmas</legend>
-                  {classes.map((c) => (
-                    <label className="check" key={c.id}>
-                      <input
-                        type="checkbox"
-                        name="class"
-                        value={c.id}
-                        defaultChecked={
-                          editing
-                            ? data.sessions
-                                .find((s) => s.activity_id === editing.id)
-                                ?.class_ids.includes(c.id)
-                            : false
-                        }
-                      />
-                      {c.name}
-                    </label>
-                  ))}
+                  {classes
+                    .filter(
+                      (c) =>
+                        c.status === "active" ||
+                        (editing &&
+                          data.sessions.some(
+                            (s) =>
+                              s.activity_id === editing.id &&
+                              s.class_ids.includes(c.id),
+                          )),
+                    )
+                    .map((c) => (
+                      <label className="check" key={c.id}>
+                        <input
+                          type="checkbox"
+                          name="class"
+                          value={c.id}
+                          defaultChecked={
+                            editing
+                              ? data.sessions
+                                  .find((s) => s.activity_id === editing.id)
+                                  ?.class_ids.includes(c.id)
+                              : false
+                          }
+                        />
+                        {c.name}
+                      </label>
+                    ))}
                 </fieldset>
                 <div className="grid">
                   <label>
@@ -730,7 +785,7 @@ export default function Admin({
               )}
               <section className="card">
                 <h2>Atividades e publicação</h2>
-                {data.sessions.map((s) => {
+                {visibleSessions.map((s) => {
                   const a = data.activities.find((a) => a.id === s.activity_id);
                   if (!a) return null;
                   return (
@@ -989,11 +1044,16 @@ export default function Admin({
                 </section>
               )}
               <section className="card">
-                <h2>Entregas e notas privadas</h2>
-                {data.attempts.length === 0 && (
+                <h2 id="class-records" tabIndex={-1}>
+                  Entregas e notas privadas
+                  {classFilter
+                    ? ` · ${classes.find((c) => c.id === classFilter)?.name ?? ""}`
+                    : ""}
+                </h2>
+                {visibleAttempts.length === 0 && (
                   <p>Ainda não há participações.</p>
                 )}
-                {data.attempts.map((a) => {
+                {visibleAttempts.map((a) => {
                   const t = data.teams.find((t) => t.id === a.team_id);
                   const g = data.grades.find((g) => g.attempt_id === a.id);
                   const s = data.sessions.find(
@@ -1110,7 +1170,7 @@ export default function Admin({
               </section>
               <section className="card">
                 <h2>Duplas permanentes</h2>
-                {data.teams.map((t) => (
+                {visibleTeams.map((t) => (
                   <article className="item" key={t.id}>
                     <h3>
                       {t.public_name} ·{" "}
@@ -1202,7 +1262,7 @@ export default function Admin({
                     Dupla
                     <select name="team" required>
                       <option value="">Selecione</option>
-                      {data.teams.map((t) => (
+                      {visibleTeams.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.public_name} ·{" "}
                           {classes.find((c) => c.id === t.class_id)?.name}

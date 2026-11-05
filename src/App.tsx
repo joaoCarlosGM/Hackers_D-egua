@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   configured,
   rpc,
@@ -19,20 +19,30 @@ export default function App() {
   const [route, setRoute] = useState(location.hash.slice(1));
   const [classes, setClasses] = useState<Class[]>([]);
   const [error, setError] = useState("");
-  useEffect(() => {
-    const navigate = () => setRoute(location.hash.slice(1));
-    addEventListener("hashchange", navigate);
-    if (supabase)
-      void supabase
-        .from("classes")
-        .select("id,name,slug")
-        .order("name")
-        .then(({ data, error }) => {
-          if (error) setError(error.message);
-          else setClasses(data ?? []);
-        });
-    return () => removeEventListener("hashchange", navigate);
+  const reloadClasses = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("classes")
+      .select("id,name,slug,status")
+      .order("name");
+    if (error) throw new Error(error.message);
+    setClasses(data ?? []);
   }, []);
+  useEffect(() => {
+    const refresh = () =>
+      void reloadClasses().catch((e) => setError(e.message));
+    const navigate = () => {
+      setRoute(location.hash.slice(1));
+      refresh();
+    };
+    addEventListener("hashchange", navigate);
+    addEventListener("focus", refresh);
+    refresh();
+    return () => {
+      removeEventListener("hashchange", navigate);
+      removeEventListener("focus", refresh);
+    };
+  }, [reloadClasses]);
   return (
     <>
       <header>
@@ -72,6 +82,7 @@ export default function App() {
             ) : route.startsWith("admin") ? (
               <Admin
                 classes={classes}
+                onClassesChanged={reloadClasses}
                 resultsActivityId={
                   route.match(/^admin\/atividades\/([^/]+)\/resultados$/)?.[1]
                 }
@@ -415,7 +426,9 @@ function TeamFlow({
                     </option>
                     {classes
                       .filter(
-                        (c) => !activity || activity.class_ids.includes(c.id),
+                        (c) =>
+                          c.status === "active" &&
+                          (!activity || activity.class_ids.includes(c.id)),
                       )
                       .map((c) => (
                         <option key={c.id} value={c.id}>
