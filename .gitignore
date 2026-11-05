@@ -6,3 +6,6 @@ dist/
 coverage/
 *.tsbuildinfo
 supabase/.temp/
+artifacts/
+test-results/
+playwright-report/

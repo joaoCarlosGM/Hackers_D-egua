@@ -1,0 +1,67 @@
+{
+  "archive_sha256": "5d24a6f18a2f1c2836c0f61ab99d8173151b5e2064308e6eab641a407b056416",
+  "assets": [
+    {
+      "file": "brand/logo-artista-original.png",
+      "source": "logos/referencia-1.png",
+      "sha256": "05fb8a9be7cfa0fb54c5255132500ded21aae468f05de8662b2f464241d39310",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "file": "brand/logo-chapeu-original.png",
+      "source": "logos/referencia-2.png",
+      "sha256": "27812d99bd97969bc092727846eb6f55928291081637e0511197e785fd2a226f",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "file": "brand/logo-boina-original.png",
+      "source": "logos/referencia-3.png",
+      "sha256": "a7f1fbd4a093d40b05d29f62814e26ab308d9cc56479e52af2d1bf541a87f466",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "file": "brand/mascote-pixel-original.png",
+      "source": "logos/referencia-4.png",
+      "sha256": "812f9839e7a6771f977d5ce8a77875f8486b27180f2f098ac50608e92e6a7e3c",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "file": "references/ranking-referencia.png",
+      "source": "ranking_referencia.png",
+      "sha256": "c114adc69a5156fae3dece3763aeda51814ac0e8911e654c0f5c78ecfa515c47",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "file": "references/paleta-oficial.png",
+      "source": "paleta_oficial.png",
+      "sha256": "b10b820000e810d3c07fbeb4cee4a58ac0db95dec3f3104e92b14f59b7bf3cba",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "file": "references/identidade-visual-original.pdf",
+      "source": "identidade_visual_origem.pdf",
+      "sha256": "1a7eeda574562efa18afa291aadf723e353e1625f3264dad546440e94c1e54aa",
+      "operation": "byte-for-byte copy"
+    },
+    {
+      "file": "brand/mascote-chapeu-transparente.png",
+      "source": "identidade_visual_origem.pdf, page 2",
+      "image_xref": 46,
+      "original_mask_xref": 64,
+      "width": 1728,
+      "height": 1975,
+      "sha256": "178997533373848ff96115919fdd0aa1babc35120a01d32733f148b0ded4459c",
+      "operation": "original embedded image + original soft mask; no crop, recolor or redraw"
+    },
+    {
+      "file": "brand/logo-completo-transparente.png",
+      "source": "identidade_visual_origem.pdf, page 2",
+      "image_xref": 47,
+      "original_mask_xref": 65,
+      "width": 960,
+      "height": 1096,
+      "sha256": "d1f094a063a0a80833a9c715143c63cbc47e7ccc995d01c3dde8560abd49108e",
+      "operation": "original embedded image + original soft mask; no crop, recolor or redraw"
+    }
+  ]
+}

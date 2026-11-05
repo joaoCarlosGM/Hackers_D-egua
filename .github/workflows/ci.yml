@@ -21,3 +21,16 @@ jobs:
       - run: npm run test:db
       - run: npm run build
       - run: npm run test:pages
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:visual
+        env:
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: ""
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-review
+          path: |
+            artifacts/visual/
+            playwright-report/
+            test-results/
+          retention-days: 7

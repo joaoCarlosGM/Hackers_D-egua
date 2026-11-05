@@ -189,7 +189,7 @@ it("lets a teacher create, preview, publish and start a quiz with a real activit
     p_status: "open",
   });
   expect(mock.qr).toHaveBeenCalledWith(
-    expect.stringContaining("/Hackers_D-egua/#atividade/s1"),
+    expect.stringContaining("/#atividade/s1"),
     { width: 360, errorCorrectionLevel: "M" },
   );
   expect(

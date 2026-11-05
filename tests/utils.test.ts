@@ -1,15 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { activityLink, csv } from "../src/utils";
 describe("GitHub Pages links and private CSV", () => {
-  it("keeps activity navigation below the Pages repository path", () => {
-    expect(
-      activityLink(
-        "session-id",
-        "https://joaocarlosgm.github.io",
-        "/Hackers_D-egua/",
-      ),
-    ).toBe(
-      "https://joaocarlosgm.github.io/Hackers_D-egua/#atividade/session-id",
+  it("uses the custom domain root and preserves hash activity links", () => {
+    expect(activityLink("session-id", "https://hackerspaidegua.com")).toBe(
+      "https://hackerspaidegua.com/#atividade/session-id",
     );
   });
   it("quotes names, line breaks and prevents spreadsheet formula injection", () => {
