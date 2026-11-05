@@ -177,9 +177,22 @@ Os assets necessários já estão extraídos em `public/assets/brand/` e as refe
 
 As fixtures de ranking, usuários e notas existem **apenas nos testes do navegador**, com todas as requisições Supabase interceptadas. Não são dados reais nem inserções no projeto Cloud. O servidor dos testes usa uma URL e chave fictícias explicitamente isoladas da configuração de produção. Consulte `docs/visual-review.md` para a revisão e as diferenças corrigidas.
 
+## Administração por módulos
+
+O acesso administrativo fica em `#admin`. Depois do login, use a navegação lateral (desktop) ou horizontal (celular) para abrir as seções:
+
+- `#admin` — Visão geral, indicadores e atalhos;
+- `#admin/atividades` — criação, publicação e QR Code das aulas;
+- `#admin/turmas` — gerenciamento e histórico de turmas;
+- `#admin/duplas` — cadastro permanente, correções e credenciais;
+- `#admin/notas` — entregas, correções e exportação CSV privada;
+- `#admin/ctf` — atribuição de pontuação CTF (perfil administrador).
+
+A navegação utiliza hash routes compatíveis com GitHub Pages e preserva os dados no Supabase; **nenhuma nova migration** é necessária para este aprimoramento visual. Ao escolher "Consultar dados" em Turmas, o sistema abre Notas com o filtro da turma mantido. Resultados individuais de atividade continuam disponíveis em `#admin/atividades/ACTIVITY_UUID/resultados`, com acesso protegido.
+
 ## Gerenciar duplas
 
-O painel `#admin` agora inclui **Gerenciar duplas** com pesquisa, listagem de integrantes, edição, troca de turma para equipes sem histórico, ativação/desativação, nova credencial e exclusão confirmada apenas de cadastros vazios. Todas as operações de escrita exigem perfil `admin` e são auditadas. Duplas com avaliações ou pontos CTF devem ser desativadas, nunca excluídas. A implantação exige a migration 006 no Supabase antes do novo frontend. Confira [o procedimento e os testes](docs/team-management.md).
+A área `#admin/duplas` inclui **Gerenciar duplas** com pesquisa, listagem de integrantes, edição, troca de turma para equipes sem histórico, ativação/desativação, nova credencial e exclusão confirmada apenas de cadastros vazios. Todas as operações de escrita exigem perfil `admin` e são auditadas. Duplas com avaliações ou pontos CTF devem ser desativadas, nunca excluídas. A implantação exige a migration 006 no Supabase antes do novo frontend. Confira [o procedimento e os testes](docs/team-management.md).
 
 ## Gerenciar turmas
 

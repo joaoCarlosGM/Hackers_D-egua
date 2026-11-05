@@ -83,6 +83,14 @@ export default function App() {
               <Admin
                 classes={classes}
                 onClassesChanged={reloadClasses}
+                section={
+                  route === "admin/atividades" ? "atividades"
+                    : route === "admin/turmas" ? "turmas"
+                    : route === "admin/duplas" ? "duplas"
+                    : route === "admin/notas" ? "notas"
+                    : route === "admin/ctf" ? "ctf"
+                    : "overview"
+                }
                 resultsActivityId={
                   route.match(/^admin\/atividades\/([^/]+)\/resultados$/)?.[1]
                 }
