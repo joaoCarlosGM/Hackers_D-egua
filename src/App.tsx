@@ -89,6 +89,7 @@ export default function App() {
                     : route === "admin/duplas" ? "duplas"
                     : route === "admin/notas" ? "notas"
                     : route === "admin/ctf" ? "ctf"
+                    : route === "admin/usuarios" ? "usuarios"
                     : "overview"
                 }
                 resultsActivityId={
