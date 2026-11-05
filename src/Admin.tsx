@@ -4,6 +4,7 @@ import Results from "./Results";
 import ClassManagement from "./ClassManagement";
 import AdminNavigation, { type AdminSection } from "./AdminNavigation";
 import TeamManagement from "./TeamManagement";
+import AdminAccessManagement from "./AdminAccessManagement";
 import ActivityPreview from "./ActivityPreview";
 import { rpc, supabase, type Class } from "./api";
 import {
@@ -435,6 +436,21 @@ export default function Admin({
                 Esta conta não está autorizada. Solicite a inclusão do UUID em
                 admin_users ao responsável pelo projeto.
               </p>
+              <button onClick={() =>
+                void action(async () => {
+                  const { data: { user }, error: authError } = await supabase!.auth.getUser();
+                  if (authError) throw authError;
+                  if (!user) throw new Error("Sessão encerrada. Entre novamente.");
+                  const { data, error: roleError } = await supabase!.from("admin_users")
+                    .select("role").eq("user_id", user.id).maybeSingle();
+                  if (roleError) throw roleError;
+                  setRole(data?.role ?? "");
+                  if (data?.role) setNotice("Autorização reconhecida com sucesso.");
+                  else setNotice("Conta autenticada, mas ainda sem autorização. Solicite ao administrador que libere seu e-mail.");
+                })
+              }>
+                Verificar autorização novamente
+              </button>
               <button onClick={() => void supabase!.auth.signOut()}>
                 Sair da administração
               </button>
@@ -494,6 +510,7 @@ export default function Admin({
                     <a href="#admin/duplas"><strong>Consultar duplas</strong><span>Cadastro permanente, participantes e credenciais.</span></a>
                     <a href="#admin/notas"><strong>Conferir entregas</strong><span>Resultados privados, correções e exportação.</span></a>
                     {role === "admin" && <a href="#admin/ctf"><strong>Registrar pontos CTF</strong><span>Classificação pública independente das notas.</span></a>}
+                    {role === "admin" && <a href="#admin/usuarios"><strong>Gerenciar acessos</strong><span>Autorizar professores e administradores já cadastrados no Supabase Auth.</span></a>}
                   </div>
                 </>
               )}
@@ -1257,6 +1274,9 @@ export default function Admin({
                 </section>
               )}
                 </>
+              )}
+              {section === "usuarios" && role === "admin" && identity && (
+                <AdminAccessManagement currentUserId={identity} />
               )}
               {section === "ctf" && role !== "admin" && (
                 <p role="alert" className="card">Somente administradores podem ajustar a pontuação do CTF.</p>
