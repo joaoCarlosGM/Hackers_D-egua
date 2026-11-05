@@ -239,6 +239,11 @@ async function fixtures(
       },
       save_attempt_progress: null,
       assessment_results: results,
+      list_attendance_lessons: [{ id: "lesson1", class_id: "c1", class_name: "Poraquê", title: "Aula 02 — Comandos Linux", lesson_date: "2026-11-05", students: 2, present: 1, absent: 0, justified: 0, unmarked: 1 }],
+      list_attendance_roster: [
+        { member_id: "m1", team_id: "t0", public_name: "Boto Cor-de-Rosa", full_name: "Ana da Silva", member_position: 1, status: "present" },
+        { member_id: "m2", team_id: "t0", public_name: "Boto Cor-de-Rosa", full_name: "João dos Santos", member_position: 2, status: null },
+      ],
       list_staff_accounts: role === "admin" ? [
         {
           user_id: "staff1",
@@ -468,6 +473,7 @@ for (const viewport of [
       await expect(
         page.getByRole("heading", { name: "Acesso com Supabase Auth" }),
       ).toBeVisible();
+      await expect(page.getByRole("link", { name: /Boto do Hackers Pai D’égua/ })).toBeVisible();
       await shot(page, `${viewport.name}-admin-login`);
     });
     test("teacher dashboard and activity editor", async ({ page }) => {
@@ -478,12 +484,10 @@ for (const viewport of [
       const nav = page.getByRole("navigation", { name: "Seções da administração" });
       await nav.getByRole("link", { name: /Atividades/ }).click();
       await expect(page).toHaveURL(/#admin\/atividades$/);
-      await expect(
-        page.getByRole("heading", { name: "Nova atividade" }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Encerrar atividade" }),
-      ).toBeVisible();
+      await page.locator(".admin-activity-editor > summary").click();
+      await expect(page.getByRole("heading", { name: "Nova atividade" })).toBeVisible();
+      await page.locator(".admin-activity-item > summary").first().click();
+      await expect(page.getByRole("button", { name: "Encerrar atividade" })).toBeVisible();
       await shot(page, `${viewport.name}-admin`);
     });
     test("class management preserves official identity and requires explicit deletion confirmation", async ({
@@ -536,6 +540,17 @@ for (const viewport of [
       const table = page.getByRole("region", { name: "Contas autorizadas" });
       await expect(table.getByText("professor@example.test")).toBeVisible();
       await shot(page, viewport.name + "-access-management");
+    });
+    test("class attendance is individually marked and collapsible", async ({ page }) => {
+      await fixtures(page, "admin");
+      await page.goto("./#admin/chamada");
+      await expect(page.getByRole("heading", { name: "Chamada e presença" })).toBeVisible();
+      await expect(page.getByText("Aula 02 — Comandos Linux")).toBeVisible();
+      await page.locator(".attendance-lesson > summary").first().click();
+      await page.getByRole("button", { name: "Abrir chamada" }).click();
+      await expect(page.getByRole("combobox", { name: "Presença de Ana da Silva" })).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Presença de João dos Santos" })).toHaveValue("");
+      await shot(page, viewport.name + "-attendance");
     });
     test("private results use the same identity", async ({ page }) => {
       await fixtures(page, "staff");
