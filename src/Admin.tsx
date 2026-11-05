@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
 import Results from "./Results";
 import ClassManagement from "./ClassManagement";
+import TeamManagement from "./TeamManagement";
 import ActivityPreview from "./ActivityPreview";
 import { rpc, supabase, type Class } from "./api";
 import {
@@ -1168,46 +1169,13 @@ export default function Admin({
                   );
                 })}
               </section>
-              <section className="card">
-                <h2>Duplas permanentes</h2>
-                {visibleTeams.map((t) => (
-                  <article className="item" key={t.id}>
-                    <h3>
-                      {t.public_name} ·{" "}
-                      {classes.find((c) => c.id === t.class_id)?.name}
-                    </h3>
-                    <p>Código: {t.access_code}</p>
-                    <p>
-                      {data.members
-                        .filter((m) => m.team_id === t.id)
-                        .sort((a, b) => a.position - b.position)
-                        .map((m) => m.full_name)
-                        .join(" e ")}
-                    </p>
-                    {role === "admin" && (
-                      <button
-                        disabled={busy}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Redefinir a credencial de ${t.public_name}? Todas as sessões da dupla serão encerradas. Confirme a identidade dos dois integrantes antes de entregar a nova credencial.`,
-                            )
-                          )
-                            void action(async () => {
-                              setCredential(
-                                await rpc("rotate_team_credential", {
-                                  p_team_id: t.id,
-                                }),
-                              );
-                            });
-                        }}
-                      >
-                        Emitir nova credencial
-                      </button>
-                    )}
-                  </article>
-                ))}
-              </section>
+              <TeamManagement
+                classes={classes}
+                canManage={role === "admin"}
+                selectedClassId={classFilter}
+                onChanged={load}
+                onCredential={setCredential}
+              />
               {credential && (
                 <section className="card credential">
                   <h2>Entregue em canal privado</h2>

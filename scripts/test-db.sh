@@ -18,6 +18,7 @@ for migration in supabase/migrations/*.sql; do psql_test < "$migration"; done
 psql_test < supabase/tests/acceptance.sql
 psql_test < supabase/tests/assessments.sql
 psql_test < supabase/tests/class_management.sql
+psql_test < supabase/tests/team_management.sql
 source scripts/test-class-concurrency.sh
 psql_test < supabase/tests/persistence.sql
 docker_local restart "$container" >/dev/null
