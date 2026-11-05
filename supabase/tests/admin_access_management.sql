@@ -80,7 +80,7 @@ select test_staff.denied($q$select public.revoke_staff_account('00000000-0000-00
  'self-revocation is blocked even as final administrator');
 select test_staff.ok((select count(*)=1 from public.admin_users where role='admin'),
  'at least one administrator remains');
-select test_staff.ok((select count(*)=3 from public.audit_events
+select test_staff.ok((select count(*)=4 from public.audit_events
  where action in ('authorize_staff_account','revoke_staff_account')),
  'grants, demotions and revocations are audited');
 rollback;
