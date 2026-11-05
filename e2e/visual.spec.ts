@@ -239,6 +239,19 @@ async function fixtures(
       },
       save_attempt_progress: null,
       assessment_results: results,
+      list_teams_admin: ranking.map((t, i) => ({
+        id: t.team_id,
+        public_name: t.public_name,
+        class_id: t.class_id,
+        access_code: "ABCDEF1234567890",
+        status: "active",
+        member1: i === 0 ? "Ana da Silva" : "Participante Um",
+        member2: i === 0 ? "João dos Santos" : "Participante Dois",
+        attempt_count: i === 0 ? 1 : 0,
+        ctf_event_count: 1,
+        can_transfer: false,
+        can_delete: false,
+      })),
       list_classes_admin: [
         ...classes.map((c) => ({
           ...c,
@@ -482,6 +495,19 @@ for (const viewport of [
         .getByRole("button", { name: "Cancelar exclusão" })
         .click();
       await expect(empty).toBeVisible();
+    });
+    test("team management keeps private participants and protects linked records", async ({ page }) => {
+      await fixtures(page, "admin");
+      await page.goto("./#admin");
+      const manager = page.getByRole("region", { name: "Gerenciar duplas" });
+      await expect(manager.getByRole("heading", { name: "Gerenciar duplas" })).toBeVisible();
+      await manager.getByPlaceholder("Apelido, integrante ou código").fill("Boto");
+      await expect(manager.getByText("Participantes: Ana da Silva e João dos Santos")).toBeVisible();
+      const team = manager.locator("article").filter({ hasText: "Boto Cor-de-Rosa" });
+      await expect(team.getByRole("button", { name: "Excluir dupla" })).toBeDisabled();
+      await team.getByRole("button", { name: "Editar cadastro" }).click();
+      await expect(manager.getByRole("combobox", { name: "Turma" })).toBeDisabled();
+      await shot(page, viewport.name + "-team-management");
     });
     test("private results use the same identity", async ({ page }) => {
       await fixtures(page, "staff");
