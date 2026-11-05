@@ -1,0 +1,139 @@
+/* Interface da administração: identidade original preservada, sem assets novos. */
+.admin-auth-layout {
+ display: grid;
+ grid-template-columns: minmax(0, 1.18fr) minmax(285px, .82fr);
+ gap: clamp(1.5rem, 4vw, 4rem);
+ align-items: stretch;
+ margin-top: 1.25rem;
+}
+.admin-auth-layout > .card {margin: 0; max-width: none;}
+.admin-boto-shortcut {
+ position: relative;
+ isolation: isolate;
+ display: flex;
+ flex-direction: column;
+ justify-content: center;
+ align-items: center;
+ gap: .7rem;
+ min-height: 450px;
+ padding: 1.1rem;
+ border: 1px solid #634b82;
+ background: radial-gradient(circle at 50% 38%, #ee66a622, transparent 62%), #222233;
+ text-align: center;
+ color: var(--white);
+ text-decoration: none;
+ box-shadow: 5px 5px 0 #4b2e8377;
+}
+.admin-boto-shortcut::before {
+ content: "";
+ position: absolute;
+ inset: 12px;
+ border: 1px dashed #ee66a640;
+ z-index: -1;
+ pointer-events: none;
+}
+.admin-boto-shortcut:hover, .admin-boto-shortcut:focus-visible {
+ border-color: var(--pink);
+ background-color: #2c213d;
+}
+.admin-boto-shortcut img {
+ max-height: 280px;
+ width: auto;
+ max-width: min(90%, 285px);
+ height: auto;
+ object-fit: contain;
+ filter: drop-shadow(0 0 22px #ee66a62f);
+}
+.admin-boto-kicker {color: var(--pink); font-size: .7rem; letter-spacing: .15em;}
+.admin-boto-shortcut strong {color: var(--pink);font-size: 1.15rem;}
+.admin-boto-shortcut > span:last-child {font-size: .8rem; color: var(--blue);}
+.admin-accordion {
+ margin: .8rem 0;
+ border: 1px solid #605677;
+ background: #232334;
+ box-shadow: 4px 4px 0 #4b2e833d;
+}
+.admin-accordion > summary {
+ display: flex;
+ align-items: center;
+ gap: 1rem;
+ justify-content: space-between;
+ cursor: pointer;
+ padding: 1rem;
+ list-style: none;
+ min-height: 64px;
+ color: var(--white);
+ font-size: .9rem;
+}
+.admin-accordion > summary::-webkit-details-marker {display: none;}
+.admin-accordion > summary::after {
+ content: "";
+ display: inline-block;
+ flex: 0 0 auto;
+ width: .5rem;
+ height: .5rem;
+ border-right: 2px solid var(--pink);
+ border-bottom: 2px solid var(--pink);
+ transform: rotate(45deg);
+ transition: transform 150ms ease;
+}
+.admin-accordion[open] > summary::after {transform: rotate(225deg);}
+.admin-accordion > summary:hover {background: #342c45;}
+.admin-accordion[open] > summary {border-bottom: 1px solid #625374;}
+.admin-accordion-title {display: block; flex: 1; min-width: 0;}
+.admin-accordion-title > small {display: block; margin-top: .3rem; font-size: .73rem; color: var(--muted);}
+.admin-accordion-body {padding: 1rem; min-width: 0;}
+.admin-accordion-body > .card {margin: 0;}
+.admin-activity-editor {border-left: 3px solid var(--pink); margin-bottom: 1.3rem;}
+.admin-activity-item {background: #202032; border-left: 3px solid var(--blue);}
+.admin-activity-item .toolbar {margin-top: .7rem;}
+.admin-activity-item .item {padding: .6rem 0;}
+.attendance-intro {
+ display: flex;
+ align-items: start;
+ justify-content: space-between;
+ gap: 1rem;
+ flex-wrap: wrap;
+}
+.attendance-intro h2 {margin: 0 0 .5rem;}
+.attendance-intro p {margin: .25rem 0 1rem;}
+.attendance-create {border-top: 1px dashed #656078; padding: 1rem 0;}
+.attendance-create h3 {color: var(--pink);}
+.attendance-lesson-counts {font-size: .75rem; color: var(--green); white-space: nowrap;}
+.attendance-management .attendance-stats {
+ display: flex;
+ flex-wrap: wrap;
+ gap: .8rem;
+ padding: .75rem 0;
+ margin: .7rem 0;
+}
+.attendance-stats > span {
+ padding: .55rem .7rem;
+ border: 1px solid #605577;
+ background: #30283e;
+ font-size: .78rem;
+}
+.attendance-stats strong {color: var(--white);}
+.attendance-table td {vertical-align: middle;}
+.attendance-table th:nth-child(1) {min-width: 180px;}
+.attendance-table th:nth-child(2) {min-width: 140px;}
+.attendance-table th:nth-child(3) {min-width: 175px;}
+.attendance-select {margin: 0; display: block;}
+.attendance-select select {width: 100%; min-width: 155px; margin: 0;}
+.attendance-save-actions {display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;}
+.attendance-save-actions p {font-size: .75rem; max-width: 420px;}
+@media (max-width: 850px) {
+ .admin-auth-layout {grid-template-columns: minmax(0, 1fr);gap: 1.25rem;}
+ .admin-boto-shortcut {min-height: auto; padding: 1.25rem; gap: .4rem;}
+ .admin-boto-shortcut img {max-height: 170px;}
+}
+@media (max-width: 550px) {
+ .admin-accordion > summary {padding: .75rem; gap: .65rem;}
+ .admin-accordion-body {padding: .7rem;}
+ .attendance-lesson-counts {white-space: normal; text-align: right;}
+ .admin-auth-layout .card {padding: 1rem;}
+ .attendance-stats {gap: .4rem;}
+}
+@media (prefers-reduced-motion: reduce) {
+ .admin-accordion > summary::after {transition: none;}
+}
