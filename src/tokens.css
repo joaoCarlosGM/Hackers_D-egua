@@ -1,4 +1,5 @@
-/* Local font, OFL license included in public/assets/fonts. */
+/* Local fonts; Vite rebases these public URLs to /Hackers_D-egua/ in dev/build.
+   OFL license included in public/assets/fonts. */
 @font-face {
   font-family: "Courier Prime";
   font-style: normal;

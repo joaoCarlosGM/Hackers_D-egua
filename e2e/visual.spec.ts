@@ -278,7 +278,7 @@ async function identity(page: Page) {
   await expect(mascot).toHaveJSProperty("naturalWidth", 1728);
   await expect(mascot).toHaveAttribute(
     "src",
-    "/assets/brand/mascote-chapeu-transparente.png",
+    "/Hackers_D-egua/assets/brand/mascote-chapeu-transparente.png",
   );
   const shape = await mascot.evaluate((img: HTMLImageElement) => ({
     original: img.naturalWidth / img.naturalHeight,
@@ -440,7 +440,7 @@ test("public artwork matches the copied originals and never needs the ZIP at run
     await readFile("public/assets/manifest.json", "utf8"),
   );
   for (const asset of manifest.assets) {
-    const response = await request.get(`/assets/${asset.file}`);
+    const response = await request.get(`/Hackers_D-egua/assets/${asset.file}`);
     expect(response.status()).toBe(200);
     expect(
       createHash("sha256")

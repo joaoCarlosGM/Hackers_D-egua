@@ -12,7 +12,7 @@ export default defineConfig({
   outputDir: "test-results",
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://127.0.0.1:4180/",
+    baseURL: "http://127.0.0.1:4180/Hackers_D-egua/",
     locale: "pt-BR",
     timezoneId: "America/Fortaleza",
     reducedMotion: "reduce",
@@ -21,7 +21,7 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run dev -- --host 127.0.0.1 --port 4180 --strictPort",
-    url: "http://127.0.0.1:4180/",
+    url: "http://127.0.0.1:4180/Hackers_D-egua/",
     reuseExistingServer: false,
     env: {
       VITE_SUPABASE_URL: "https://visual-tests.supabase.co",
