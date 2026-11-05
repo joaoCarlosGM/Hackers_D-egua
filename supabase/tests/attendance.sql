@@ -23,6 +23,7 @@ insert into public.admin_users(user_id,role) values
  ('00000000-0000-0000-0000-000000000041','admin'),
  ('00000000-0000-0000-0000-000000000042','teacher');
 create table test_attendance.fixtures(key text primary key,value text);
+grant select,insert,update on test_attendance.fixtures to anon,authenticated;
 
 set local role anon;
 insert into test_attendance.fixtures(key,value)
@@ -39,8 +40,8 @@ select test_attendance.denied($q$select public.create_attendance_lesson(
  (select id from public.classes where slug='poraque'),
  'Comandos Linux','2026-11-05')$q$,
  'anonymous cannot create a lesson');
-select test_attendance.ok((select count(*)=0 from public.attendance_lessons),
- 'anonymous cannot read lesson rows directly via RLS');
+select test_attendance.denied($q$select count(*) from public.attendance_lessons$q$,
+ 'anonymous cannot read attendance tables directly');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000043',true);
