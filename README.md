@@ -45,6 +45,7 @@ No Dashboard do projeto **existente**, abra SQL Editor e execute **cada arquivo 
 4. `supabase/migrations/202611040004_assessments.sql`: estados, código curto, cronômetro, navegação, revisões, progresso protegido, correção idempotente, resultados privados e notificações Realtime. Preserva duplas, notas e pontos CTF existentes; desativa a conversão automática de novas notas em pontos CTF.
 
 5. `supabase/migrations/202611050001_class_management.sql`: turmas ativas/arquivadas, novos slugs, RPCs administrativas auditadas, exclusão protegida e bloqueio de cadastro em turmas arquivadas. Se as quatro primeiras já foram aplicadas, execute somente esta migration nova.
+6. `supabase/migrations/202611050002_team_management.sql`: gestão auditada das duplas, correção de nomes, transferência segura, desativação e exclusão restrita a cadastros sem histórico. **Aplicar somente depois da migration 005**.
 
 Execute cada arquivo em uma transação (`BEGIN;` antes e `COMMIT;` depois do conteúdo) se o editor não garantir uma transação única. O seed de turmas é idempotente; os arquivos DDL são migrations versionadas, não scripts para reaplicar integralmente. Não reaplique uma migration já concluída. Em caso de erro, reverta apenas a transação aberta e investigue antes de seguir.
 
@@ -175,6 +176,10 @@ Os assets necessários já estão extraídos em `public/assets/brand/` e as refe
 `npm run test:visual` executa 15 cenários Playwright em Chromium. No ambiente atual, usa `/usr/bin/chromium`; em outra máquina, execute `npx playwright install --with-deps chromium` antes. Também é possível selecionar o binário com `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. Os testes cobrem as páginas existentes e o gerenciamento de turmas em desktop e celular, proporção do logo, tokens de cor, ausência de rolagem horizontal e arquivos originais por checksum. São gerados 19 PNGs em `artifacts/visual/`, incluindo `ranking-comparison.png`, comparação lado a lado com a referência enviada. Resultados e screenshots são publicados como artefato de CI, sem deploy do site.
 
 As fixtures de ranking, usuários e notas existem **apenas nos testes do navegador**, com todas as requisições Supabase interceptadas. Não são dados reais nem inserções no projeto Cloud. O servidor dos testes usa uma URL e chave fictícias explicitamente isoladas da configuração de produção. Consulte `docs/visual-review.md` para a revisão e as diferenças corrigidas.
+
+## Gerenciar duplas
+
+O painel `#admin` agora inclui **Gerenciar duplas** com pesquisa, listagem de integrantes, edição, troca de turma para equipes sem histórico, ativação/desativação, nova credencial e exclusão confirmada apenas de cadastros vazios. Todas as operações de escrita exigem perfil `admin` e são auditadas. Duplas com avaliações ou pontos CTF devem ser desativadas, nunca excluídas. A implantação exige a migration 006 no Supabase antes do novo frontend. Confira [o procedimento e os testes](docs/team-management.md).
 
 ## Gerenciar turmas
 
