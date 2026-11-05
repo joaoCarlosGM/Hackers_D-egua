@@ -430,10 +430,15 @@ export default function Admin({
       ) : (
         <>
           {!role ? (
-            <p role="alert">
-              Esta conta não está autorizada. Solicite a inclusão do UUID em
-              admin_users ao responsável pelo projeto.
-            </p>
+            <>
+              <p role="alert">
+                Esta conta não está autorizada. Solicite a inclusão do UUID em
+                admin_users ao responsável pelo projeto.
+              </p>
+              <button onClick={() => void supabase!.auth.signOut()}>
+                Sair da administração
+              </button>
+            </>
           ) : (
             <AdminNavigation section={section} role={role}>
               <div className="admin-actions-bar">
