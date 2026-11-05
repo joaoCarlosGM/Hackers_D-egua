@@ -5,6 +5,9 @@ import ClassManagement from "./ClassManagement";
 import AdminNavigation, { type AdminSection } from "./AdminNavigation";
 import TeamManagement from "./TeamManagement";
 import AdminAccessManagement from "./AdminAccessManagement";
+import AttendanceManagement from "./AttendanceManagement";
+import { brandAssets } from "./Brand";
+import "./admin-attendance.css";
 import ActivityPreview from "./ActivityPreview";
 import { rpc, supabase, type Class } from "./api";
 import {
@@ -136,6 +139,7 @@ export default function Admin({
     title: string;
   } | null>(null);
   const [preview, setPreview] = useState(false);
+  const [editorExpanded, setEditorExpanded] = useState(false);
   const [classFilter, setClassFilter] = useState("");
   const visibleTeams = data.teams.filter(
     (t) => !classFilter || t.class_id === classFilter,
@@ -299,12 +303,14 @@ export default function Admin({
       );
       setEditing(null);
       setQuestions([newQuestion()]);
+      setEditorExpanded(false);
       form.reset();
       await load();
     });
   }
   function edit(a: Act, s: Session) {
     setEditing(a);
+    setEditorExpanded(true);
     setQuestions(
       data.questions
         .filter((q) => q.activity_id === a.id)
@@ -408,26 +414,27 @@ export default function Admin({
       {checking ? (
         <p>Verificando autorização…</p>
       ) : !identity ? (
-        <form onSubmit={login} className="card narrow">
-          <h2>Acesso com Supabase Auth</h2>
-          <label>
-            E-mail
-            <input name="email" type="email" required autoComplete="username" />
-          </label>
-          <label>
-            Senha
-            <input
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-            />
-          </label>
-          <button className="primary" disabled={busy}>
-            Entrar
-          </button>
-          <p>Contas precisam de autorização explícita em admin_users.</p>
-        </form>
+        <div className="admin-auth-layout">
+          <form onSubmit={login} className="card admin-login-card">
+            <h2>Acesso com Supabase Auth</h2>
+            <label>
+              E-mail
+              <input name="email" type="email" required autoComplete="username" />
+            </label>
+            <label>
+              Senha
+              <input name="password" type="password" required autoComplete="current-password" />
+            </label>
+            <button className="primary" disabled={busy}>Entrar</button>
+            <p>Contas precisam de autorização explícita em admin_users.</p>
+          </form>
+          <a className="admin-boto-shortcut" href="#ranking" aria-label="Boto do Hackers Pai D’égua — abrir ranking público CTF">
+            <span className="admin-boto-kicker">NOSSO MASCOTE</span>
+            <img src={brandAssets.mascot} alt="Boto de chapéu, mascote oficial do Hackers Pai D’égua" width={1728} height={1975} />
+            <strong>Pronto para o desafio?</strong>
+            <span>Veja o ranking oficial do CTF <span aria-hidden="true">↗</span></span>
+          </a>
+        </div>
       ) : (
         <>
           {!role ? (
@@ -509,6 +516,7 @@ export default function Admin({
                     <a href="#admin/turmas"><strong>Organizar turmas</strong><span>Gerenciar Poraquê, Pitiú e os demais grupos.</span></a>
                     <a href="#admin/duplas"><strong>Consultar duplas</strong><span>Cadastro permanente, participantes e credenciais.</span></a>
                     <a href="#admin/notas"><strong>Conferir entregas</strong><span>Resultados privados, correções e exportação.</span></a>
+                    <a href="#admin/chamada"><strong>Registrar presença</strong><span>Chamada por aluno, turma e data da aula.</span></a>
                     {role === "admin" && <a href="#admin/ctf"><strong>Registrar pontos CTF</strong><span>Classificação pública independente das notas.</span></a>}
                     {role === "admin" && <a href="#admin/usuarios"><strong>Gerenciar acessos</strong><span>Autorizar professores e administradores já cadastrados no Supabase Auth.</span></a>}
                   </div>
@@ -524,7 +532,7 @@ export default function Admin({
                 }}
               />
               )}
-              {(["atividades", "duplas", "notas", "ctf"] as AdminSection[]).includes(section) && (
+              {(["atividades", "duplas", "notas", "chamada", "ctf"] as AdminSection[]).includes(section) && (
               <label className="admin-filter">
                 Filtrar por turma
                 <select
@@ -541,8 +549,23 @@ export default function Admin({
                 </select>
               </label>
               )}
+              {section === "chamada" && (
+                <AttendanceManagement classes={classes} role={role} classFilter={classFilter} />
+              )}
               {section === "atividades" && (
                 <>
+              <details
+                className="admin-accordion admin-activity-editor"
+                open={editorExpanded}
+                onToggle={(e) => setEditorExpanded(e.currentTarget.open)}
+              >
+                <summary>
+                  <span className="admin-accordion-title">
+                    <strong>{editing ? "Editar rascunho" : "Cadastrar nova atividade"}</strong>
+                    <small>Múltipla escolha, verdadeiro ou falso, publicação e QR Code</small>
+                  </span>
+                </summary>
+                <div className="admin-accordion-body">
               <form key={editing?.id ?? "new"} onSubmit={save} className="card">
                 <h2>{editing ? "Editar rascunho" : "Nova atividade"}</h2>
                 <label>
@@ -842,6 +865,8 @@ export default function Admin({
                   )}
                 </div>
               </form>
+                </div>
+              </details>
               {preview && (
                 <ActivityPreview
                   questions={questions}
@@ -855,7 +880,13 @@ export default function Admin({
                   if (!a) return null;
                   return (
                     <article className="item" key={s.id}>
-                      <h3>{a.title}</h3>
+                      <details className="admin-accordion admin-activity-item">
+                        <summary>
+                          <span className="admin-accordion-title"><strong>{a.title}</strong>
+                            <small>{classes.filter((c) => s.class_ids.includes(c.id)).map((c) => c.name).join(" · ")} · {s.status}</small>
+                          </span>
+                        </summary>
+                        <div className="admin-accordion-body">
                       <p>
                         {classes
                           .filter((c) => s.class_ids.includes(c.id))
@@ -1082,6 +1113,8 @@ export default function Admin({
                           {new Date(s.closes_at).toLocaleString("pt-BR")}
                         </p>
                       )}
+                        </div>
+                      </details>
                     </article>
                   );
                 })}

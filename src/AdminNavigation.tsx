@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import "./admin-navigation.css";
 
-export type AdminSection = "overview" | "atividades" | "turmas" | "duplas" | "notas" | "ctf" | "usuarios";
+export type AdminSection = "overview" | "atividades" | "turmas" | "duplas" | "notas" | "chamada" | "ctf" | "usuarios";
 
 const modules: {
   id: AdminSection;
@@ -17,8 +17,9 @@ const modules: {
   { id: "turmas", label: "Gerenciar turmas", short: "Turmas", subtitle: "Organize Poraquê, Pitiú e outras turmas sem perder históricos.", symbol: "03", href: "#admin/turmas" },
   { id: "duplas", label: "Gerenciar duplas", short: "Duplas", subtitle: "Corrija cadastros, recupere acessos e consulte integrantes.", symbol: "04", href: "#admin/duplas" },
   { id: "notas", label: "Notas e entregas", short: "Notas", subtitle: "Consulte resultados, corrija notas e exporte relatórios privados.", symbol: "05", href: "#admin/notas" },
-  { id: "ctf", label: "Pontuação CTF", short: "CTF", subtitle: "Registre pontos auditados e acompanhe a classificação pública.", symbol: "06", href: "#admin/ctf", adminOnly: true },
-  { id: "usuarios", label: "Usuários e permissões", short: "Usuários", subtitle: "Autorize contas do Supabase Auth como professor ou administrador.", symbol: "07", href: "#admin/usuarios", adminOnly: true },
+  { id: "chamada", label: "Chamada e presença", short: "Chamada", subtitle: "Registre presenças por aluno e aula, com histórico privado por turma.", symbol: "06", href: "#admin/chamada" },
+  { id: "ctf", label: "Pontuação CTF", short: "CTF", subtitle: "Registre pontos auditados e acompanhe a classificação pública.", symbol: "07", href: "#admin/ctf", adminOnly: true },
+  { id: "usuarios", label: "Usuários e permissões", short: "Usuários", subtitle: "Autorize contas do Supabase Auth como professor ou administrador.", symbol: "08", href: "#admin/usuarios", adminOnly: true },
 ];
 
 export default function AdminNavigation({

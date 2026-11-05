@@ -135,6 +135,7 @@ it("rechecks permissions after an existing Auth account is authorized externally
 it("lets a teacher create, preview, publish and start a quiz with a real activity link for QR generation", async () => {
   const user = userEvent.setup();
   render(<Admin classes={classes} section="atividades" />);
+  await user.click(screen.getByText("Cadastrar nova atividade"));
   await screen.findByRole("heading", { name: "Nova atividade" });
   await user.type(screen.getByLabelText("Título"), "Avaliação Linux");
   await user.type(screen.getByLabelText("Descrição"), "Aula de software livre");
@@ -180,6 +181,7 @@ it("lets a teacher create, preview, publish and start a quiz with a real activit
     screen.getByRole("button", { name: "Fechar pré-visualização" }),
   );
   await user.click(screen.getByRole("button", { name: "Salvar rascunho" }));
+  await user.click(screen.getByText("Avaliação Linux"));
   await screen.findByRole("button", { name: "Publicar" });
   expect(mock.rpc).toHaveBeenCalledWith(
     "save_assessment",
@@ -321,6 +323,7 @@ it("consults archived-class members and grades without offering archived classes
   );
   const user = userEvent.setup();
   const view = render(<Admin classes={archived} section="atividades" />);
+  await user.click(screen.getByText("Cadastrar nova atividade"));
   await screen.findByRole("heading", { name: "Nova atividade" });
   expect(screen.queryByRole("checkbox", { name: "Pitiú" })).toBeNull();
   view.rerender(<Admin classes={archived} section="turmas" />);
