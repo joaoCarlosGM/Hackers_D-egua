@@ -32,6 +32,19 @@ export type ManagedClass = Class & {
   activity_count: number;
   can_delete: boolean;
 };
+export type ManagedTeam = {
+  id: string;
+  public_name: string;
+  class_id: string;
+  access_code: string;
+  status: "active" | "inactive";
+  member1: string;
+  member2: string;
+  attempt_count: number;
+  ctf_event_count: number;
+  can_transfer: boolean;
+  can_delete: boolean;
+};
 export type Team = {
   team_id: string;
   class_id: string;
