@@ -10,12 +10,13 @@ describe("administrative module navigation", () => {
     render(<AdminNavigation section="overview" role="admin"><p>Resumo pedagógico</p></AdminNavigation>);
     const navigation = screen.getByRole("navigation", { name: "Seções da administração" });
     const links = within(navigation).getAllByRole("link");
-    expect(links).toHaveLength(7);
+    expect(links).toHaveLength(8);
     expect(within(navigation).getByRole("link", { name: /Início/ }).getAttribute("aria-current")).toBe("page");
     expect(within(navigation).getByRole("link", { name: /Turmas/ }).getAttribute("href")).toBe("#admin/turmas");
     expect(within(navigation).getByRole("link", { name: /Duplas/ }).getAttribute("href")).toBe("#admin/duplas");
     expect(within(navigation).getByRole("link", { name: /CTF/ }).getAttribute("href")).toBe("#admin/ctf");
     expect(within(navigation).getByRole("link", { name: /Usuários/ }).getAttribute("href")).toBe("#admin/usuarios");
+    expect(within(navigation).getByRole("link", { name: /Chamada/ }).getAttribute("href")).toBe("#admin/chamada");
     expect(screen.getByText("Resumo pedagógico")).toBeTruthy();
   });
   it("hides the points entry for teachers but keeps the public ranking shortcut", () => {
@@ -23,6 +24,7 @@ describe("administrative module navigation", () => {
     const navigation = screen.getByRole("navigation", { name: "Seções da administração" });
     expect(within(navigation).queryByRole("link", { name: /CTF/ })).toBeNull();
     expect(within(navigation).queryByRole("link", { name: /Usuários/ })).toBeNull();
+    expect(within(navigation).getByRole("link", { name: /Chamada/ })).toBeTruthy();
     expect(within(navigation).getByRole("link", { name: /Notas/ }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: /Abrir ranking CTF/ }).getAttribute("href")).toBe("#ranking");
   });
