@@ -459,6 +459,11 @@ for (const viewport of [
     test("teacher dashboard and activity editor", async ({ page }) => {
       await fixtures(page, "staff");
       await page.goto("./#admin");
+      await expect(page.getByRole("heading", { name: "Visão geral" })).toBeVisible();
+      await shot(page, `${viewport.name}-admin-overview`);
+      const nav = page.getByRole("navigation", { name: "Seções da administração" });
+      await nav.getByRole("link", { name: /Atividades/ }).click();
+      await expect(page).toHaveURL(/#admin\/atividades$/);
       await expect(
         page.getByRole("heading", { name: "Nova atividade" }),
       ).toBeVisible();
@@ -471,7 +476,7 @@ for (const viewport of [
       page,
     }) => {
       await fixtures(page, "admin");
-      await page.goto("./#admin");
+      await page.goto("./#admin/turmas");
       const manager = page.getByRole("region", { name: "Gerenciar turmas" });
       await expect(
         manager.getByRole("heading", { name: "Nova turma" }),
@@ -498,7 +503,7 @@ for (const viewport of [
     });
     test("team management keeps private participants and protects linked records", async ({ page }) => {
       await fixtures(page, "admin");
-      await page.goto("./#admin");
+      await page.goto("./#admin/duplas");
       const manager = page.getByRole("region", { name: "Gerenciar duplas" });
       await expect(manager.getByRole("heading", { name: "Gerenciar duplas" })).toBeVisible();
       await manager.getByPlaceholder("Apelido, integrante ou código").fill("Boto");
