@@ -47,6 +47,7 @@ No Dashboard do projeto **existente**, abra SQL Editor e execute **cada arquivo 
 5. `supabase/migrations/202611050001_class_management.sql`: turmas ativas/arquivadas, novos slugs, RPCs administrativas auditadas, exclusão protegida e bloqueio de cadastro em turmas arquivadas. Se as quatro primeiras já foram aplicadas, execute somente esta migration nova.
 6. `supabase/migrations/202611050002_team_management.sql`: gestão auditada das duplas, correção de nomes, transferência segura, desativação e exclusão restrita a cadastros sem histórico. **Aplicar somente depois da migration 005**.
 7. `supabase/migrations/202611050003_admin_access_management.sql`: autorizações administrativas para contas Auth já existentes, papéis de professor/administrador, auditoria, revogação e proteção do último administrador. **Aplicar somente depois da migration 006**.
+8. `supabase/migrations/202611050004_attendance.sql`: chamada privada por estudante e por aula, RLS, auditoria e proteção do histórico contra transferências/exclusões. **Executar somente após a migration 007.**
 
 Execute cada arquivo em uma transação (`BEGIN;` antes e `COMMIT;` depois do conteúdo) se o editor não garantir uma transação única. O seed de turmas é idempotente; os arquivos DDL são migrations versionadas, não scripts para reaplicar integralmente. Não reaplique uma migration já concluída. Em caso de erro, reverta apenas a transação aberta e investigue antes de seguir.
 
@@ -58,14 +59,14 @@ Use uma versão atual da CLI oficial instalada conforme a documentação Supabas
 supabase login
 supabase link --project-ref SEU_PROJECT_REF_EXISTENTE
 supabase db push --dry-run
-# Revise: devem aparecer APENAS as migrations pendentes dentre as sete acima.
+# Revise: devem aparecer APENAS as migrations pendentes dentre as oito acima.
 supabase db push
 ```
 
-Se os arquivos já foram executados no SQL Editor, **não os aplique novamente** via CLI. Depois de confirmar os objetos criados, registre apenas as versões efetivamente aplicadas. Exemplo para um banco com as sete migrations concluídas:
+Se os arquivos já foram executados no SQL Editor, **não os aplique novamente** via CLI. Depois de confirmar os objetos criados, registre apenas as versões efetivamente aplicadas. Exemplo para um banco com as oito migrations concluídas:
 
 ```bash
-supabase migration repair --status applied 202611040001 202611040002 202611040003 202611040004 202611050001 202611050002 202611050003
+supabase migration repair --status applied 202611040001 202611040002 202611040003 202611040004 202611050001 202611050002 202611050003 202611050004
 supabase migration list
 ```
 
@@ -176,6 +177,12 @@ Os assets necessários já estão extraídos em `public/assets/brand/` e as refe
 
 As fixtures de ranking, usuários e notas existem **apenas nos testes do navegador**, com todas as requisições Supabase interceptadas. Não são dados reais nem inserções no projeto Cloud. O servidor dos testes usa uma URL e chave fictícias explicitamente isoladas da configuração de produção. Consulte `docs/visual-review.md` para a revisão e as diferenças corrigidas.
 
+## Chamada por estudante e organização recolhível
+
+Na aba `#admin/chamada`, o administrador cria aulas por turma e data e marca **Presente / Faltou / Justificada / Não marcado** para cada integrante de uma dupla, sem recadastro. A presença é privada, fica no Supabase e não interfere nas notas ou no CTF. Professores autorizados consultam em modo de leitura. O histórico bloqueia transferência e exclusão de duplas que já tiveram presença lançada. Consulte [o guia da chamada](docs/attendance.md) e aplique a migration 008 antes de publicar esta interface.
+
+A página de atividades permite **recolher/expandir** o editor e cada atividade através de setas. O login utiliza a arte original do mascote Boto em um cartão que leva ao ranking público.
+
 ## Administração por módulos
 
 O acesso administrativo fica em `#admin`. Depois do login, use a navegação lateral (desktop) ou horizontal (celular) para abrir as seções:
@@ -185,6 +192,7 @@ O acesso administrativo fica em `#admin`. Depois do login, use a navegação lat
 - `#admin/turmas` — gerenciamento e histórico de turmas;
 - `#admin/duplas` — cadastro permanente, correções e credenciais;
 - `#admin/notas` — entregas, correções e exportação CSV privada;
+- `#admin/chamada` — aulas por turma e presença individual, com exportação CSV privada;
 - `#admin/ctf` — atribuição de pontuação CTF (perfil administrador).
 
 A navegação utiliza hash routes compatíveis com GitHub Pages e preserva os dados no Supabase; **nenhuma nova migration** é necessária para este aprimoramento visual. Ao escolher "Consultar dados" em Turmas, o sistema abre Notas com o filtro da turma mantido. Resultados individuais de atividade continuam disponíveis em `#admin/atividades/ACTIVITY_UUID/resultados`, com acesso protegido.

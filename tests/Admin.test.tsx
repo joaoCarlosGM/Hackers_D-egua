@@ -135,6 +135,7 @@ it("rechecks permissions after an existing Auth account is authorized externally
 it("lets a teacher create, preview, publish and start a quiz with a real activity link for QR generation", async () => {
   const user = userEvent.setup();
   render(<Admin classes={classes} section="atividades" />);
+  await screen.findByText("Cadastrar nova atividade");
   await user.click(screen.getByText("Cadastrar nova atividade"));
   await screen.findByRole("heading", { name: "Nova atividade" });
   await user.type(screen.getByLabelText("Título"), "Avaliação Linux");
@@ -323,6 +324,7 @@ it("consults archived-class members and grades without offering archived classes
   );
   const user = userEvent.setup();
   const view = render(<Admin classes={archived} section="atividades" />);
+  await screen.findByText("Cadastrar nova atividade");
   await user.click(screen.getByText("Cadastrar nova atividade"));
   await screen.findByRole("heading", { name: "Nova atividade" });
   expect(screen.queryByRole("checkbox", { name: "Pitiú" })).toBeNull();
