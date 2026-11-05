@@ -52,8 +52,8 @@ vi.mock("../src/api", () => ({
 }));
 import Admin from "../src/Admin";
 const classes = [
-  { id: "c1", name: "Poraquê", slug: "poraque" },
-  { id: "c2", name: "Pitiú", slug: "pitiu" },
+  { id: "c1", name: "Poraquê", slug: "poraque", status: "active" as const },
+  { id: "c2", name: "Pitiú", slug: "pitiu", status: "active" as const },
 ];
 beforeEach(() => {
   mock.role = "teacher";
@@ -64,6 +64,14 @@ beforeEach(() => {
   vi.spyOn(window, "confirm").mockReturnValue(true);
   mock.rpc.mockImplementation(
     async (name: string, p: Record<string, unknown>) => {
+      if (name === "list_classes_admin")
+        return classes.map((c) => ({
+          ...c,
+          team_count: 0,
+          attempt_count: 0,
+          activity_count: 0,
+          can_delete: true,
+        }));
       if (name === "save_assessment") {
         mock.tables.activities = [
           {
@@ -153,7 +161,9 @@ it("lets a teacher create, preview, publish and start a quiz with a real activit
     screen.getByRole("button", { name: "Visualizar antes de publicar" }),
   );
   await screen.findByRole("region", { name: "Pré-visualização da atividade" });
-  expect(mock.rpc).not.toHaveBeenCalled();
+  expect(mock.rpc.mock.calls.some(([name]) => name === "save_assessment")).toBe(
+    false,
+  );
   await user.click(
     screen.getByRole("button", { name: "Fechar pré-visualização" }),
   );
@@ -216,4 +226,103 @@ it("lets a teacher create, preview, publish and start a quiz with a real activit
       p_activity_id: "a1",
     }),
   );
+});
+
+it("consults archived-class members and grades without offering archived classes for new activities", async () => {
+  mock.role = "admin";
+  mock.tables.teams = [
+    {
+      id: "t1",
+      public_name: "Dupla ativa",
+      class_id: "c1",
+      access_code: "ATIVA",
+    },
+    {
+      id: "t2",
+      public_name: "Dupla histórica",
+      class_id: "c2",
+      access_code: "HISTORICA",
+    },
+  ];
+  mock.tables.team_members = [
+    { id: "m1", team_id: "t1", position: 1, full_name: "Ana Silva" },
+    { id: "m2", team_id: "t2", position: 1, full_name: "Maria Souza" },
+  ];
+  mock.tables.activities = [
+    {
+      id: "a1",
+      title: "Atividade histórica",
+      description: "",
+      revision: 1,
+      locked_at: "2026-11-04",
+    },
+  ];
+  mock.tables.activity_sessions = [
+    {
+      id: "s1",
+      activity_id: "a1",
+      class_ids: ["c1", "c2"],
+      status: "closed",
+      published: false,
+      access_code: "ABCDEF12",
+      closes_at: null,
+    },
+  ];
+  mock.tables.attempts = [
+    {
+      id: "at1",
+      team_id: "t1",
+      activity_session_id: "s1",
+      submission_no: 1,
+      submitted_at: "2026-11-04T19:00:00Z",
+      retry_available: false,
+    },
+    {
+      id: "at2",
+      team_id: "t2",
+      activity_session_id: "s1",
+      submission_no: 1,
+      submitted_at: "2026-11-04T19:00:00Z",
+      retry_available: false,
+    },
+  ];
+  mock.tables.grades = [
+    { id: "g1", attempt_id: "at1", points: 4, max_points: 10, feedback: "" },
+    { id: "g2", attempt_id: "at2", points: 9, max_points: 10, feedback: "" },
+  ];
+  const archived = classes.map((c) => ({
+    ...c,
+    status: c.id === "c2" ? ("archived" as const) : ("active" as const),
+  }));
+  const original = mock.rpc.getMockImplementation()!;
+  mock.rpc.mockImplementation(
+    async (name: string, p: Record<string, unknown>) =>
+      name === "list_classes_admin"
+        ? archived.map((c) => ({
+            ...c,
+            team_count: 1,
+            attempt_count: 1,
+            activity_count: 1,
+            can_delete: false,
+          }))
+        : original(name, p),
+  );
+  const user = userEvent.setup();
+  render(<Admin classes={archived} />);
+  await screen.findByRole("row", { name: /Pitiú/ });
+  expect(screen.queryByRole("checkbox", { name: "Pitiú" })).toBeNull();
+  await user.click(
+    within(screen.getByRole("row", { name: /Pitiú/ })).getByRole("button", {
+      name: "Consultar dados",
+    }),
+  );
+  await screen.findByRole("heading", {
+    name: "Entregas e notas privadas · Pitiú",
+  });
+  expect(screen.getAllByText("Maria Souza").length).toBeGreaterThan(0);
+  expect(screen.queryByText("Ana Silva")).toBeNull();
+  expect(screen.getByText(/9 \/ 10 pontos/)).toBeTruthy();
+  expect(
+    screen.getByRole("option", { name: "Pitiú (arquivada)" }),
+  ).toBeTruthy();
 });
