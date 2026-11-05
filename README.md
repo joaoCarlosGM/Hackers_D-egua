@@ -33,7 +33,7 @@ npm run preview
 
 ## Aplicar no Supabase existente
 
-Não use `supabase projects create`, `db reset`, `db push --include-all` indiscriminadamente nem scripts de teste no remoto. Faça backup antes de migrações em uma base que já tenha dados. As três primeiras migrations criam a fundação em um banco sem tabelas de aplicação. A quarta adiciona avaliações e a quinta adiciona gerenciamento de turmas; se a fundação já foi aplicada, execute somente as migrations ainda pendentes.
+Não use `supabase projects create`, `db reset`, `db push --include-all` indiscriminadamente nem scripts de teste no remoto. Faça backup antes de migrações em uma base que já tenha dados. As primeiras migrations criam a fundação, avaliações e gerenciamentos; as migrations 005, 006 e 007 adicionam, respectivamente, gestão de turmas, duplas e acessos administrativos. Se a fundação já foi aplicada, execute somente as migrations ainda pendentes.
 
 ### Opção A — SQL Editor (sem CLI)
 
@@ -46,6 +46,7 @@ No Dashboard do projeto **existente**, abra SQL Editor e execute **cada arquivo 
 
 5. `supabase/migrations/202611050001_class_management.sql`: turmas ativas/arquivadas, novos slugs, RPCs administrativas auditadas, exclusão protegida e bloqueio de cadastro em turmas arquivadas. Se as quatro primeiras já foram aplicadas, execute somente esta migration nova.
 6. `supabase/migrations/202611050002_team_management.sql`: gestão auditada das duplas, correção de nomes, transferência segura, desativação e exclusão restrita a cadastros sem histórico. **Aplicar somente depois da migration 005**.
+7. `supabase/migrations/202611050003_admin_access_management.sql`: autorizações administrativas para contas Auth já existentes, papéis de professor/administrador, auditoria, revogação e proteção do último administrador. **Aplicar somente depois da migration 006**.
 
 Execute cada arquivo em uma transação (`BEGIN;` antes e `COMMIT;` depois do conteúdo) se o editor não garantir uma transação única. O seed de turmas é idempotente; os arquivos DDL são migrations versionadas, não scripts para reaplicar integralmente. Não reaplique uma migration já concluída. Em caso de erro, reverta apenas a transação aberta e investigue antes de seguir.
 
@@ -57,34 +58,32 @@ Use uma versão atual da CLI oficial instalada conforme a documentação Supabas
 supabase login
 supabase link --project-ref SEU_PROJECT_REF_EXISTENTE
 supabase db push --dry-run
-# Revise: devem aparecer APENAS as migrations pendentes dentre as cinco acima.
+# Revise: devem aparecer APENAS as migrations pendentes dentre as sete acima.
 supabase db push
 ```
 
-Se os arquivos já foram executados no SQL Editor, **não os aplique novamente** via CLI. Depois de confirmar os objetos criados, registre apenas as versões efetivamente aplicadas. Exemplo para um banco com as cinco migrations concluídas:
+Se os arquivos já foram executados no SQL Editor, **não os aplique novamente** via CLI. Depois de confirmar os objetos criados, registre apenas as versões efetivamente aplicadas. Exemplo para um banco com as sete migrations concluídas:
 
 ```bash
-supabase migration repair --status applied 202611040001 202611040002 202611040003 202611040004 202611050001
+supabase migration repair --status applied 202611040001 202611040002 202611040003 202611040004 202611050001 202611050002 202611050003
 supabase migration list
 ```
 
 Não há credenciais remotas incluídas neste repositório e nenhuma migration é aplicada automaticamente pelo GitHub Actions.
 
-## Primeiro administrador e professores
+## Primeiro administrador, professores e autorização de acesso
 
-1. Em Authentication → Users, crie a conta do responsável usando e-mail e senha segura; confirme o e-mail conforme a política do projeto. Para uma conta convidada, conclua a definição de senha pelo fluxo do Supabase antes do login.
-2. Copie o **UUID de `auth.users`**, não o e-mail nem o identificador do projeto.
-3. Abra `supabase/bootstrap_admin.sql`, substitua `SUBSTITUA_PELO_UUID_DE_AUTH_USERS` por esse UUID e execute manualmente no SQL Editor, após as migrations.
-4. Entre em `#admin` com essa conta. Apenas possuir conta no Supabase Auth não autoriza nenhuma operação administrativa.
-5. Para autorizar um professor, execute como responsável no SQL Editor (substituindo o UUID):
+A autenticação e a autorização são independentes. A conta em **Supabase Authentication → Users** não se torna automaticamente um professor ou administrador do projeto.
 
-```sql
-insert into public.admin_users(user_id,role)
-values ('UUID_REAL_DE_AUTH_USERS'::uuid,'teacher')
-on conflict(user_id) do update set role=excluded.role;
-```
+1. Para configurar **o primeiro administrador**, crie sua conta no Supabase Auth e execute uma única vez `supabase/bootstrap_admin.sql` no SQL Editor, **substituindo o e-mail de exemplo**. O script rejeita execução quando já existe um administrador. Não há mais UUID fixo no repositório.
+2. Entre na plataforma como administrador e abra `#admin/usuarios` (**Usuários e permissões**).
+3. Para novos professores ou administradores, crie/convide a conta em **Supabase Authentication → Users**. Depois, no painel do site, informe o mesmo e-mail e selecione `Professor` ou `Administrador`.
+4. Para uma pessoa com sessão aberta que receba a autorização depois, clique em **Verificar autorização novamente** na mensagem de acesso pendente.
+5. Somente administradores podem conceder, alterar ou revogar autorizações, sem criar senhas nem disponibilizar credenciais privilegiadas no navegador. Operações são auditadas e não é possível revogar a própria conta.
 
-Professores podem criar/publicar atividades, consultar integrantes, respostas e notas e corrigir notas. Professores e administradores podem autorizar nova tentativa. Apenas `admin` pode redefinir credenciais permanentes das duplas e ajustar pontos CTF manualmente. Não há trigger promovendo novos usuários. Remova a linha de `admin_users` para revogar o acesso na próxima consulta/operação. Configure MFA e políticas de conta no Dashboard conforme a instituição; a aplicação não implementa um segundo fator próprio.
+Em caso de impossibilidade de acesso ao administrador anterior, o responsável pelo projeto Supabase pode executar uma recuperação manual controlada pelo SQL Editor; veja [Cadastro de administradores e professores](docs/admin-access.md) com o procedimento e as salvaguardas.
+
+Professores podem criar/publicar atividades, consultar integrantes, respostas e notas e corrigir notas. Apenas `admin` pode gerenciar permissões, redefinir credenciais permanentes das duplas e ajustar manualmente pontos CTF. O cadastro público de alunos não envolve Supabase Auth. Configure MFA e políticas de conta no Dashboard conforme a instituição; a aplicação não implementa um segundo fator próprio.
 
 ## Configurações no Dashboard
 
