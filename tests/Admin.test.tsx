@@ -122,7 +122,7 @@ it("denies an Auth account without explicit authorization", async () => {
 });
 it("lets a teacher create, preview, publish and start a quiz with a real activity link for QR generation", async () => {
   const user = userEvent.setup();
-  render(<Admin classes={classes} />);
+  render(<Admin classes={classes} section="atividades" />);
   await screen.findByRole("heading", { name: "Nova atividade" });
   await user.type(screen.getByLabelText("Título"), "Avaliação Linux");
   await user.type(screen.getByLabelText("Descrição"), "Aula de software livre");
@@ -308,14 +308,16 @@ it("consults archived-class members and grades without offering archived classes
         : original(name, p),
   );
   const user = userEvent.setup();
-  render(<Admin classes={archived} />);
-  await screen.findByRole("row", { name: /Pitiú/ });
+  const view = render(<Admin classes={archived} section="atividades" />);
+  await screen.findByRole("heading", { name: "Nova atividade" });
   expect(screen.queryByRole("checkbox", { name: "Pitiú" })).toBeNull();
+  view.rerender(<Admin classes={archived} section="turmas" />);
+  const row = await screen.findByRole("row", { name: /Pitiú/ });
   await user.click(
-    within(screen.getByRole("row", { name: /Pitiú/ })).getByRole("button", {
-      name: "Consultar dados",
-    }),
+    within(row).getByRole("button", { name: "Consultar dados" }),
   );
+  expect(location.hash).toBe("#admin/notas");
+  view.rerender(<Admin classes={archived} section="notas" />);
   await screen.findByRole("heading", {
     name: "Entregas e notas privadas · Pitiú",
   });
