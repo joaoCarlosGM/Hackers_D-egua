@@ -16,7 +16,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Em produção no domínio **https://hackerspaidegua.com/**, o caminho base é `/` (`base: "/"` no Vite). Rotas usam hash (`#ranking`, `#admin`, `#atividade/UUID`), inclusive nos QR Codes, para não depender de reescrita de URLs no Pages. Não coloque `service_role`, secret key, senha do banco nem credenciais dos alunos em variáveis `VITE_*`.
+A publicação usa o endereço gratuito **https://joaocarlosgm.github.io/Hackers_D-egua/**, com `base: "/Hackers_D-egua/"` no Vite. Rotas usam hash (`#ranking`, `#admin`, `#atividade/UUID`), inclusive nos QR Codes, para não depender de reescrita de URLs no Pages. Não coloque `service_role`, secret key, senha do banco nem credenciais dos alunos em variáveis `VITE_*`.
 
 ```bash
 npm run lint
@@ -88,7 +88,7 @@ Professores podem criar/publicar atividades, consultar integrantes, respostas e 
 - API: copie a **Project URL** e a **publishable key** para `.env` local e para as variáveis de build do Pages. A segurança depende de RLS e das RPCs, não de esconder a publishable key.
 - Data API: mantenha `public` exposto. **Nunca exponha `app_private`** e não conceda execução de seus helpers a clientes. A aplicação não precisa expor `auth` ou `extensions` como schemas de API.
 - Realtime → Publications: confirme que `public.public_leaderboard` e `public.assessment_updates` pertencem a `supabase_realtime` (as migrations as adicionam se a publicação existir). Se ela não existir no projeto, habilite Realtime pelo Dashboard e adicione essas duas tabelas. `assessment_updates` contém somente UUID da sessão e timestamp, com leitura permitida apenas a `admin_users`; é o sinal para recarregar resultados privados por RPC. Não publique diretamente nomes completos, respostas, credenciais ou notas.
-- Authentication: habilite e-mail/senha para a equipe pedagógica e desabilite cadastros públicos se não forem usados. Defina Site URL para `https://hackerspaidegua.com/`. O login atual é por senha, sem OAuth ou magic links. Convites/redefinição de senha podem ser gerenciados pelo responsável no Dashboard; não há página pública de redefinição de senha Auth nesta versão.
+- Authentication: habilite e-mail/senha para a equipe pedagógica e desabilite cadastros públicos se não forem usados. Defina Site URL para `https://joaocarlosgm.github.io/Hackers_D-egua/`. O login atual é por senha, sem OAuth ou magic links. Convites/redefinição de senha podem ser gerenciados pelo responsável no Dashboard; não há página pública de redefinição de senha Auth nesta versão.
 - Nunca crie um segundo projeto para usar esta aplicação.
 
 ## Publicar exclusivamente no GitHub Pages
@@ -97,7 +97,7 @@ Professores podem criar/publicar atividades, consultar integrantes, respostas e 
 2. Settings → Secrets and variables → Actions → **Variables**, crie `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`. São configurações públicas de cliente, não credenciais administrativas.
 3. Faça merge do PR em `main` ou execute manualmente o workflow **GitHub Pages**. Sem as duas variáveis, o deploy falha explicitamente.
 4. O workflow compila `dist/` e publica somente no Pages. Não configura nem publica Vercel, Netlify ou outro host.
-5. Mantenha `base: "/"`, confirme o domínio `hackerspaidegua.com`, configure DNS e habilite HTTPS. O CNAME da raiz é preservado e `public/CNAME` é copiado para `dist/CNAME`. Consulte a sequência completa em [Domínio personalizado e DNS](docs/github-pages-domain.md).
+5. Mantenha `base: "/Hackers_D-egua/"` e **Custom domain vazio** nas configurações do Pages. Não use arquivos `CNAME` na raiz ou em `public/`. Consulte [Publicação no endereço gratuito](docs/github-pages.md).
 
 O workflow **Validate** executa lint, typecheck, testes da interface, integração SQL local e build em PRs e em `main`. O deploy também valida a interface antes de publicar; migrations remotas continuam sendo uma ação administrativa separada.
 
@@ -140,7 +140,7 @@ Os testes SQL cobrem o núcleo e a interface usa o SDK Supabase real. Antes de a
 5. Em um navegador anônimo, confirme que não consegue ler `team_members`, `grades`, `answers`, `teams` nem escrever pontos/notas. Confira também com uma conta Auth sem `admin_users`.
 6. Com professor/admin autorizado, confira notas, correção e CSV. Com admin, redefina a credencial, verifique que a antiga parou de funcionar e que as notas permaneceram.
 7. Abra `#ranking` em outra aba; cadastre uma dupla e registre um ajuste CTF autorizado. Confirme atualização por WebSocket, apenas com apelidos, e que entregar uma avaliação não altera pontos CTF. A tela também recarrega o ranking ao reconectar/recuperar foco.
-8. Abra no endereço publicado do Pages um link e QR Code de atividade. Confirme os assets sob `/assets/` na raiz do domínio, incluindo o logo oficial e as fontes locais.
+8. Abra no endereço publicado do Pages um link e QR Code de atividade. Confirme os assets sob `/Hackers_D-egua/assets/`, incluindo o logo oficial e as fontes locais.
 
 Aplicação no Supabase Cloud, autenticação hospedada, eventos WebSocket reais e publicação no Pages dependem das configurações externas acima e não devem ser considerados validados apenas pelos testes locais.
 
