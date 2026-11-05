@@ -74,8 +74,11 @@ select public.revoke_staff_account('00000000-0000-0000-0000-000000000033');
 select test_staff.ok(not exists(select 1 from public.admin_users
  where user_id='00000000-0000-0000-0000-000000000033'),
  'revoke removes staff authorization only');
+reset role;
 select test_staff.ok((select count(*)=4 from auth.users),
  'Auth accounts and passwords are untouched');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000031',true);
 select test_staff.denied($q$select public.revoke_staff_account('00000000-0000-0000-0000-000000000031')$q$,
  'self-revocation is blocked even as final administrator');
 select test_staff.ok((select count(*)=1 from public.admin_users where role='admin'),
