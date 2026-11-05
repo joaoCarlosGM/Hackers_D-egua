@@ -1,6 +1,6 @@
 # Gerenciamento de duplas — Hackers Pai D'égua
 
-Implementado na página \`#admin\`, seção **Gerenciar duplas**. O banco de produção não é modificado pelo GitHub Pages.
+Implementado na página `#admin`, seção **Gerenciar duplas**. O banco de produção não é modificado pelo GitHub Pages.
 
 ## Recursos
 
@@ -10,24 +10,24 @@ Implementado na página \`#admin\`, seção **Gerenciar duplas**. O banco de pro
 - Transferir preserva o UUID e a credencial, atualiza o rótulo público do ranking e revoga sessões temporárias. Transferência é proibida se houver tentativas, registros de pontuação CTF ou pontos não zerados.
 - Desativar revoga sessões existentes e impede novos logins/participação por token. Reativar restabelece o acesso usando a credencial permanente original.
 - A dupla desativada permanece no ranking histórico; notas e integrantes jamais são publicados.
-- Excluir exige digitar \`EXCLUIR <código>\`. Havendo avaliações ou CTF, o botão fica bloqueado e o banco revalida os vínculos, evitando exclusão por requisição forjada ou concorrência.
-- Apenas a equipe com papel \`admin\` consegue mutar registros pelas RPCs. As alterações ficam em \`audit_events\` sem incluir nomes pessoais dos participantes no campo \`details\`.
+- Excluir exige digitar `EXCLUIR <código>`. Havendo avaliações ou CTF, o botão fica bloqueado e o banco revalida os vínculos, evitando exclusão por requisição forjada ou concorrência.
+- Apenas a equipe com papel `admin` consegue mutar registros pelas RPCs. As alterações ficam em `audit_events` sem incluir nomes pessoais dos participantes no campo `details`.
 
 ## Migration e publicação
 
-Executar **somente** a nova migration após a \`202611050001_class_management.sql\`:
+Executar **somente** a nova migration após a `202611050001_class_management.sql`:
 
-\`supabase/migrations/202611050002_team_management.sql\`
+`supabase/migrations/202611050002_team_management.sql`
 
-Ela adiciona \`teams.status\`, cria as RPCs \`list_teams_admin\`, \`update_team\`, \`set_team_status\` e \`delete_team\`, e reforça \`login_team\` e \`app_private.team_for_token\` para bloquear duplas inativas.
+Ela adiciona `teams.status`, cria as RPCs `list_teams_admin`, `update_team`, `set_team_status` e `delete_team`, e reforça `login_team` e `app_private.team_for_token` para bloquear duplas inativas.
 
-**A migration não foi executada no Supabase remoto pelo desenvolvimento deste PR.** Aplicar o arquivo inteiro e uma única vez no SQL Editor, em transação, ou usar a CLI vinculada após verificar as versões pendentes com \`supabase db push --dry-run\`. Não usar \`db reset\`, não reaplicar migrations antigas e nunca executar \`supabase/tests/*.sql\` no projeto remoto.
+**A migration não foi executada no Supabase remoto pelo desenvolvimento deste PR.** Aplicar o arquivo inteiro e uma única vez no SQL Editor, em transação, ou usar a CLI vinculada após verificar as versões pendentes com `supabase db push --dry-run`. Não usar `db reset`, não reaplicar migrations antigas e nunca executar `supabase/tests/*.sql` no projeto remoto.
 
-O frontend de gerenciamento precisa da nova migration. Antes de publicar a interface, confirme que as funções novas existem no Supabase real e que o usuário foi incluído previamente em \`public.admin_users\`.
+O frontend de gerenciamento precisa da nova migration. Antes de publicar a interface, confirme que as funções novas existem no Supabase real e que o usuário foi incluído previamente em `public.admin_users`.
 
 ## Testes de aceite
 
-1. Entre no \`#admin\` como professor e confirme que a lista é visível, mas sem botões de mutação.
+1. Entre no `#admin` como professor e confirme que a lista é visível, mas sem botões de mutação.
 2. Entre como administrador e crie duas duplas de teste pelo fluxo normal do aluno. Confirme pesquisa por apelido, código e nome do integrante.
 3. Corrija grafia dos integrantes e apelido; verifique que o UUID e as credenciais anteriores permanecem, e o ranking recebe o novo apelido.
 4. Transfira uma dupla sem atividade/CTF de Poraquê para Pitiú. Confirme que a dupla reaparece nessa turma e que precisa entrar novamente com seu código e credencial.
@@ -35,8 +35,8 @@ O frontend de gerenciamento precisa da nova migration. Antes de publicar a inter
 6. Desative uma dupla e verifique que tanto um login novo quanto uma sessão previamente válida são recusados; reative e confira o acesso.
 7. Exclua uma dupla sem vínculos digitando a confirmação. Confirme ausência do registro e preservação do histórico das outras duplas.
 8. Em um navegador anônimo e com um usuário Auth não autorizado, confirme a impossibilidade de consultar o relatório privado e chamar as mutações.
-9. Confira \`audit_events\`, Realtime do ranking e resultados privados.
-10. Execute o script isolado \`npm run test:db\`, \`npm test\`, \`npm run lint\`, \`npm run typecheck\` e \`npm run build\`.
+9. Confira `audit_events`, Realtime do ranking e resultados privados.
+10. Execute o script isolado `npm run test:db`, `npm test`, `npm run lint`, `npm run typecheck` e `npm run build`.
 
 ## Limites desta versão
 
