@@ -410,7 +410,8 @@ function TeamFlow({
         </form>
       )}
       {!team ? (
-        <section className="card narrow">
+        <div className="student-auth-layout">
+        <section className="card student-team-card">
           <div className="tabs">
             <button
               aria-pressed={mode === "login"}
@@ -521,6 +522,12 @@ function TeamFlow({
             </button>
           </form>
         </section>
+        <aside className="student-boto-aside" aria-label="Arte oficial do projeto Hackers Pai D’égua">
+          <img src={brandAssets.pixel}
+            alt="Boto pixel art com a inscrição Hackers Pai D’égua"
+            width={1500} height={1500} />
+        </aside>
+        </div>
       ) : (
         <>
           <section className="card">
