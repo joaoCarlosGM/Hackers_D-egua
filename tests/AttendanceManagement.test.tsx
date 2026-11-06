@@ -56,6 +56,18 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("individual attendance", () => {
+  it("explains missing attendance RPC instead of incorrectly saying no lessons exist", async () => {
+    mock.rpc.mockRejectedValueOnce(new Error(
+      "Could not find the function public.list_attendance_lessons(p_class_id) in the schema cache",
+    ));
+    render(<AttendanceManagement classes={classes} role="admin" classFilter="c1" />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("migration 008");
+    expect(screen.getByText(/Não foi possível consultar as aulas/)).toBeTruthy();
+    expect(screen.queryByText(/Nenhuma aula cadastrada/)).toBeNull();
+    expect((screen.getByRole("button", { name: "+ Nova aula" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("provides a collapsible lesson with two students in the same duo", async () => {
     const user = userEvent.setup();
     render(<AttendanceManagement classes={classes} role="admin" classFilter="" />);

@@ -35,6 +35,14 @@ const statusLabels: Record<AttendanceStatus, string> = {
   justified: "Justificada",
 };
 const codes: AttendanceStatus[] = ["", "present", "absent", "justified"];
+function friendlyAttendanceError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/PGRST202|Could not find the function public\.(list_attendance_lessons|list_attendance_roster|create_attendance_lesson|save_attendance_marks)/i.test(message)) {
+    return "A Chamada ainda não está disponível no Supabase conectado. Verifique no SQL Editor se a migration 008 (202611050004_attendance.sql) foi aplicada integralmente. Se as funções já existirem, execute NOTIFY pgrst, 'reload schema'; e atualize a página.";
+  }
+  return message;
+}
+
 
 export default function AttendanceManagement({
   classes,
@@ -56,6 +64,7 @@ export default function AttendanceManagement({
   const [loading, setLoading] = useState(true);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
   const [notice, setNotice] = useState("");
 
   const loadLessons = useCallback(async () => {
@@ -69,12 +78,13 @@ export default function AttendanceManagement({
   useEffect(() => {
     let valid = true;
     setLoading(true);
+    setLoadFailed(false);
     setActiveId("");
     setRoster([]);
     setMarks({});
     setError("");
     void loadLessons()
-      .catch((err: Error) => { if (valid) setError(err.message); })
+      .catch((err: Error) => { if (valid) { setError(friendlyAttendanceError(err)); setLoadFailed(true); } })
       .finally(() => { if (valid) setLoading(false); });
     return () => { valid = false; };
   }, [loadLessons]);
@@ -97,7 +107,7 @@ export default function AttendanceManagement({
         ]),
       ));
     } catch (err) {
-      setError((err as Error).message);
+      setError(friendlyAttendanceError(err));
       setRoster([]);
     } finally {
       setRosterLoading(false);
@@ -122,7 +132,7 @@ export default function AttendanceManagement({
       await openLesson(id);
       setNotice("Aula cadastrada. Agora selecione cada aluno para registrar a chamada.");
     } catch (err) {
-      setError((err as Error).message);
+      setError(friendlyAttendanceError(err));
     } finally {
       setBusy(false);
     }
@@ -145,7 +155,7 @@ export default function AttendanceManagement({
       await openLesson(activeId);
       setNotice("Chamada registrada no Supabase. Cada presença permanece vinculada ao aluno e à aula.");
     } catch (err) {
-      setError((err as Error).message);
+      setError(friendlyAttendanceError(err));
     } finally {
       setBusy(false);
     }
@@ -184,12 +194,20 @@ export default function AttendanceManagement({
             <p>Registre a presença de cada integrante, mesmo quando participa em dupla. Somente administradores lançam ou corrigem presenças.</p>
           </div>
           {canEdit && (
-            <button type="button" className="primary" onClick={() => setCreating((v) => !v)}>
+            <button type="button" className="primary" disabled={loadFailed || busy} onClick={() => setCreating((v) => !v)}>
               {creating ? "Fechar cadastro" : "+ Nova aula"}
             </button>
           )}
         </div>
         {error && <p className="error" role="alert">{error}</p>}
+        {loadFailed && (
+          <p className="muted" role="status">
+            O cadastro de aulas está temporariamente indisponível. Consulte a{" "}
+            <a href="https://github.com/joaoCarlosGM/Hackers_D-egua/blob/main/supabase/migrations/202611050004_attendance.sql"
+              target="_blank" rel="noopener noreferrer">migration de Chamada no GitHub</a>.
+            Nenhuma presença foi alterada.
+          </p>
+        )}
         {notice && <p className="success" role="status">{notice}</p>}
         {creating && canEdit && (
           <form onSubmit={(e) => void createLesson(e)} className="attendance-create">
@@ -215,7 +233,9 @@ export default function AttendanceManagement({
           </form>
         )}
         <p className="muted">Use a seta ao lado de cada aula para visualizar a chamada. “Não marcado” não conta como falta.</p>
-        {loading ? <p>Carregando aulas…</p> : lessons.length === 0 ? (
+        {loading ? <p>Carregando aulas…</p> : loadFailed ? (
+          <p>Não foi possível consultar as aulas no Supabase.</p>
+        ) : lessons.length === 0 ? (
           <p>Nenhuma aula cadastrada {classFilter ? "nesta turma" : "ainda"}.</p>
         ) : (
           <div className="attendance-lessons">

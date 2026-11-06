@@ -428,11 +428,9 @@ export default function Admin({
             <button className="primary" disabled={busy}>Entrar</button>
             <p>Contas precisam de autorização explícita em admin_users.</p>
           </form>
-          <a className="admin-boto-shortcut" href="#ranking" aria-label="Boto do Hackers Pai D’égua — abrir ranking público CTF">
-            <span className="admin-boto-kicker">NOSSO MASCOTE</span>
-            <img src={brandAssets.mascot} alt="Boto de chapéu, mascote oficial do Hackers Pai D’égua" width={1728} height={1975} />
-            <strong>Pronto para o desafio?</strong>
-            <span>Veja o ranking oficial do CTF <span aria-hidden="true">↗</span></span>
+          <a className="admin-boto-shortcut" href="#ranking" aria-label="Boto pixel art Hackers Pai D’égua — abrir ranking público CTF">
+            <img src={brandAssets.pixel} alt="Boto pixel art com o nome Hackers Pai D’égua, arte original do projeto" width={1500} height={1500} />
+            <span>Ver ranking CTF <span aria-hidden="true">↗</span></span>
           </a>
         </div>
       ) : (

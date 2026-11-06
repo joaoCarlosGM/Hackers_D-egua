@@ -154,7 +154,7 @@ export default function TeamManagement({
                     });
                   }}>Emitir nova credencial</button>
                   <button disabled={busy || !team.can_delete}
-                    title={team.can_delete ? "Excluir cadastro sem histórico" : "Há notas ou pontos CTF: desative para preservar o histórico."}
+                    title={team.can_delete ? "Excluir cadastro sem histórico" : "Exclusão bloqueada por registros históricos; consulte os detalhes abaixo."}
                     onClick={() => {
                       setDeleting(team);
                       setEditing(null);
@@ -162,6 +162,18 @@ export default function TeamManagement({
                       setError("");
                     }}>Excluir dupla</button>
                 </div>
+              )}
+              {canManage && !team.can_delete && (
+                <details className="team-deletion-info">
+                  <summary>Por que não posso excluir esta dupla?</summary>
+                  <p>
+                    Há vínculos com avaliações, pontos CTF ou presenças.
+                    {team.attempt_count > 0 ? ` Participações em avaliação: ${team.attempt_count}.` : ""}
+                    {team.ctf_event_count > 0 ? ` Eventos CTF: ${team.ctf_event_count}.` : ""}
+                    {" "}Se for uma dupla de teste, use <strong>Desativar</strong> para bloquear o acesso.
+                    Excluir dados históricos definitivamente exige revisão separada no Supabase.
+                  </p>
+                </details>
               )}
             </article>
           ))}
@@ -208,7 +220,7 @@ export default function TeamManagement({
       {deleting && (
         <section className="card" aria-label="Confirmar exclusão de dupla">
           <h3>Excluir definitivamente {deleting.public_name}?</h3>
-          <p>Somente para duplas sem atividades ou pontos CTF. A operação será auditada.</p>
+          <p>Somente para duplas sem avaliações, pontos CTF ou presenças. A operação será auditada.</p>
           <form onSubmit={(e) => {
             e.preventDefault();
             if (confirmation !== "EXCLUIR " + deleting.access_code) return;

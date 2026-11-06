@@ -1,6 +1,7 @@
 // Vite's base keeps every original asset reachable on GitHub Pages subpaths.
 export const brandAssets = {
   mascot: `${import.meta.env.BASE_URL}assets/brand/mascote-chapeu-transparente.png`,
+  pixel: `${import.meta.env.BASE_URL}assets/brand/mascote-pixel-original.png`,
   complete: `${import.meta.env.BASE_URL}assets/brand/logo-completo-transparente.png`,
 };
 export default function Brand() {

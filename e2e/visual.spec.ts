@@ -400,6 +400,7 @@ for (const viewport of [
         page.getByRole("heading", { name: "Sua dupla, uma só vez." }),
       ).toBeVisible();
       await shot(page, `${viewport.name}-home`);
+      await expect(page.getByAltText(/Boto pixel art com a inscrição Hackers Pai D’égua/)).toHaveAttribute("src", /mascote-pixel-original\.png/);
       await page.getByRole("button", { name: "Cadastrar minha dupla" }).click();
       await expect(page.getByRole("option", { name: "Pitiú" })).toBeAttached();
       await shot(page, `${viewport.name}-registration`);
@@ -473,7 +474,8 @@ for (const viewport of [
       await expect(
         page.getByRole("heading", { name: "Acesso com Supabase Auth" }),
       ).toBeVisible();
-      await expect(page.getByRole("link", { name: /Boto do Hackers Pai D’égua/ })).toBeVisible();
+      await expect(page.getByRole("link", { name: /Boto pixel art Hackers Pai D’égua/ })).toBeVisible();
+      await expect(page.getByAltText(/Boto pixel art com o nome Hackers Pai D’égua/)).toHaveAttribute("src", /mascote-pixel-original\.png/);
       await shot(page, `${viewport.name}-admin-login`);
     });
     test("teacher dashboard and activity editor", async ({ page }) => {
