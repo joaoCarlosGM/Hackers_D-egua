@@ -128,7 +128,7 @@ async function fixtures(
   await page.addInitScript(
     ({ role, team }) => {
       sessionStorage.clear();
-      localStorage.clear();
+      // LocalStorage intentionally survives reloads within one isolated test context.
       if (role === "team")
         sessionStorage.setItem("hpde:team", JSON.stringify(team));
       if (role === "staff" || role === "admin") {
@@ -493,6 +493,33 @@ for (const viewport of [
       await page.locator(".admin-activity-item > summary").first().click();
       await expect(page.getByRole("button", { name: "Encerrar atividade" })).toBeVisible();
       await shot(page, `${viewport.name}-admin`);
+    });
+    test("unsaved assessment survives page reload and a return from another tab", async ({ page }) => {
+      await fixtures(page, "staff");
+      await page.goto("./#admin/atividades");
+      await page.locator(".admin-activity-editor > summary").click();
+      await page.getByLabel("Título").fill("Atividade ainda não salva");
+      await page.getByLabel("Descrição").fill("Copiando conteúdo de outra página");
+      await page.getByRole("checkbox", { name: "Poraquê" }).check();
+      await page.getByRole("textbox", { name: "Enunciado" }).fill("Qual comando exibe arquivos?");
+      await page.getByRole("textbox", { name: "Texto da alternativa 1 da questão 1" }).fill("ls");
+      await expect(page.getByText(/Alterações guardadas neste dispositivo/)).toBeVisible();
+      const secondTab = await page.context().newPage();
+      await secondTab.goto("about:blank");
+      await secondTab.bringToFront();
+      await page.bringToFront();
+      await expect(page.getByLabel("Título")).toHaveValue("Atividade ainda não salva");
+      await page.reload();
+      await expect(page.getByText("Rascunho local recuperado. Continue de onde parou.")).toBeVisible();
+      await expect(page.getByLabel("Título")).toHaveValue("Atividade ainda não salva");
+      await expect(page.getByLabel("Descrição")).toHaveValue("Copiando conteúdo de outra página");
+      await expect(page.getByRole("checkbox", { name: "Poraquê" })).toBeChecked();
+      await expect(page.getByRole("textbox", { name: "Enunciado" })).toHaveValue("Qual comando exibe arquivos?");
+      await expect(page.getByRole("textbox", { name: "Texto da alternativa 1 da questão 1" })).toHaveValue("ls");
+      await page.goto("./#admin/notas");
+      await page.goto("./#admin/atividades");
+      await expect(page.getByLabel("Título")).toHaveValue("Atividade ainda não salva");
+      await secondTab.close();
     });
     test("class management preserves official identity and requires explicit deletion confirmation", async ({
       page,
