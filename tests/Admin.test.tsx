@@ -57,6 +57,7 @@ const classes = [
   { id: "c2", name: "Pitiú", slug: "pitiu", status: "active" as const },
 ];
 beforeEach(() => {
+  window.localStorage.clear();
   mock.role = "teacher";
   mock.tables = {};
   mock.rpc.mockReset();
@@ -130,6 +131,53 @@ it("rechecks permissions after an existing Auth account is authorized externally
   await user.click(screen.getByRole("button", { name: "Verificar autorização novamente" }));
   await screen.findByRole("heading", { name: "Visão geral" });
   expect(screen.getByText(/Autorização reconhecida com sucesso/)).toBeTruthy();
+});
+
+it("restores unsaved activity inputs after leaving and returning, without clicking Save", async () => {
+  const user = userEvent.setup();
+  const page = render(<Admin classes={classes} section="atividades" />);
+  await screen.findByText("Cadastrar nova atividade");
+  await user.click(screen.getByText("Cadastrar nova atividade"));
+  await screen.findByRole("heading", { name: "Nova atividade" });
+  await user.type(screen.getByLabelText("Título"), "Questões ainda não salvas");
+  await user.type(screen.getByLabelText("Descrição"), "Trabalho de casa");
+  await user.click(screen.getByRole("checkbox", { name: "Poraquê" }));
+  await user.type(screen.getByLabelText("Cronômetro em minutos (vazio desativa)"), "15");
+  await user.click(screen.getByRole("checkbox", { name: "Permitir voltar às questões anteriores" }));
+  await user.type(screen.getByRole("textbox", { name: "Enunciado" }), "Qual comando lista arquivos?");
+  await user.type(screen.getByRole("textbox", { name: "Texto da alternativa 1 da questão 1" }), "ls");
+  expect(mock.rpc.mock.calls.some(([fn]) => fn === "save_assessment")).toBe(false);
+  expect(window.localStorage.getItem("hpde:assessment-draft:v1:teacher-1:new")).toContain("Questões ainda não salvas");
+
+  page.unmount(); // Simulate route navigation or a page destroyed by the browser.
+  render(<Admin classes={classes} section="atividades" />);
+  await screen.findByText("Rascunho local recuperado. Continue de onde parou.");
+  expect((screen.getByLabelText("Título") as HTMLInputElement).value).toBe("Questões ainda não salvas");
+  expect((screen.getByLabelText("Descrição") as HTMLTextAreaElement).value).toBe("Trabalho de casa");
+  expect((screen.getByRole("checkbox", { name: "Poraquê" }) as HTMLInputElement).checked).toBe(true);
+  expect((screen.getByLabelText("Cronômetro em minutos (vazio desativa)") as HTMLInputElement).value).toBe("15");
+  expect((screen.getByRole("checkbox", { name: "Permitir voltar às questões anteriores" }) as HTMLInputElement).checked).toBe(false);
+  expect((screen.getByRole("textbox", { name: "Enunciado" }) as HTMLTextAreaElement).value).toBe("Qual comando lista arquivos?");
+  expect((screen.getByRole("textbox", { name: "Texto da alternativa 1 da questão 1" }) as HTMLInputElement).value).toBe("ls");
+});
+
+it("keeps the local draft until the database confirms success", async () => {
+  const user = userEvent.setup();
+  const page = render(<Admin classes={classes} section="atividades" />);
+  await screen.findByText("Cadastrar nova atividade");
+  await user.click(screen.getByText("Cadastrar nova atividade"));
+  await user.type(screen.getByLabelText("Título"), "Atividade para recuperação");
+  await user.click(screen.getByRole("checkbox", { name: "Poraquê" }));
+  await user.type(screen.getByRole("textbox", { name: "Enunciado" }), "Questão de teste");
+  await user.type(screen.getByRole("textbox", { name: "Texto da alternativa 1 da questão 1" }), "Correta");
+  await user.type(screen.getByRole("textbox", { name: "Texto da alternativa 2 da questão 1" }), "Incorreta");
+  mock.rpc.mockRejectedValueOnce(new Error("Falha de rede"));
+  await user.click(screen.getByRole("button", { name: "Salvar rascunho" }));
+  await screen.findByText("Falha de rede");
+  expect(window.localStorage.getItem("hpde:assessment-draft:v1:teacher-1:new")).toContain("Atividade para recuperação");
+  page.unmount();
+  render(<Admin classes={classes} section="atividades" />);
+  await screen.findByText("Rascunho local recuperado. Continue de onde parou.");
 });
 
 it("lets a teacher create, preview, publish and start a quiz with a real activity link for QR generation", async () => {
