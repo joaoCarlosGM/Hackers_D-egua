@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
 import Results from "./Results";
 import ClassManagement from "./ClassManagement";
@@ -8,6 +8,14 @@ import AdminAccessManagement from "./AdminAccessManagement";
 import AttendanceManagement from "./AttendanceManagement";
 import { brandAssets } from "./Brand";
 import "./admin-attendance.css";
+import {
+  assessmentDraftKey,
+  blankAssessmentFields,
+  clearAssessmentDraft,
+  readAssessmentDraft,
+  writeAssessmentDraft,
+  type AssessmentFields,
+} from "./assessmentDraft";
 import ActivityPreview from "./ActivityPreview";
 import { rpc, supabase, type Class } from "./api";
 import {
@@ -132,6 +140,115 @@ export default function Admin({
   const [data, setData] = useState<Data>(empty);
   const [editing, setEditing] = useState<Act | null>(null);
   const [questions, setQuestions] = useState<DraftQuestion[]>([newQuestion()]);
+  const [draftFields, setDraftFields] = useState<AssessmentFields>(blankAssessmentFields);
+  const fieldsRef = useRef(draftFields);
+  const questionsRef = useRef(questions);
+  const activeDraftKeyRef = useRef("");
+  const checkedIdentityRef = useRef<string | null | undefined>(undefined);
+  const [draftRecovered, setDraftRecovered] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<"saved" | "unavailable" | "idle">("idle");
+  const draftKey = identity ? assessmentDraftKey(identity, editing?.id) : "";
+
+  function persistLocal(nextFields: AssessmentFields, nextQuestions: DraftQuestion[]) {
+    if (!draftKey || activeDraftKeyRef.current !== draftKey) return;
+    setDraftStatus(writeAssessmentDraft(draftKey, nextFields, nextQuestions) ? "saved" : "unavailable");
+  }
+
+  function changeFields(patch: Partial<AssessmentFields>) {
+    const next = { ...fieldsRef.current, ...patch };
+    fieldsRef.current = next;
+    setDraftFields(next);
+    persistLocal(next, questionsRef.current);
+  }
+
+  function updateQuestions(next: DraftQuestion[]) {
+    questionsRef.current = next;
+    setQuestions(next);
+    persistLocal(fieldsRef.current, next);
+  }
+
+  function initialEditorContent(activity: Act | null) {
+    if (!activity) return { fields: blankAssessmentFields(), questions: [newQuestion()] };
+    const session = data.sessions.find((s) => s.activity_id === activity.id);
+    const activityQuestions = data.questions
+      .filter((q) => q.activity_id === activity.id)
+      .sort((a, b) => a.position - b.position)
+      .map((q) => ({
+        prompt: q.prompt, explanation: q.explanation, kind: q.kind,
+        points: q.points,
+        options: data.options
+          .filter((o) => o.question_id === q.id)
+          .sort((a, b) => a.position - b.position)
+          .map((o) => ({ label: o.label, is_correct: o.is_correct })),
+      }));
+    return {
+      fields: {
+        title: activity.title,
+        description: activity.description ?? "",
+        classIds: session?.class_ids ?? [],
+        timeLimit: session?.time_limit_seconds ? String(session.time_limit_seconds / 60) : "",
+        backtracking: session?.allow_backtracking ?? true,
+        release: session?.release_results ?? false,
+      },
+      questions: activityQuestions.length ? activityQuestions : [newQuestion()],
+    };
+  }
+
+  // Restoration must precede writes. The identity and activity are part of
+  // the storage key, so switching roles or activities cannot mix drafts.
+  useEffect(() => {
+    if (!identity) {
+      activeDraftKeyRef.current = "";
+      return;
+    }
+    const key = assessmentDraftKey(identity, editing?.id);
+    activeDraftKeyRef.current = "";
+    const original = initialEditorContent(editing);
+    const cached = readAssessmentDraft(key);
+    const fields = cached?.fields ?? original.fields;
+    const restoredQuestions = cached?.questions ?? original.questions;
+    fieldsRef.current = fields;
+    questionsRef.current = restoredQuestions;
+    setDraftFields(fields);
+    setQuestions(restoredQuestions);
+    setDraftRecovered(!!cached);
+    setDraftStatus(cached ? "saved" : "idle");
+    if (cached || editing) setEditorExpanded(true);
+    activeDraftKeyRef.current = key;
+    // Capture base data only when switching account or editing a different
+    // activity; periodic assessment refreshes must not erase current typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identity, editing?.id]);
+
+  // Flush again when the browser backgrounds the tab or closes unexpectedly.
+  useEffect(() => {
+    if (!draftKey) return;
+    const flush = () => {
+      if (activeDraftKeyRef.current === draftKey)
+        writeAssessmentDraft(draftKey, fieldsRef.current, questionsRef.current);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [draftKey]);
+
+  function discardLocalDraft() {
+    if (!window.confirm("Descartar as alterações locais não salvas desta atividade?")) return;
+    if (draftKey) clearAssessmentDraft(draftKey);
+    const original = initialEditorContent(editing);
+    fieldsRef.current = original.fields;
+    questionsRef.current = original.questions;
+    setDraftFields(original.fields);
+    setQuestions(original.questions);
+    setDraftRecovered(false);
+    setDraftStatus("idle");
+  }
   const [qr, setQr] = useState<{
     url: string;
     image: string;
@@ -196,8 +313,11 @@ export default function Admin({
     let alive = true;
     const check = async (id?: string) => {
       if (!alive) return;
+      const nextIdentity = id ?? null;
+      if (checkedIdentityRef.current === nextIdentity) return;
+      checkedIdentityRef.current = nextIdentity;
       setChecking(true);
-      setIdentity(id ?? null);
+      setIdentity(nextIdentity);
       setRole("");
       setData(empty);
       setCredential(null);
@@ -222,7 +342,10 @@ export default function Admin({
       .getSession()
       .then(({ data }) => check(data.session?.user.id));
     const { data: listener } = supabase!.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        // On tab focus Supabase may refresh the token. A token refresh is not
+        // a logout or change of account; never unmount an unsaved editor.
+        if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
         // Defer Supabase queries outside the Auth callback lock.
         setTimeout(() => {
           void check(session?.user.id);
@@ -301,40 +424,31 @@ export default function Admin({
       setNotice(
         "Atividade salva como rascunho. Publique e inicie para receber as duplas.",
       );
+      if (draftKey) clearAssessmentDraft(draftKey);
+      const freshFields = blankAssessmentFields();
+      const freshQuestions = [newQuestion()];
+      fieldsRef.current = freshFields;
+      questionsRef.current = freshQuestions;
+      setDraftFields(freshFields);
+      setQuestions(freshQuestions);
+      setDraftRecovered(false);
+      setDraftStatus("idle");
       setEditing(null);
-      setQuestions([newQuestion()]);
       setEditorExpanded(false);
       form.reset();
       await load();
     });
   }
-  function edit(a: Act, s: Session) {
+  function edit(a: Act, _s: Session) {
+    // Keep current unsaved fields in their local key. The edit-specific key
+    // is restored by the effect, or initialized from the saved activity.
     setEditing(a);
     setEditorExpanded(true);
-    setQuestions(
-      data.questions
-        .filter((q) => q.activity_id === a.id)
-        .sort((a, b) => a.position - b.position)
-        .map((q) => ({
-          prompt: q.prompt,
-          explanation: q.explanation,
-          kind: q.kind,
-          points: q.points,
-          options: data.options
-            .filter((o) => o.question_id === q.id)
-            .sort((a, b) => a.position - b.position)
-            .map((o) => ({ label: o.label, is_correct: o.is_correct })),
-        })),
-    );
-    setNotice(
-      `Editando ${a.title}. Turmas: ${classes
-        .filter((c) => s.class_ids.includes(c.id))
-        .map((c) => c.name)
-        .join(", ")}.`,
-    );
+    setPreview(false);
+    setNotice(`Editando ${a.title}. O conteúdo digitado é salvo automaticamente neste navegador.`);
   }
   function changeQuestion(i: number, next: DraftQuestion) {
-    setQuestions(questions.map((q, j) => (i === j ? next : q)));
+    updateQuestions(questions.map((q, j) => (i === j ? next : q)));
   }
   function exportGrades() {
     const records = visibleAttempts.map((a) => {
