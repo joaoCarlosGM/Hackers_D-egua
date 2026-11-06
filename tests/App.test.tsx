@@ -60,12 +60,16 @@ vi.mock("../src/api", () => ({
       };
       return query;
     },
-    channel: () => ({
-      on: (_event: string, _filter: unknown, callback: () => void) => {
-        mock.changed = callback;
-        return { subscribe: () => ({}) };
-      },
-    }),
+    channel: () => {
+      const channel = {
+        on: (_event: string, _filter: unknown, callback: () => void) => {
+          mock.changed = callback;
+          return channel;
+        },
+        subscribe: () => ({}),
+      };
+      return channel;
+    },
     removeChannel: vi.fn(),
   },
 }));
