@@ -14,6 +14,7 @@ import { download } from "./utils";
 import Admin from "./Admin";
 import Quiz from "./Quiz";
 import Brand, { brandAssets } from "./Brand";
+import { rankTeams } from "./ranking";
 
 export default function App() {
   const [route, setRoute] = useState(location.hash.slice(1));
@@ -129,7 +130,8 @@ function Leaderboard({ classes }: { classes: Class[] }) {
     const load = async () => {
       const { data, error } = await supabase!
         .from("public_leaderboard")
-        .select("team_id,class_id,public_name,points,solved_count")
+        .select("team_id,class_id,public_name,points,solved_count,assessment_band")
+        .eq("is_visible", true)
         .order("points", { ascending: false })
         .order("solved_count", { ascending: false })
         .order("public_name");
@@ -145,6 +147,11 @@ function Leaderboard({ classes }: { classes: Class[] }) {
     void load();
     const channel = supabase!
       .channel("public-ranking")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "ranking_refresh" },
+        () => void load(),
+      )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "public_leaderboard" },
@@ -164,11 +171,11 @@ function Leaderboard({ classes }: { classes: Class[] }) {
       void supabase!.removeChannel(channel);
     };
   }, []);
-  const visible = rows.filter((r) => !filter || r.class_id === filter);
+  const visible = rankTeams(rows).filter((r) => !filter || r.class_id === filter);
   return (
     <section
       className={`ranking-board${projector ? " projector" : ""}`}
-      aria-label="Ranking público CTF"
+      aria-label="Ranking público CTF e avaliações"
     >
       <img
         className="ranking-logo"
@@ -177,8 +184,9 @@ function Leaderboard({ classes }: { classes: Class[] }) {
       />
       <h1>HACKERS PAI D’ÉGUA</h1>
       <p className="ranking-subtitle">
-        RANKING OFICIAL DO CTF · Projeto de Extensão
+        RANKING GERAL · CTF E AVALIAÇÕES · Projeto de Extensão
       </p>
+      <p className="muted ranking-weights">CTF 80% · Avaliações 20% · 1.000 pontos possíveis</p>
       <p className="muted updated-at">
         {updatedAt
           ? `Última atualização: ${updatedAt.toLocaleTimeString("pt-BR")}`
@@ -209,7 +217,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
           <article className={`card place-${i + 1}`} key={r.team_id}>
             <div className="medal">{["🥇", "🥈", "🥉"][i]}</div>
             <h2>{r.public_name}</h2>
-            <strong>{r.points} pontos</strong>
+            <strong>{r.rankingScore} pontos</strong>
           </article>
         ))}
       </div>
@@ -225,7 +233,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
                 </th>
                 <th>Dupla</th>
                 <th>Resolvidos</th>
-                <th>Pontos</th>
+                <th>Pontuação geral</th>
               </tr>
             </thead>
             <tbody>
@@ -239,7 +247,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
                     </small>
                   </td>
                   <td>{r.solved_count}</td>
-                  <td className="score">{r.points}</td>
+                  <td className="score">{r.rankingScore}</td>
                 </tr>
               ))}
             </tbody>

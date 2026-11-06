@@ -17,6 +17,7 @@ const mock = vi.hoisted(() => ({
     public_name: string;
     points: number;
     solved_count: number;
+    assessment_band: number;
   }[],
   changed: undefined as undefined | (() => void),
 }));
@@ -27,6 +28,7 @@ vi.mock("../src/api", () => ({
     from: (name: string) => {
       const query = {
         select: () => query,
+        eq: () => query,
         order: () => query,
         then: (resolve: (value: unknown) => void) =>
           Promise.resolve({
@@ -58,12 +60,16 @@ vi.mock("../src/api", () => ({
       };
       return query;
     },
-    channel: () => ({
-      on: (_event: string, _filter: unknown, callback: () => void) => {
-        mock.changed = callback;
-        return { subscribe: () => ({}) };
-      },
-    }),
+    channel: () => {
+      const channel = {
+        on: (_event: string, _filter: unknown, callback: () => void) => {
+          mock.changed = callback;
+          return channel;
+        },
+        subscribe: () => ({}),
+      };
+      return channel;
+    },
     removeChannel: vi.fn(),
   },
 }));
@@ -227,6 +233,7 @@ describe("permanent team workflow", () => {
         public_name: "Os Hackers",
         points: 0,
         solved_count: 0,
+        assessment_band: 0,
       },
     ];
     await act(async () => {
@@ -240,7 +247,7 @@ describe("permanent team workflow", () => {
     await act(async () => {
       mock.changed?.();
     });
-    await screen.findByText("10 pontos");
+    await screen.findByText("800 pontos");
     fireEvent.change(screen.getByLabelText("Turma"), {
       target: { value: "c2" },
     });
