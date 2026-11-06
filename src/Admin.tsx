@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
 import Results from "./Results";
 import ClassManagement from "./ClassManagement";
@@ -8,6 +8,14 @@ import AdminAccessManagement from "./AdminAccessManagement";
 import AttendanceManagement from "./AttendanceManagement";
 import { brandAssets } from "./Brand";
 import "./admin-attendance.css";
+import {
+  assessmentDraftKey,
+  blankAssessmentFields,
+  clearAssessmentDraft,
+  readAssessmentDraft,
+  writeAssessmentDraft,
+  type AssessmentFields,
+} from "./assessmentDraft";
 import ActivityPreview from "./ActivityPreview";
 import { rpc, supabase, type Class } from "./api";
 import {
@@ -132,6 +140,114 @@ export default function Admin({
   const [data, setData] = useState<Data>(empty);
   const [editing, setEditing] = useState<Act | null>(null);
   const [questions, setQuestions] = useState<DraftQuestion[]>([newQuestion()]);
+  const [draftFields, setDraftFields] = useState<AssessmentFields>(blankAssessmentFields);
+  const fieldsRef = useRef(draftFields);
+  const questionsRef = useRef(questions);
+  const activeDraftKeyRef = useRef("");
+  const checkedIdentityRef = useRef<string | null | undefined>(undefined);
+  const [draftRecovered, setDraftRecovered] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<"saved" | "unavailable" | "idle">("idle");
+  const draftKey = identity ? assessmentDraftKey(identity, editing?.id) : "";
+
+  function persistLocal(nextFields: AssessmentFields, nextQuestions: DraftQuestion[]) {
+    if (!draftKey || activeDraftKeyRef.current !== draftKey) return;
+    setDraftStatus(writeAssessmentDraft(draftKey, nextFields, nextQuestions) ? "saved" : "unavailable");
+  }
+
+  function changeFields(patch: Partial<AssessmentFields>) {
+    const next = { ...fieldsRef.current, ...patch };
+    fieldsRef.current = next;
+    setDraftFields(next);
+    persistLocal(next, questionsRef.current);
+  }
+
+  function updateQuestions(next: DraftQuestion[]) {
+    questionsRef.current = next;
+    setQuestions(next);
+    persistLocal(fieldsRef.current, next);
+  }
+
+  function initialEditorContent(activity: Act | null) {
+    if (!activity) return { fields: blankAssessmentFields(), questions: [newQuestion()] };
+    const session = data.sessions.find((s) => s.activity_id === activity.id);
+    const activityQuestions = data.questions
+      .filter((q) => q.activity_id === activity.id)
+      .sort((a, b) => a.position - b.position)
+      .map((q) => ({
+        prompt: q.prompt, explanation: q.explanation, kind: q.kind,
+        points: q.points,
+        options: data.options
+          .filter((o) => o.question_id === q.id)
+          .sort((a, b) => a.position - b.position)
+          .map((o) => ({ label: o.label, is_correct: o.is_correct })),
+      }));
+    return {
+      fields: {
+        title: activity.title,
+        description: activity.description ?? "",
+        classIds: session?.class_ids ?? [],
+        timeLimit: session?.time_limit_seconds ? String(session.time_limit_seconds / 60) : "",
+        backtracking: session?.allow_backtracking ?? true,
+        release: session?.release_results ?? false,
+      },
+      questions: activityQuestions.length ? activityQuestions : [newQuestion()],
+    };
+  }
+
+  // Restoration must precede writes. The identity and activity are part of
+  // the storage key, so switching roles or activities cannot mix drafts.
+  useEffect(() => {
+    if (!identity) {
+      activeDraftKeyRef.current = "";
+      return;
+    }
+    const key = assessmentDraftKey(identity, editing?.id);
+    activeDraftKeyRef.current = "";
+    const original = initialEditorContent(editing);
+    const cached = readAssessmentDraft(key);
+    const fields = cached?.fields ?? original.fields;
+    const restoredQuestions = cached?.questions ?? original.questions;
+    fieldsRef.current = fields;
+    questionsRef.current = restoredQuestions;
+    setDraftFields(fields);
+    setQuestions(restoredQuestions);
+    setDraftRecovered(!!cached);
+    setDraftStatus(cached ? "saved" : "idle");
+    if (cached || editing) setEditorExpanded(true);
+    activeDraftKeyRef.current = key;
+    // Capture base data only when switching account or editing a different
+    // activity; periodic assessment refreshes must not erase current typing.
+  }, [identity, editing?.id]);
+
+  // Flush again when the browser backgrounds the tab or closes unexpectedly.
+  useEffect(() => {
+    if (!draftKey) return;
+    const flush = () => {
+      if (activeDraftKeyRef.current === draftKey)
+        writeAssessmentDraft(draftKey, fieldsRef.current, questionsRef.current);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [draftKey]);
+
+  function discardLocalDraft() {
+    if (!window.confirm("Descartar as alterações locais não salvas desta atividade?")) return;
+    if (draftKey) clearAssessmentDraft(draftKey);
+    const original = initialEditorContent(editing);
+    fieldsRef.current = original.fields;
+    questionsRef.current = original.questions;
+    setDraftFields(original.fields);
+    setQuestions(original.questions);
+    setDraftRecovered(false);
+    setDraftStatus("idle");
+  }
   const [qr, setQr] = useState<{
     url: string;
     image: string;
@@ -196,8 +312,11 @@ export default function Admin({
     let alive = true;
     const check = async (id?: string) => {
       if (!alive) return;
+      const nextIdentity = id ?? null;
+      if (checkedIdentityRef.current === nextIdentity) return;
+      checkedIdentityRef.current = nextIdentity;
       setChecking(true);
-      setIdentity(id ?? null);
+      setIdentity(nextIdentity);
       setRole("");
       setData(empty);
       setCredential(null);
@@ -222,7 +341,10 @@ export default function Admin({
       .getSession()
       .then(({ data }) => check(data.session?.user.id));
     const { data: listener } = supabase!.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        // On tab focus Supabase may refresh the token. A token refresh is not
+        // a logout or change of account; never unmount an unsaved editor.
+        if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
         // Defer Supabase queries outside the Auth callback lock.
         setTimeout(() => {
           void check(session?.user.id);
@@ -301,40 +423,31 @@ export default function Admin({
       setNotice(
         "Atividade salva como rascunho. Publique e inicie para receber as duplas.",
       );
+      if (draftKey) clearAssessmentDraft(draftKey);
+      const freshFields = blankAssessmentFields();
+      const freshQuestions = [newQuestion()];
+      fieldsRef.current = freshFields;
+      questionsRef.current = freshQuestions;
+      setDraftFields(freshFields);
+      setQuestions(freshQuestions);
+      setDraftRecovered(false);
+      setDraftStatus("idle");
       setEditing(null);
-      setQuestions([newQuestion()]);
       setEditorExpanded(false);
       form.reset();
       await load();
     });
   }
-  function edit(a: Act, s: Session) {
+  function edit(a: Act) {
+    // Keep current unsaved fields in their local key. The edit-specific key
+    // is restored by the effect, or initialized from the saved activity.
     setEditing(a);
     setEditorExpanded(true);
-    setQuestions(
-      data.questions
-        .filter((q) => q.activity_id === a.id)
-        .sort((a, b) => a.position - b.position)
-        .map((q) => ({
-          prompt: q.prompt,
-          explanation: q.explanation,
-          kind: q.kind,
-          points: q.points,
-          options: data.options
-            .filter((o) => o.question_id === q.id)
-            .sort((a, b) => a.position - b.position)
-            .map((o) => ({ label: o.label, is_correct: o.is_correct })),
-        })),
-    );
-    setNotice(
-      `Editando ${a.title}. Turmas: ${classes
-        .filter((c) => s.class_ids.includes(c.id))
-        .map((c) => c.name)
-        .join(", ")}.`,
-    );
+    setPreview(false);
+    setNotice(`Editando ${a.title}. O conteúdo digitado é salvo automaticamente neste navegador.`);
   }
   function changeQuestion(i: number, next: DraftQuestion) {
-    setQuestions(questions.map((q, j) => (i === j ? next : q)));
+    updateQuestions(questions.map((q, j) => (i === j ? next : q)));
   }
   function exportGrades() {
     const records = visibleAttempts.map((a) => {
@@ -566,6 +679,20 @@ export default function Admin({
                 <div className="admin-accordion-body">
               <form key={editing?.id ?? "new"} onSubmit={save} className="card">
                 <h2>{editing ? "Editar rascunho" : "Nova atividade"}</h2>
+                <div className="assessment-autosave-note" role="status">
+                  <strong>Salvamento automático no navegador</strong>
+                  <span>
+                    {draftStatus === "unavailable"
+                      ? "Não foi possível guardar as alterações neste dispositivo. Salve o rascunho antes de sair."
+                      : draftRecovered
+                        ? "Rascunho local recuperado. Continue de onde parou."
+                        : draftStatus === "saved"
+                          ? "Alterações guardadas neste dispositivo, mesmo sem clicar em Salvar rascunho."
+                          : "O texto será guardado automaticamente enquanto você digita."}
+                  </span>
+                  <button type="button" onClick={discardLocalDraft} disabled={busy}>Descartar alterações locais</button>
+                  <small>Armazenamento local, não substitui o Supabase. Evite deixar rascunhos em computadores compartilhados.</small>
+                </div>
                 <label>
                   Título
                   <input
@@ -573,7 +700,8 @@ export default function Admin({
                     minLength={3}
                     maxLength={160}
                     name="title"
-                    defaultValue={editing?.title}
+                    value={draftFields.title}
+                    onChange={(e) => changeFields({ title: e.target.value })}
                   />
                 </label>
                 <label>
@@ -581,7 +709,8 @@ export default function Admin({
                   <textarea
                     maxLength={5000}
                     name="description"
-                    defaultValue={editing?.description}
+                    value={draftFields.description}
+                    onChange={(e) => changeFields({ description: e.target.value })}
                   />
                 </label>
                 <fieldset>
@@ -603,13 +732,12 @@ export default function Admin({
                           type="checkbox"
                           name="class"
                           value={c.id}
-                          defaultChecked={
-                            editing
-                              ? data.sessions
-                                  .find((s) => s.activity_id === editing.id)
-                                  ?.class_ids.includes(c.id)
-                              : false
-                          }
+                          checked={draftFields.classIds.includes(c.id)}
+                          onChange={(e) => changeFields({
+                            classIds: e.target.checked
+                              ? [...new Set([...fieldsRef.current.classIds, c.id])]
+                              : fieldsRef.current.classIds.filter((id) => id !== c.id),
+                          })}
                         />
                         {c.name}
                       </label>
@@ -624,26 +752,16 @@ export default function Admin({
                       min={0.5}
                       max={240}
                       step={0.5}
-                      defaultValue={
-                        editing
-                          ? (data.sessions.find(
-                              (s) => s.activity_id === editing.id,
-                            )?.time_limit_seconds ?? 0) / 60 || ""
-                          : ""
-                      }
+                      value={draftFields.timeLimit}
+                      onChange={(e) => changeFields({ timeLimit: e.target.value })}
                     />
                   </label>
                   <label className="check">
                     <input
                       type="checkbox"
                       name="backtracking"
-                      defaultChecked={
-                        editing
-                          ? data.sessions.find(
-                              (s) => s.activity_id === editing.id,
-                            )?.allow_backtracking
-                          : true
-                      }
+                      checked={draftFields.backtracking}
+                      onChange={(e) => changeFields({ backtracking: e.target.checked })}
                     />
                     Permitir voltar às questões anteriores
                   </label>
@@ -652,13 +770,8 @@ export default function Admin({
                   <input
                     type="checkbox"
                     name="release"
-                    defaultChecked={
-                      editing
-                        ? data.sessions.find(
-                            (s) => s.activity_id === editing.id,
-                          )?.release_results
-                        : false
-                    }
+                    checked={draftFields.release}
+                    onChange={(e) => changeFields({ release: e.target.checked })}
                   />
                   Liberar a própria nota para a dupla após o encerramento
                 </label>
@@ -792,7 +905,7 @@ export default function Admin({
                           onClick={() => {
                             const next = [...questions];
                             [next[i - 1], next[i]] = [next[i], next[i - 1]];
-                            setQuestions(next);
+                            updateQuestions(next);
                           }}
                         >
                           Mover questão para cima
@@ -804,7 +917,7 @@ export default function Admin({
                           onClick={() => {
                             const next = [...questions];
                             [next[i + 1], next[i]] = [next[i], next[i + 1]];
-                            setQuestions(next);
+                            updateQuestions(next);
                           }}
                         >
                           Mover questão para baixo
@@ -827,7 +940,7 @@ export default function Admin({
                         <button
                           type="button"
                           onClick={() =>
-                            setQuestions(questions.filter((_, j) => i !== j))
+                            updateQuestions(questions.filter((_, j) => i !== j))
                           }
                         >
                           Remover questão
@@ -840,7 +953,7 @@ export default function Admin({
                   <button
                     type="button"
                     disabled={questions.length >= 100}
-                    onClick={() => setQuestions([...questions, newQuestion()])}
+                    onClick={() => updateQuestions([...questions, newQuestion()])}
                   >
                     Adicionar questão
                   </button>
@@ -855,7 +968,7 @@ export default function Admin({
                       type="button"
                       onClick={() => {
                         setEditing(null);
-                        setQuestions([newQuestion()]);
+                        
                       }}
                     >
                       Cancelar edição
@@ -904,7 +1017,7 @@ export default function Admin({
                       </p>
                       <div className="toolbar">
                         {s.status === "draft" && (
-                          <button disabled={busy} onClick={() => edit(a, s)}>
+                          <button disabled={busy} onClick={() => edit(a)}>
                             Editar rascunho
                           </button>
                         )}

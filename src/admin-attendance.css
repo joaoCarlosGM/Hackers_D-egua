@@ -192,3 +192,20 @@
   .student-boto-aside img {max-width: 200px;}
   .admin-boto-shortcut img {max-height: 230px;}
 }
+
+/* Automatic local recovery for unsaved activities. */
+.assessment-autosave-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem 1rem;
+  padding: .9rem;
+  margin: 0 0 1.1rem;
+  border: 1px solid #6c5385;
+  border-left: 4px solid var(--green);
+  background: #29293a;
+}
+.assessment-autosave-note strong { color: var(--green); }
+.assessment-autosave-note > span { flex: 1 1 280px; font-size: .81rem; }
+.assessment-autosave-note button { flex: 0 0 auto; font-size: .75rem; }
+.assessment-autosave-note small { display: block; width: 100%; color: var(--muted); font-size: .73rem; }
