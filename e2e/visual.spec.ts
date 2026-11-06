@@ -21,6 +21,8 @@ const ranking = names.map((public_name, i) => ({
   public_name,
   points: [950, 800, 650, 450, 300][i],
   solved_count: [7, 6, 5, 4, 2][i],
+  assessment_band: [80, 60, 90, 50, 70][i],
+  is_visible: true,
 }));
 const team = {
   team_id: "t0",
