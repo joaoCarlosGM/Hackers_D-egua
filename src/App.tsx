@@ -130,6 +130,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
       const { data, error } = await supabase!
         .from("public_leaderboard")
         .select("team_id,class_id,public_name,points,solved_count")
+        .eq("is_visible", true)
         .order("points", { ascending: false })
         .order("solved_count", { ascending: false })
         .order("public_name");
@@ -145,6 +146,11 @@ function Leaderboard({ classes }: { classes: Class[] }) {
     void load();
     const channel = supabase!
       .channel("public-ranking")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "ranking_refresh" },
+        () => void load(),
+      )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "public_leaderboard" },
