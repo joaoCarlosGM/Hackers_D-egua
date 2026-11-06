@@ -75,8 +75,11 @@ export type Rank = {
   team_id: string;
   class_id: string;
   public_name: string;
+  /** Existing raw CTF points, never a pedagogical grade. */
   points: number;
   solved_count: number;
+  /** Rounded private assessment aggregate, without per-activity grades. */
+  assessment_band: number;
 };
 export type History = {
   team: Omit<Team, "token">;
