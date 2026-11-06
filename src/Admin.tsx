@@ -680,6 +680,20 @@ export default function Admin({
                 <div className="admin-accordion-body">
               <form key={editing?.id ?? "new"} onSubmit={save} className="card">
                 <h2>{editing ? "Editar rascunho" : "Nova atividade"}</h2>
+                <div className="assessment-autosave-note" role="status">
+                  <strong>Salvamento automático no navegador</strong>
+                  <span>
+                    {draftStatus === "unavailable"
+                      ? "Não foi possível guardar as alterações neste dispositivo. Salve o rascunho antes de sair."
+                      : draftRecovered
+                        ? "Rascunho local recuperado. Continue de onde parou."
+                        : draftStatus === "saved"
+                          ? "Alterações guardadas neste dispositivo, mesmo sem clicar em Salvar rascunho."
+                          : "O texto será guardado automaticamente enquanto você digita."}
+                  </span>
+                  <button type="button" onClick={discardLocalDraft} disabled={busy}>Descartar alterações locais</button>
+                  <small>Armazenamento local, não substitui o Supabase. Evite deixar rascunhos em computadores compartilhados.</small>
+                </div>
                 <label>
                   Título
                   <input
@@ -687,7 +701,8 @@ export default function Admin({
                     minLength={3}
                     maxLength={160}
                     name="title"
-                    defaultValue={editing?.title}
+                    value={draftFields.title}
+                    onChange={(e) => changeFields({ title: e.target.value })}
                   />
                 </label>
                 <label>
@@ -695,7 +710,8 @@ export default function Admin({
                   <textarea
                     maxLength={5000}
                     name="description"
-                    defaultValue={editing?.description}
+                    value={draftFields.description}
+                    onChange={(e) => changeFields({ description: e.target.value })}
                   />
                 </label>
                 <fieldset>
@@ -717,13 +733,12 @@ export default function Admin({
                           type="checkbox"
                           name="class"
                           value={c.id}
-                          defaultChecked={
-                            editing
-                              ? data.sessions
-                                  .find((s) => s.activity_id === editing.id)
-                                  ?.class_ids.includes(c.id)
-                              : false
-                          }
+                          checked={draftFields.classIds.includes(c.id)}
+                          onChange={(e) => changeFields({
+                            classIds: e.target.checked
+                              ? [...new Set([...fieldsRef.current.classIds, c.id])]
+                              : fieldsRef.current.classIds.filter((id) => id !== c.id),
+                          })}
                         />
                         {c.name}
                       </label>
@@ -738,26 +753,16 @@ export default function Admin({
                       min={0.5}
                       max={240}
                       step={0.5}
-                      defaultValue={
-                        editing
-                          ? (data.sessions.find(
-                              (s) => s.activity_id === editing.id,
-                            )?.time_limit_seconds ?? 0) / 60 || ""
-                          : ""
-                      }
+                      value={draftFields.timeLimit}
+                      onChange={(e) => changeFields({ timeLimit: e.target.value })}
                     />
                   </label>
                   <label className="check">
                     <input
                       type="checkbox"
                       name="backtracking"
-                      defaultChecked={
-                        editing
-                          ? data.sessions.find(
-                              (s) => s.activity_id === editing.id,
-                            )?.allow_backtracking
-                          : true
-                      }
+                      checked={draftFields.backtracking}
+                      onChange={(e) => changeFields({ backtracking: e.target.checked })}
                     />
                     Permitir voltar às questões anteriores
                   </label>
@@ -766,13 +771,8 @@ export default function Admin({
                   <input
                     type="checkbox"
                     name="release"
-                    defaultChecked={
-                      editing
-                        ? data.sessions.find(
-                            (s) => s.activity_id === editing.id,
-                          )?.release_results
-                        : false
-                    }
+                    checked={draftFields.release}
+                    onChange={(e) => changeFields({ release: e.target.checked })}
                   />
                   Liberar a própria nota para a dupla após o encerramento
                 </label>
@@ -906,7 +906,7 @@ export default function Admin({
                           onClick={() => {
                             const next = [...questions];
                             [next[i - 1], next[i]] = [next[i], next[i - 1]];
-                            setQuestions(next);
+                            updateQuestions(next);
                           }}
                         >
                           Mover questão para cima
@@ -918,7 +918,7 @@ export default function Admin({
                           onClick={() => {
                             const next = [...questions];
                             [next[i + 1], next[i]] = [next[i], next[i + 1]];
-                            setQuestions(next);
+                            updateQuestions(next);
                           }}
                         >
                           Mover questão para baixo
@@ -941,7 +941,7 @@ export default function Admin({
                         <button
                           type="button"
                           onClick={() =>
-                            setQuestions(questions.filter((_, j) => i !== j))
+                            updateQuestions(questions.filter((_, j) => i !== j))
                           }
                         >
                           Remover questão
@@ -954,7 +954,7 @@ export default function Admin({
                   <button
                     type="button"
                     disabled={questions.length >= 100}
-                    onClick={() => setQuestions([...questions, newQuestion()])}
+                    onClick={() => updateQuestions([...questions, newQuestion()])}
                   >
                     Adicionar questão
                   </button>
@@ -969,7 +969,7 @@ export default function Admin({
                       type="button"
                       onClick={() => {
                         setEditing(null);
-                        setQuestions([newQuestion()]);
+                        
                       }}
                     >
                       Cancelar edição
