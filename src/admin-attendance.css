@@ -137,3 +137,58 @@
 @media (prefers-reduced-motion: reduce) {
  .admin-accordion > summary::after {transition: none;}
 }
+
+/* The exact supplied pixel logo is reused at both entry points. */
+.admin-boto-shortcut {
+  background: #322635;
+  gap: .5rem;
+}
+.admin-boto-shortcut img {
+  width: min(100%, 350px);
+  height: auto;
+  max-height: 350px;
+  max-width: 100%;
+  object-fit: contain;
+}
+.student-auth-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(250px, .9fr);
+  align-items: stretch;
+  gap: clamp(1rem, 3vw, 2rem);
+  margin: 1.25rem 0;
+}
+.student-auth-layout .student-team-card {
+  max-width: none;
+  margin: 0;
+}
+.student-boto-aside {
+  display: grid;
+  place-items: center;
+  background: #322635;
+  border: 1px solid #604c79;
+  padding: 1.2rem;
+  box-shadow: 4px 4px 0 #4b2e8355;
+}
+.student-boto-aside img {
+  display: block;
+  width: min(100%, 350px);
+  height: auto;
+  object-fit: contain;
+}
+.team-deletion-info {
+  margin: .65rem 0;
+  border-left: 3px solid var(--pink);
+  padding: .3rem .7rem;
+  background: #342b3e;
+}
+.team-deletion-info summary {
+  cursor: pointer;
+  color: var(--pink);
+}
+.team-deletion-info p { margin: .5rem 0; }
+@media (max-width: 850px) {
+  .student-auth-layout {grid-template-columns: minmax(0, 1fr);}
+  .student-boto-aside {padding: .7rem;}
+  .student-boto-aside img {max-width: 200px;}
+  .admin-boto-shortcut img {max-height: 230px;}
+}
