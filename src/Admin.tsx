@@ -217,7 +217,6 @@ export default function Admin({
     activeDraftKeyRef.current = key;
     // Capture base data only when switching account or editing a different
     // activity; periodic assessment refreshes must not erase current typing.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identity, editing?.id]);
 
   // Flush again when the browser backgrounds the tab or closes unexpectedly.
@@ -439,7 +438,7 @@ export default function Admin({
       await load();
     });
   }
-  function edit(a: Act, _s: Session) {
+  function edit(a: Act) {
     // Keep current unsaved fields in their local key. The edit-specific key
     // is restored by the effect, or initialized from the saved activity.
     setEditing(a);
@@ -1018,7 +1017,7 @@ export default function Admin({
                       </p>
                       <div className="toolbar">
                         {s.status === "draft" && (
-                          <button disabled={busy} onClick={() => edit(a, s)}>
+                          <button disabled={busy} onClick={() => edit(a)}>
                             Editar rascunho
                           </button>
                         )}
