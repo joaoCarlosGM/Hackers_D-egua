@@ -140,8 +140,8 @@ export default function TeamManagement({
                       p_status: team.status === "active" ? "inactive" : "active",
                     });
                     setNotice(team.status === "active"
-                      ? "Dupla desativada. Sessões revogadas; histórico e ranking preservados."
-                      : "Dupla reativada. Use as credenciais originais para entrar.");
+                      ? "Dupla desativada e oculta no ranking público. Sessões revogadas; notas e pontos preservados."
+                      : "Dupla reativada e novamente visível no ranking com os pontos originais. Use as credenciais originais para entrar.");
                   })}>
                     {team.status === "active" ? "Desativar" : "Reativar"}
                   </button>
@@ -244,7 +244,7 @@ export default function TeamManagement({
           </form>
         </section>
       )}
-      <p className="muted">Desativar bloqueia o acesso e mantém o ranking histórico. Excluir nunca apaga notas, respostas ou pontuação CTF.</p>
+      <p className="muted">Desativar bloqueia o acesso e oculta a dupla do ranking público, preservando notas, pontos CTF e histórico. Reativar devolve a dupla ao ranking sem perder a pontuação.</p>
     </section>
   );
 }
