@@ -530,7 +530,8 @@ function TeamFlow({
         </div>
       ) : (
         <>
-          <section className="card">
+          <div className="student-auth-layout">
+          <section className="card student-team-card">
             <h2>{team.public_name}</h2>
             <p>
               Código da dupla: <strong>{team.access_code}</strong> ·{" "}
@@ -601,6 +602,12 @@ function TeamFlow({
               Sair da dupla
             </button>
           </section>
+          <aside className="student-boto-aside" aria-label="Arte oficial do projeto Hackers Pai D’égua">
+            <img src={brandAssets.pixel}
+              alt="Boto pixel art com a inscrição Hackers Pai D’égua"
+              width={1500} height={1500} />
+          </aside>
+          </div>
           {activity &&
             saved &&
             !submitted &&
