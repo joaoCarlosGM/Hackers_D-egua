@@ -144,6 +144,15 @@ describe("team management", () => {
     });
   });
 
+  it("explains why test teams with historical records cannot be deleted", async () => {
+    const user = userEvent.setup();
+    view(true);
+    const linked = (await screen.findByText(/Boto Cor-de-Rosa/)).closest("article")!;
+    await user.click(within(linked).getByText("Por que não posso excluir esta dupla?"));
+    expect(within(linked).getByText(/Participações em avaliação: 2/)).toBeTruthy();
+    expect(within(linked).getByText(/Eventos CTF: 1/)).toBeTruthy();
+    expect((within(linked).getByRole("button", { name: "Excluir dupla" }) as HTMLButtonElement).disabled).toBe(true);
+  });
   it("receives a new private credential only after an administrator invokes rotation", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "confirm").mockReturnValueOnce(true);
