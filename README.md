@@ -48,6 +48,8 @@ No Dashboard do projeto **existente**, abra SQL Editor e execute **cada arquivo 
 6. `supabase/migrations/202611050002_team_management.sql`: gestão auditada das duplas, correção de nomes, transferência segura, desativação e exclusão restrita a cadastros sem histórico. **Aplicar somente depois da migration 005**.
 7. `supabase/migrations/202611050003_admin_access_management.sql`: autorizações administrativas para contas Auth já existentes, papéis de professor/administrador, auditoria, revogação e proteção do último administrador. **Aplicar somente depois da migration 006**.
 8. `supabase/migrations/202611050004_attendance.sql`: chamada privada por estudante e por aula, RLS, auditoria e proteção do histórico contra transferências/exclusões. **Executar somente após a migration 007.**
+9. `supabase/migrations/202611050005_hide_inactive_ranking.sql`: oculta equipes desativadas do ranking público; reativar restaura a visibilidade sem perder histórico. **Depois da 008.**
+10. `supabase/migrations/202611050006_weighted_rank.sql`: ranking de até 1.000 pontos, CTF 80% e avaliações 20%, com agregado de notas por dupla e atualização automática. **Depois da 009.**
 
 Execute cada arquivo em uma transação (`BEGIN;` antes e `COMMIT;` depois do conteúdo) se o editor não garantir uma transação única. O seed de turmas é idempotente; os arquivos DDL são migrations versionadas, não scripts para reaplicar integralmente. Não reaplique uma migration já concluída. Em caso de erro, reverta apenas a transação aberta e investigue antes de seguir.
 
@@ -59,14 +61,14 @@ Use uma versão atual da CLI oficial instalada conforme a documentação Supabas
 supabase login
 supabase link --project-ref SEU_PROJECT_REF_EXISTENTE
 supabase db push --dry-run
-# Revise: devem aparecer APENAS as migrations pendentes dentre as oito acima.
+# Revise: devem aparecer APENAS as migrations pendentes dentre as dez acima.
 supabase db push
 ```
 
-Se os arquivos já foram executados no SQL Editor, **não os aplique novamente** via CLI. Depois de confirmar os objetos criados, registre apenas as versões efetivamente aplicadas. Exemplo para um banco com as oito migrations concluídas:
+Se os arquivos já foram executados no SQL Editor, **não os aplique novamente** via CLI. Depois de confirmar os objetos criados, registre apenas as versões efetivamente aplicadas. Exemplo para um banco com as dez migrations concluídas:
 
 ```bash
-supabase migration repair --status applied 202611040001 202611040002 202611040003 202611040004 202611050001 202611050002 202611050003 202611050004
+supabase migration repair --status applied 202611040001 202611040002 202611040003 202611040004 202611050001 202611050002 202611050003 202611050004 202611050005 202611050006
 supabase migration list
 ```
 
@@ -176,6 +178,10 @@ Os assets necessários já estão extraídos em `public/assets/brand/` e as refe
 `npm run test:visual` executa 15 cenários Playwright em Chromium. No ambiente atual, usa `/usr/bin/chromium`; em outra máquina, execute `npx playwright install --with-deps chromium` antes. Também é possível selecionar o binário com `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. Os testes cobrem as páginas existentes e o gerenciamento de turmas em desktop e celular, proporção do logo, tokens de cor, ausência de rolagem horizontal e arquivos originais por checksum. São gerados 19 PNGs em `artifacts/visual/`, incluindo `ranking-comparison.png`, comparação lado a lado com a referência enviada. Resultados e screenshots são publicados como artefato de CI, sem deploy do site.
 
 As fixtures de ranking, usuários e notas existem **apenas nos testes do navegador**, com todas as requisições Supabase interceptadas. Não são dados reais nem inserções no projeto Cloud. O servidor dos testes usa uma URL e chave fictícias explicitamente isoladas da configuração de produção. Consulte `docs/visual-review.md` para a revisão e as diferenças corrigidas.
+
+## Ranking geral e equipe inativa
+
+O ranking usa **CTF 80% e avaliações 20%**: 800 pontos possíveis proporcionais ao maior resultado CTF ativo e até 200 pontos de complemento pelas atividades. As notas detalhadas continuam protegidas; somente um agregado arredondado por dupla entra no cálculo. Desativar uma dupla retira seu nome do ranking público preservando pontos, notas e presenças. Leia [as regras e o procedimento de implantação](docs/ranking-weighted.md). **Antes de publicar esta interface, aplique as migrations 009 e 010 no Supabase existente**, somente se ainda não estiverem presentes.
 
 ## Chamada por estudante e organização recolhível
 
