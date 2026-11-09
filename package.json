@@ -14,7 +14,10 @@
     "format": "prettier --write src tests e2e *.ts *.js *.json *.html .github/workflows/*.yml README.md",
     "format:check": "prettier --check src tests e2e *.ts *.js *.json *.html .github/workflows/*.yml README.md",
     "test:pages": "node scripts/smoke-pages.mjs",
-    "test:visual": "playwright test"
+    "test:visual": "playwright test",
+    "test:security": "node --test scripts/security/check-public.test.mjs",
+    "check:public-env": "node scripts/security/check-public.mjs env",
+    "check:public-dist": "node scripts/security/check-public.mjs dist"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.0",
