@@ -17,7 +17,8 @@
     "test:visual": "playwright test",
     "test:security": "node --test scripts/security/check-public.test.mjs",
     "check:public-env": "node scripts/security/check-public.mjs env",
-    "check:public-dist": "node scripts/security/check-public.mjs dist"
+    "check:public-dist": "node scripts/security/check-public.mjs dist",
+    "check:live-answers": "node scripts/security/check-live-answers.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.0",
