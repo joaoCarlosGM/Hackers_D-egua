@@ -6,6 +6,16 @@ Não há como um site público impedir a abertura das ferramentas de desenvolved
 
 A barreira de segurança deve estar **no Supabase**, com RLS (Row Level Security), políticas por papel e validação das RPCs. Não confie em verificações realizadas apenas no React. As notas, respostas corretas e operações de pontuação devem continuar protegidas por `app_private.require_staff()` e `app_private.require_admin()` conforme sua finalidade.
 
+## Proteção das respostas da Aula 02
+
+A inspeção do navegador não deve revelar nenhum valor de `is_correct` nem o campo `explanation` na resposta de `public_activity`. A função `submit_attempt` continua conferindo o gabarito no PostgreSQL. Se um estudante viu respostas pela rede, verifique imediatamente as permissões efetivas no Supabase do site publicado — a política do repositório não garante que o banco remoto esteja configurado corretamente.
+
+Nova migration: `supabase/migrations/202611050007_quiz_answer_protection.sql` (011), aplicada **somente após a migration 010**. Ela revoga leituras anônimas das tabelas de enunciados, alternativas corretas, respostas, notas e participações; mantém SELECT restrito ao pessoal autorizado por RLS e recria `public_activity` para retornar somente alternativas sem gabarito. **Não executa limpeza nem modifica respostas históricas**.
+
+O deploy também executa `npm run check:live-answers` com a chave publicável. O teste consulta, como visitante anônimo, as tabelas com respostas e notas, e a RPC privada de resultados. **Se qualquer consulta estiver permitida, o deploy falha**, sem revelar credenciais ou dados no log. Opcionalmente, configure a variável `SECURITY_PROBE_SESSION_ID` com o UUID de uma sessão aberta de teste; a pipeline verificará adicionalmente que `public_activity` não entrega campos de gabarito. Se a sessão estiver encerrada, o teste falhará até atualizar ou retirar esse UUID.
+
+Se uma prova já teve respostas expostas, trate o conteúdo como comprometido e crie uma nova versão com questões diferentes; bloquear F12 depois do ocorrido não desfaz o vazamento.
+
 ## Proteções desta entrega
 
 1. **Verificação antes do deploy:** `scripts/security/check-public.mjs env --require` valida a origem HTTPS do Supabase e impede que `VITE_SUPABASE_PUBLISHABLE_KEY` contenha `sb_secret_`, JWT `service_role` ou outro formato privilegiado. Nunca mostra o valor da chave em logs. Chaves `sb_publishable_` e JWT `anon` legados continuam aceitos.
