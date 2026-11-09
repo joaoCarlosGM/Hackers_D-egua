@@ -24,6 +24,8 @@ jobs:
           cache: npm
       - run: node scripts/security/check-public.mjs env --require
       - run: npm ci
+      - name: Verify production Supabase does not expose answer keys
+        run: npm run check:live-answers
       - name: Build and validate GitHub Pages project site
         run: npm run lint && npm run typecheck && npm test && npm run test:security && npm run build && npm run test:pages && npm run check:public-dist
       - uses: actions/configure-pages@v5
