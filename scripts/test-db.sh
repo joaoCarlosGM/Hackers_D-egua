@@ -17,6 +17,7 @@ psql_test < supabase/tests/bootstrap.sql
 for migration in supabase/migrations/*.sql; do psql_test < "$migration"; done
 psql_test < supabase/tests/acceptance.sql
 psql_test < supabase/tests/assessments.sql
+psql_test < supabase/tests/quiz_answer_security.sql
 psql_test < supabase/tests/class_management.sql
 psql_test < supabase/tests/team_management.sql
 psql_test < supabase/tests/admin_access_management.sql

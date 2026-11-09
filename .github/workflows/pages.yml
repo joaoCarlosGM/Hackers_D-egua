@@ -22,10 +22,12 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: test -n "$VITE_SUPABASE_URL" && test -n "$VITE_SUPABASE_PUBLISHABLE_KEY"
+      - run: node scripts/security/check-public.mjs env --require
       - run: npm ci
+      - name: Verify production Supabase does not expose answer keys
+        run: npm run check:live-answers
       - name: Build and validate GitHub Pages project site
-        run: npm run lint && npm run typecheck && npm test && npm run build && npm run test:pages
+        run: npm run lint && npm run typecheck && npm test && npm run test:security && npm run build && npm run test:pages && npm run check:public-dist
       - uses: actions/configure-pages@v5
       - name: Upload dist for GitHub Pages
         uses: actions/upload-pages-artifact@v3
