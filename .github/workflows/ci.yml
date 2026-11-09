@@ -18,8 +18,10 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npm run test:security
       - run: npm run test:db
       - run: npm run build
+      - run: npm run check:public-dist
       - run: npm run test:pages
       - run: npx playwright install --with-deps chromium
       - run: npm run test:visual
