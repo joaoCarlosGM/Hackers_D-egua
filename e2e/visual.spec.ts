@@ -560,7 +560,7 @@ for (const viewport of [
       const team = manager.locator("article").filter({ hasText: "Boto Cor-de-Rosa" });
       await expect(team.getByRole("button", { name: "Excluir dupla" })).toBeDisabled();
       await team.getByRole("button", { name: "Editar cadastro" }).click();
-      await expect(manager.getByRole("combobox", { name: "Turma" })).toBeDisabled();
+      await expect(manager.getByRole("form", { name: "Editar dupla" }).getByRole("combobox", { name: "Turma", exact: true })).toBeDisabled();
       await shot(page, viewport.name + "-team-management");
     });
     test("admin-only access management uses explicit Auth staff roles", async ({ page }) => {

@@ -271,10 +271,6 @@ export default function Admin({
     if (classFilter && !classes.some((c) => c.id === classFilter))
       setClassFilter("");
   }, [classes, classFilter]);
-  const [, setCredential] = useState<{
-    access_code: string;
-    credential: string;
-  } | null>(null);
   const load = useCallback(async () => {
     const [
       activities,
@@ -320,7 +316,6 @@ export default function Admin({
       setIdentity(nextIdentity);
       setRole("");
       setData(empty);
-      setCredential(null);
       setQr(null);
       try {
         if (id) {
@@ -594,8 +589,7 @@ export default function Admin({
                       const { error } = await supabase!.auth.signOut();
                       if (error) throw error;
                       setData(empty);
-                      setCredential(null);
-                      setRole("");
+                                      setRole("");
                       setIdentity(null);
                     })
                   }
@@ -1392,7 +1386,6 @@ export default function Admin({
                 canManage={role === "admin"}
                 selectedClassId={classFilter}
                 onChanged={load}
-                onCredential={setCredential}
               />
                 </>
               )}

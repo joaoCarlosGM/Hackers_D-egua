@@ -5,13 +5,12 @@ type Credential = { access_code: string; credential: string };
 type Draft = { public_name: string; member1: string; member2: string; class_id: string };
 
 export default function TeamManagement({
-  classes, canManage, selectedClassId, onChanged, onCredential,
+  classes, canManage, selectedClassId, onChanged,
 }: {
   classes: Class[];
   canManage: boolean;
   selectedClassId: string;
   onChanged: () => Promise<void>;
-  onCredential: (value: Credential) => void;
 }) {
   const [teams, setTeams] = useState<ManagedTeam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,12 +154,19 @@ export default function TeamManagement({
                     {team.status === "active" ? "Desativar" : "Reativar"}
                   </button>
                   <button disabled={busy} onClick={() => {
-                    if (!window.confirm("Redefinir a credencial? Todas as sessões anteriores serão encerradas. Confirme a identidade dos integrantes.")) return;
+                    if (!window.confirm("Emitir novo código curto e nova credencial somente para " + team.public_name + "? A dupla precisará das novas informações para entrar; sessões antigas serão encerradas. Confirme a identidade dos integrantes antes de entregar.")) return;
                     void change(async () => {
-                      const value = await rpc<Credential>("rotate_team_credential", { p_team_id: team.id });
+                      let value: Credential;
+                      try {
+                        value = await rpc<Credential>("issue_short_team_credential", { p_team_id: team.id });
+                      } catch (err) {
+                        if (/PGRST202|Could not find the function public\.issue_short_team_credential/i.test((err as Error).message)) {
+                          throw new Error("A emissão curta ainda não está ativada no Supabase. Aplique a migration 012 antes de gerar novas credenciais.");
+                        }
+                        throw err;
+                      }
                       setIssued({ ...value, team_id: team.id });
-                      onCredential(value);
-                      setNotice("Credencial redefinida. Entregue-a privadamente somente aos integrantes.");
+                      setNotice("Novo código de 8 caracteres e credencial de 12 emitidos para esta dupla. Envie somente aos dois integrantes, por canal privado.");
                     });
                   }}>Emitir nova credencial</button>
                   <button disabled={busy || !team.can_delete}
@@ -175,16 +181,33 @@ export default function TeamManagement({
               )}
               {issued?.team_id === team.id && (
                 <section className="credential team-issued-credential" aria-label={"Credencial gerada para " + team.public_name}>
-                  <h4>Nova credencial desta dupla</h4>
-                  <p>Código público: <strong>{issued.access_code}</strong></p>
-                  <label>Credencial privada
-                    <input aria-label={"Credencial privada de " + team.public_name} readOnly value={issued.credential} />
+                  <h4>Credencial individual — {team.public_name}</h4>
+                  <p>Código público curto: <strong>{issued.access_code}</strong></p>
+                  <label>Credencial privada (mostrar somente aos integrantes)
+                    <input aria-label={"Credencial privada de " + team.public_name}
+                      readOnly autoComplete="off" spellCheck={false} value={issued.credential}
+                      onFocus={(event) => event.target.select()} />
                   </label>
-                  <p>Copie ou entregue apenas aos integrantes. A credencial anterior foi revogada e as notas foram preservadas.</p>
+                  <p>Copie a mensagem para enviar individualmente pelo canal privado que você escolher.
+                    As credenciais anteriores desta dupla foram revogadas; notas, CTF e presenças foram preservados.
+                    A nova credencial não será exibida novamente após sair desta tela.</p>
                   <button type="button" onClick={() => {
-                    const text = "Dupla: " + team.public_name + "\\nCódigo: " + issued.access_code + "\\nCredencial: " + issued.credential;
-                    void navigator.clipboard?.writeText(text);
-                  }}>Copiar credencial</button>
+                    const message = [
+                      "Hackers Pai D’égua",
+                      "Dupla: " + team.public_name,
+                      "Código: " + issued.access_code,
+                      "Credencial: " + issued.credential,
+                      "Acesso: https://joaocarlosgm.github.io/Hackers_D-egua/",
+                      "Não compartilhe com outras duplas. Guarde fora do Live Boot.",
+                    ].join(String.fromCharCode(10));
+                    if (!navigator.clipboard?.writeText) {
+                      setNotice("Cópia automática indisponível: selecione a credencial acima e envie em mensagem privada.");
+                      return;
+                    }
+                    void navigator.clipboard.writeText(message)
+                      .then(() => setNotice("Mensagem copiada para envio individual. Verifique o destinatário antes de compartilhar."))
+                      .catch(() => setNotice("Não foi possível copiar automaticamente. Selecione e copie a credencial manualmente."));
+                  }}>Copiar mensagem privada</button>
                   <button type="button" onClick={() => setIssued(null)}>Ocultar credencial</button>
                 </section>
               )}

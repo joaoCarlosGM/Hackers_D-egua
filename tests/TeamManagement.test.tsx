@@ -16,11 +16,9 @@ const classes: Class[] = [
   { id: "pitiu", name: "Pitiú", slug: "pitiu", status: "active" },
 ];
 const onChanged = vi.fn().mockResolvedValue(undefined);
-const onCredential = vi.fn();
 
 beforeEach(() => {
   onChanged.mockClear();
-  onCredential.mockClear();
   mock.rpc.mockReset();
   mock.teams = [
     {
@@ -58,8 +56,11 @@ beforeEach(() => {
     }
     if (name === "delete_team")
       mock.teams = mock.teams.filter((t) => t.id !== p.p_team_id);
-    if (name === "rotate_team_credential")
-      return { access_code: "1111222233334444", credential: "private-test-value" };
+    if (name === "issue_short_team_credential") {
+      mock.teams = mock.teams.map((t) => t.id === p.p_team_id
+        ? { ...t, access_code: "ABCDEFGH" } : t);
+      return { access_code: "ABCDEFGH", credential: "ABCDEFGHJKLM" };
+    }
     return null;
   });
 });
@@ -69,7 +70,7 @@ function view(canManage: boolean, selectedClassId = "") {
   return render(
     <TeamManagement classes={classes} canManage={canManage}
       selectedClassId={selectedClassId}
-      onChanged={onChanged} onCredential={onCredential} />,
+      onChanged={onChanged} />,
   );
 }
 
@@ -98,7 +99,7 @@ describe("team management", () => {
     await user.type(screen.getByLabelText("Nome público da dupla"), "Novos Camuflados");
     await user.clear(screen.getByLabelText("Primeiro integrante"));
     await user.type(screen.getByLabelText("Primeiro integrante"), "Maria Corrigida");
-    await user.selectOptions(screen.getByLabelText("Turma"), "poraque");
+    await user.selectOptions(within(screen.getByRole("form", { name: "Editar dupla" })).getByLabelText("Turma"), "poraque");
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
     await screen.findByText(/Novos Camuflados/);
     expect(mock.rpc).toHaveBeenCalledWith("update_team", {
@@ -108,7 +109,7 @@ describe("team management", () => {
     expect(onChanged).toHaveBeenCalled();
     await user.click(within(screen.getByText(/Boto Cor-de-Rosa/).closest("article")!)
       .getByRole("button", { name: "Editar cadastro" }));
-    expect((screen.getByLabelText("Turma") as HTMLSelectElement).disabled).toBe(true);
+    expect((within(screen.getByRole("form", { name: "Editar dupla" })).getByLabelText("Turma") as HTMLSelectElement).disabled).toBe(true);
   });
 
   it("deactivates and reactivates without deleting historical teams", async () => {
@@ -153,15 +154,38 @@ describe("team management", () => {
     expect(within(linked).getByText(/Eventos CTF: 1/)).toBeTruthy();
     expect((within(linked).getByRole("button", { name: "Excluir dupla" }) as HTMLButtonElement).disabled).toBe(true);
   });
-  it("receives a new private credential only after an administrator invokes rotation", async () => {
+  it("receives per-duo short credentials only after admin issuance", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "confirm").mockReturnValueOnce(true);
     view(true, "pitiu");
     const article = (await screen.findByText(/Camuflados/)).closest("article")!;
     await user.click(within(article).getByRole("button", { name: "Emitir nova credencial" }));
-    await waitFor(() => expect(onCredential).toHaveBeenCalledWith({
-      access_code: "1111222233334444", credential: "private-test-value",
-    }));
+    await waitFor(() => expect(screen.getByRole("region", { name: "Credencial gerada para Camuflados" })).toBeTruthy());
+    const card = screen.getByRole("region", { name: "Credencial gerada para Camuflados" });
+    expect(within(card).getByText("ABCDEFGH")).toBeTruthy();
+    expect((within(card).getByLabelText("Credencial privada de Camuflados") as HTMLInputElement).value)
+      .toBe("ABCDEFGHJKLM");
+    expect(screen.getByRole("button", { name: "Copiar mensagem privada" })).toBeTruthy();
+    await user.click(within(card).getByRole("button", { name: "Ocultar credencial" }));
+    expect(screen.queryByRole("region", { name: "Credencial gerada para Camuflados" })).toBeNull();
+    expect(mock.rpc).toHaveBeenCalledWith("issue_short_team_credential", { p_team_id: "t2" });
+    vi.restoreAllMocks();
+  });
+  it("does not revoke a duo when the short-credential migration is missing", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    mock.rpc.mockImplementation(async (name: string, params: Record<string, unknown>) => {
+      if (name === "list_teams_admin") return mock.teams.slice(Number(params.p_offset), Number(params.p_offset) + Number(params.p_limit));
+      if (name === "issue_short_team_credential")
+        throw new Error("Could not find the function public.issue_short_team_credential(p_team_id) in the schema cache");
+      return null;
+    });
+    view(true);
+    const card = (await screen.findByText(/Boto Cor-de-Rosa/)).closest("article")!;
+    await user.click(within(card).getByRole("button", { name: "Emitir nova credencial" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("migration 012");
+    expect(screen.queryByRole("region", { name: /Credencial gerada/ })).toBeNull();
+    expect(mock.rpc).toHaveBeenCalledWith("issue_short_team_credential", { p_team_id: "t1" });
     vi.restoreAllMocks();
   });
 });
