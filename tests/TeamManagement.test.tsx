@@ -16,11 +16,9 @@ const classes: Class[] = [
   { id: "pitiu", name: "Pitiú", slug: "pitiu", status: "active" },
 ];
 const onChanged = vi.fn().mockResolvedValue(undefined);
-const onCredential = vi.fn();
 
 beforeEach(() => {
   onChanged.mockClear();
-  onCredential.mockClear();
   mock.rpc.mockReset();
   mock.teams = [
     {
@@ -72,7 +70,7 @@ function view(canManage: boolean, selectedClassId = "") {
   return render(
     <TeamManagement classes={classes} canManage={canManage}
       selectedClassId={selectedClassId}
-      onChanged={onChanged} onCredential={onCredential} />,
+      onChanged={onChanged} />,
   );
 }
 
@@ -162,9 +160,7 @@ describe("team management", () => {
     view(true, "pitiu");
     const article = (await screen.findByText(/Camuflados/)).closest("article")!;
     await user.click(within(article).getByRole("button", { name: "Emitir nova credencial" }));
-    await waitFor(() => expect(onCredential).toHaveBeenCalledWith({
-      access_code: "ABCDEFGH", credential: "ABCDEFGHJKLM",
-    }));
+    await waitFor(() => expect(screen.getByRole("region", { name: "Credencial gerada para Camuflados" })).toBeTruthy());
     const card = screen.getByRole("region", { name: "Credencial gerada para Camuflados" });
     expect(within(card).getByText("ABCDEFGH")).toBeTruthy();
     expect((within(card).getByLabelText("Credencial privada de Camuflados") as HTMLInputElement).value)
