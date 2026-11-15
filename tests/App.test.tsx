@@ -226,6 +226,11 @@ describe("permanent team workflow", () => {
     location.hash = "#ranking";
     render(<App />);
     await screen.findByText("Nenhuma dupla cadastrada nesta turma.");
+    expect(screen.getByRole("columnheader", { name: "Posição" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Dupla" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Pontuação total" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Resolvidos" })).toBeNull();
+    expect(screen.queryByText(/1.000 pontos possíveis/)).toBeNull();
     mock.ranks = [
       {
         team_id: "permanent-team",
