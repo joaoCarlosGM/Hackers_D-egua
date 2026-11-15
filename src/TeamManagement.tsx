@@ -19,6 +19,8 @@ export default function TeamManagement({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [query, setQuery] = useState("");
+  const [teamClassFilter, setTeamClassFilter] = useState(selectedClassId);
+  const [issued, setIssued] = useState<(Credential & { team_id: string }) | null>(null);
   const [showInactive, setShowInactive] = useState(true);
   const [editing, setEditing] = useState<ManagedTeam | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -44,12 +46,12 @@ export default function TeamManagement({
   const visible = useMemo(() => {
     const term = query.trim().toLocaleLowerCase("pt-BR");
     return teams.filter((team) => {
-      if (selectedClassId && team.class_id !== selectedClassId) return false;
+      if (teamClassFilter && team.class_id !== teamClassFilter) return false;
       if (!showInactive && team.status === "inactive") return false;
       return !term || [team.public_name, team.access_code, team.member1, team.member2]
         .some((value) => value?.toLocaleLowerCase("pt-BR").includes(term));
     });
-  }, [teams, selectedClassId, showInactive, query]);
+  }, [teams, teamClassFilter, showInactive, query]);
 
   async function change(action: () => Promise<void>) {
     setBusy(true);
@@ -106,6 +108,13 @@ export default function TeamManagement({
       {error && <p role="alert" className="error">{error}</p>}
       {notice && <p role="status" className="success">{notice}</p>}
       <div className="toolbar">
+        <label>Turma
+          <select aria-label="Filtrar duplas por turma" value={teamClassFilter}
+            onChange={(e) => setTeamClassFilter(e.target.value)}>
+            <option value="">Todas as turmas</option>
+            {classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
         <label>
           Pesquisar duplas ou integrantes
           <input value={query} onChange={(e) => setQuery(e.target.value)}
@@ -149,8 +158,9 @@ export default function TeamManagement({
                     if (!window.confirm("Redefinir a credencial? Todas as sessões anteriores serão encerradas. Confirme a identidade dos integrantes.")) return;
                     void change(async () => {
                       const value = await rpc<Credential>("rotate_team_credential", { p_team_id: team.id });
+                      setIssued({ ...value, team_id: team.id });
                       onCredential(value);
-                      setNotice("Nova credencial emitida. Entregue-a privadamente.");
+                      setNotice("Credencial redefinida. Entregue-a privadamente somente aos integrantes.");
                     });
                   }}>Emitir nova credencial</button>
                   <button disabled={busy || !team.can_delete}
@@ -162,6 +172,21 @@ export default function TeamManagement({
                       setError("");
                     }}>Excluir dupla</button>
                 </div>
+              )}
+              {issued?.team_id === team.id && (
+                <section className="credential team-issued-credential" aria-label={"Credencial gerada para " + team.public_name}>
+                  <h4>Nova credencial desta dupla</h4>
+                  <p>Código público: <strong>{issued.access_code}</strong></p>
+                  <label>Credencial privada
+                    <input aria-label={"Credencial privada de " + team.public_name} readOnly value={issued.credential} />
+                  </label>
+                  <p>Copie ou entregue apenas aos integrantes. A credencial anterior foi revogada e as notas foram preservadas.</p>
+                  <button type="button" onClick={() => {
+                    const text = "Dupla: " + team.public_name + "\\nCódigo: " + issued.access_code + "\\nCredencial: " + issued.credential;
+                    void navigator.clipboard?.writeText(text);
+                  }}>Copiar credencial</button>
+                  <button type="button" onClick={() => setIssued(null)}>Ocultar credencial</button>
+                </section>
               )}
               {canManage && !team.can_delete && (
                 <details className="team-deletion-info">

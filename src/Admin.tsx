@@ -249,6 +249,7 @@ export default function Admin({
     setDraftStatus("idle");
   }
   const [qr, setQr] = useState<{
+    sessionId: string;
     url: string;
     image: string;
     code: string;
@@ -270,7 +271,7 @@ export default function Admin({
     if (classFilter && !classes.some((c) => c.id === classFilter))
       setClassFilter("");
   }, [classes, classFilter]);
-  const [credential, setCredential] = useState<{
+  const [, setCredential] = useState<{
     access_code: string;
     credential: string;
   } | null>(null);
@@ -643,7 +644,7 @@ export default function Admin({
                 }}
               />
               )}
-              {(["atividades", "duplas", "notas", "chamada", "ctf"] as AdminSection[]).includes(section) && (
+              {(["atividades", "notas", "chamada", "ctf"] as AdminSection[]).includes(section) && (
               <label className="admin-filter">
                 Filtrar por turma
                 <select
@@ -1103,6 +1104,7 @@ export default function Admin({
                                 });
                                 const url = activityLink(s.id);
                                 setQr({
+                                  sessionId: s.id,
                                   url,
                                   image: await QRCode.toDataURL(url, {
                                     width: 360,
@@ -1142,6 +1144,7 @@ export default function Admin({
                                 void action(async () => {
                                   const url = activityLink(s.id);
                                   setQr({
+                                    sessionId: s.id,
                                     url,
                                     image: await QRCode.toDataURL(url, {
                                       width: 360,
@@ -1190,6 +1193,28 @@ export default function Admin({
                           </button>
                         )}
                       </div>
+              {qr?.sessionId === s.id && (
+                <section
+                  className="card projection"
+                  aria-label="Tela de projeção da atividade"
+                >
+                  <h2>{qr.title}</h2>
+                  <p>Acesse a plataforma e digite o código:</p>
+                  <strong className="access-code">{qr.code}</strong>
+                  <img
+                    className="qr"
+                    src={qr.image}
+                    alt="QR Code do link da atividade"
+                  />
+                  <p>
+                    <a href={qr.url}>{qr.url}</a>
+                  </p>
+                  <a download="atividade-qr.png" href={qr.image}>
+                    Baixar QR Code
+                  </a>
+                  <button onClick={() => setQr(null)}>Fechar</button>
+                </section>
+              )}
                       {s.status === "open" && (
                         <form
                           className="toolbar"
@@ -1230,28 +1255,7 @@ export default function Admin({
                   );
                 })}
               </section>
-              {qr && (
-                <section
-                  className="card projection"
-                  aria-label="Tela de projeção da atividade"
-                >
-                  <h2>{qr.title}</h2>
-                  <p>Acesse a plataforma e digite o código:</p>
-                  <strong className="access-code">{qr.code}</strong>
-                  <img
-                    className="qr"
-                    src={qr.image}
-                    alt="QR Code do link da atividade"
-                  />
-                  <p>
-                    <a href={qr.url}>{qr.url}</a>
-                  </p>
-                  <a download="atividade-qr.png" href={qr.image}>
-                    Baixar QR Code
-                  </a>
-                  <button onClick={() => setQr(null)}>Fechar</button>
-                </section>
-              )}
+
                 </>
               )}
               {section === "notas" && (
@@ -1390,33 +1394,6 @@ export default function Admin({
                 onChanged={load}
                 onCredential={setCredential}
               />
-              {credential && (
-                <section className="card credential">
-                  <h2>Entregue em canal privado</h2>
-                  <p>Código: {credential.access_code}</p>
-                  <label>
-                    Nova credencial
-                    <input readOnly value={credential.credential} />
-                  </label>
-                  <p>
-                    A credencial anterior e as sessões anteriores foram
-                    revogadas. Histórico e notas foram preservados.
-                  </p>
-                  <button
-                    onClick={() => {
-                      download(
-                        "nova-credencial.txt",
-                        `Código: ${credential.access_code}\nCredencial: ${credential.credential}\nGuarde em local privado fora do Live Boot.`,
-                      );
-                    }}
-                  >
-                    Baixar
-                  </button>
-                  <button onClick={() => setCredential(null)}>
-                    Já entreguei, ocultar
-                  </button>
-                </section>
-              )}
                 </>
               )}
               {section === "usuarios" && role === "admin" && identity && (
