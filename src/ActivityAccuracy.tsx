@@ -118,7 +118,7 @@ export default function ActivityAccuracy({ classes, data, classFilter }: {
 }) {
   const rows = calculateActivityAccuracy(classes, data, classFilter);
   return (
-    <section className="card" aria-label="Média de acertos por atividade">
+    <section className="activity-accuracy" aria-label="Média de acertos por atividade">
       <h2>Média de acertos por atividade</h2>
       <p className="muted">Resumo privado da equipe pedagógica. Cada dupla conta uma vez por atividade,
         considerando sua melhor entrega avaliada. Tentativas não enviadas não entram na média.</p>
