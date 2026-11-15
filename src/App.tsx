@@ -175,7 +175,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
   return (
     <section
       className={`ranking-board${projector ? " projector" : ""}`}
-      aria-label="Ranking público CTF e avaliações"
+      aria-label="Ranking público geral"
     >
       <img
         className="ranking-logo"
@@ -184,9 +184,8 @@ function Leaderboard({ classes }: { classes: Class[] }) {
       />
       <h1>HACKERS PAI D’ÉGUA</h1>
       <p className="ranking-subtitle">
-        RANKING GERAL · CTF E AVALIAÇÕES · Projeto de Extensão
+        RANKING GERAL · Projeto de Extensão
       </p>
-      <p className="muted ranking-weights">CTF 80% · Avaliações 20% · 1.000 pontos possíveis</p>
       <p className="muted updated-at">
         {updatedAt
           ? `Última atualização: ${updatedAt.toLocaleTimeString("pt-BR")}`
@@ -232,8 +231,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
                   #
                 </th>
                 <th>Dupla</th>
-                <th>Resolvidos</th>
-                <th>Pontuação geral</th>
+                <th>Pontuação total</th>
               </tr>
             </thead>
             <tbody>
@@ -246,7 +244,6 @@ function Leaderboard({ classes }: { classes: Class[] }) {
                       {classes.find((c) => c.id === r.class_id)?.name}
                     </small>
                   </td>
-                  <td>{r.solved_count}</td>
                   <td className="score">{r.rankingScore}</td>
                 </tr>
               ))}
