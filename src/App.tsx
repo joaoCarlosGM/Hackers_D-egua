@@ -495,26 +495,30 @@ function TeamFlow({
                   <input
                     name="code"
                     required
-                    minLength={16}
+                    minLength={8}
                     maxLength={16}
+                    placeholder="8 ou 16 caracteres"
                     autoComplete="username"
                     spellCheck={false}
                   />
                 </label>
                 <label>
-                  Código privado de recuperação
+                  Credencial privada da dupla
                   <input
                     name="credential"
                     type="password"
                     required
-                    minLength={48}
+                    minLength={12}
                     maxLength={48}
+                    placeholder="12 caracteres (ou credencial antiga)"
                     autoComplete="off"
                   />
                 </label>
                 <p>
-                  Perdeu a credencial? Peça ao administrador uma nova. Sua dupla
-                  e seu histórico serão preservados.
+                  Para entrar pelo Kali Live Boot, você pode solicitar ao administrador
+                  credenciais mais curtas: código de 8 caracteres e segredo de 12.
+                  Os códigos antigos continuam funcionando até serem redefinidos.
+                  Se perder, peça uma nova credencial para sua dupla: seu histórico permanece.
                 </p>
               </>
             )}
