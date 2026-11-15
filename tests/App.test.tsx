@@ -243,6 +243,11 @@ describe("permanent team workflow", () => {
       expect(screen.getAllByText("Os Hackers")).toHaveLength(2),
     );
     expect(screen.getByText("0 pontos")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Posição" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Dupla" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Pontuação total" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Resolvidos" })).toBeNull();
+    expect(screen.queryByText(/1.000 pontos possíveis/)).toBeNull();
     mock.ranks = [{ ...mock.ranks[0], points: 10, solved_count: 1 }];
     await act(async () => {
       mock.changed?.();
