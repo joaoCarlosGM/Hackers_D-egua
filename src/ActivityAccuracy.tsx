@@ -125,7 +125,7 @@ export function calculateActivityAccuracy(
       title: activityById.get(group.activityId)?.title ?? "",
       submittedTeams, correctAnswers, totalQuestions,
       questionCount: questionIds.size, maxScore, averageScore,
-      percent: totalQuestions ? Math.round(correctAnswers / totalQuestions * 1000) / 10 : null,
+      percent: submittedTeams ? Math.round(totalGradeRatio / submittedTeams * 1000) / 10 : null,
     });
   }
   return rows.sort((a, b) =>
