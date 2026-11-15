@@ -72,6 +72,26 @@ describe("private activity accuracy", () => {
     ]);
   });
 
+
+  it("reports average grades on each activity's own scoring scale", () => {
+    const data = exampleData();
+    data.questions = [
+      { id: "q1", activity_id: "a1", points: 2 },
+      { id: "q2", activity_id: "a1", points: 2 },
+      { id: "q3", activity_id: "a1", points: 2 },
+      { id: "q4", activity_id: "a1", points: 2 },
+    ];
+    data.grades = [
+      { attempt_id: "old", points: 0, max_points: 8 },
+      { attempt_id: "new", points: 8, max_points: 8 },
+      { attempt_id: "partial", points: 4, max_points: 8 },
+    ];
+    const [row] = calculateActivityAccuracy(classes, data, "c1");
+    expect(row).toMatchObject({
+      submittedTeams: 2, questionCount: 4, maxScore: 8, averageScore: 6, percent: 75,
+    });
+  });
+
   it("uses only the best submitted attempt, ignoring unsubmitted retry answers", () => {
     const rows = calculateActivityAccuracy(classes, exampleData(), "c1");
     expect(rows).toHaveLength(1);
