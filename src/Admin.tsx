@@ -6,7 +6,7 @@ import AdminNavigation, { type AdminSection } from "./AdminNavigation";
 import TeamManagement from "./TeamManagement";
 import AdminAccessManagement from "./AdminAccessManagement";
 import AttendanceManagement from "./AttendanceManagement";
-import ActivityAccuracy from "./ActivityAccuracy";
+import ActivityAccuracy, { calculateActivityAccuracy } from "./ActivityAccuracy";
 import { brandAssets } from "./Brand";
 import "./admin-attendance.css";
 import {
@@ -259,6 +259,7 @@ export default function Admin({
   const [preview, setPreview] = useState(false);
   const [editorExpanded, setEditorExpanded] = useState(false);
   const [classFilter, setClassFilter] = useState("");
+  const [showArchivedActivities, setShowArchivedActivities] = useState(false);
   const visibleTeams = data.teams.filter(
     (t) => !classFilter || t.class_id === classFilter,
   );
@@ -446,6 +447,24 @@ export default function Admin({
   function changeQuestion(i: number, next: DraftQuestion) {
     updateQuestions(questions.map((q, j) => (i === j ? next : q)));
   }
+  function exportAverageGrades() {
+    const records = calculateActivityAccuracy(classes, data, classFilter);
+    download(
+      "medias-por-atividade-privadas.csv",
+      csv([
+        ["Atividade", "Turma", "Duplas que entregaram", "Questões por atividade",
+          "Nota máxima", "Nota média", "Aproveitamento (%)"],
+        ...records.map((row) => [
+          row.title, row.className, row.submittedTeams, row.questionCount,
+          row.maxScore === null ? "" : row.maxScore.toLocaleString("pt-BR", { maximumFractionDigits: 2 }),
+          row.averageScore === null ? "" : row.averageScore.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          row.percent === null ? "" : row.percent.toLocaleString("pt-BR", { maximumFractionDigits: 1 }),
+        ]),
+      ]),
+      "text/csv;charset=utf-8",
+    );
+  }
+
   function exportGrades() {
     const records = visibleAttempts.map((a) => {
       const t = data.teams.find((t) => t.id === a.team_id);
