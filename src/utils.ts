@@ -22,6 +22,12 @@ export function csv(rows: unknown[][]): string {
       .join("\r\n")
   );
 }
+/** File name only: no separators, traversal, control characters or arbitrary extensions. */
+export function safeFilenamePart(value: string): string {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/g, "") || "sem-nome";
+}
 export function download(
   name: string,
   content: string,
