@@ -58,8 +58,11 @@ beforeEach(() => {
     }
     if (name === "delete_team")
       mock.teams = mock.teams.filter((t) => t.id !== p.p_team_id);
-    if (name === "rotate_team_credential")
-      return { access_code: "1111222233334444", credential: "private-test-value" };
+    if (name === "rotate_team_credential") {
+      mock.teams = mock.teams.map((t) => t.id === p.p_team_id
+        ? { ...t, access_code: "ABCDEFGH" } : t);
+      return { access_code: "ABCDEFGH", credential: "ABCDEFGHJKLM" };
+    }
     return null;
   });
 });
@@ -98,7 +101,7 @@ describe("team management", () => {
     await user.type(screen.getByLabelText("Nome público da dupla"), "Novos Camuflados");
     await user.clear(screen.getByLabelText("Primeiro integrante"));
     await user.type(screen.getByLabelText("Primeiro integrante"), "Maria Corrigida");
-    await user.selectOptions(screen.getByLabelText("Turma"), "poraque");
+    await user.selectOptions(within(screen.getByRole("form", { name: "Editar dupla" })).getByLabelText("Turma"), "poraque");
     await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
     await screen.findByText(/Novos Camuflados/);
     expect(mock.rpc).toHaveBeenCalledWith("update_team", {
@@ -108,7 +111,7 @@ describe("team management", () => {
     expect(onChanged).toHaveBeenCalled();
     await user.click(within(screen.getByText(/Boto Cor-de-Rosa/).closest("article")!)
       .getByRole("button", { name: "Editar cadastro" }));
-    expect((screen.getByLabelText("Turma") as HTMLSelectElement).disabled).toBe(true);
+    expect((within(screen.getByRole("form", { name: "Editar dupla" })).getByLabelText("Turma") as HTMLSelectElement).disabled).toBe(true);
   });
 
   it("deactivates and reactivates without deleting historical teams", async () => {
@@ -160,8 +163,16 @@ describe("team management", () => {
     const article = (await screen.findByText(/Camuflados/)).closest("article")!;
     await user.click(within(article).getByRole("button", { name: "Emitir nova credencial" }));
     await waitFor(() => expect(onCredential).toHaveBeenCalledWith({
-      access_code: "1111222233334444", credential: "private-test-value",
+      access_code: "ABCDEFGH", credential: "ABCDEFGHJKLM",
     }));
+    const card = screen.getByRole("region", { name: "Credencial gerada para Camuflados" });
+    expect(within(card).getByText("ABCDEFGH")).toBeTruthy();
+    expect((within(card).getByLabelText("Credencial privada de Camuflados") as HTMLInputElement).value)
+      .toBe("ABCDEFGHJKLM");
+    expect(screen.getByRole("button", { name: "Copiar mensagem privada" })).toBeTruthy();
+    await user.click(within(card).getByRole("button", { name: "Ocultar credencial" }));
+    expect(screen.queryByRole("region", { name: "Credencial gerada para Camuflados" })).toBeNull();
+    expect(mock.rpc).toHaveBeenCalledWith("rotate_team_credential", { p_team_id: "t2" });
     vi.restoreAllMocks();
   });
 });
