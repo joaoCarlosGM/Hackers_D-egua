@@ -108,6 +108,17 @@ describe("private activity accuracy", () => {
     });
   });
 
+
+  it("omits archived activities without deleting their graded submissions", () => {
+    const data = exampleData();
+    data.sessions[0].status = "archived";
+    const rows = calculateActivityAccuracy(classes, data);
+    expect(rows.map((row) => row.title)).toEqual(["Aula 03 — Redes"]);
+    expect(data.attempts.some((attempt) => attempt.id === "new")).toBe(true);
+    data.sessions[0].status = "closed";
+    expect(calculateActivityAccuracy(classes, data)).toHaveLength(2);
+  });
+
   it("does not include draft activities or answers from an unrelated class", () => {
     const data = exampleData();
     data.sessions[1].status = "draft";
