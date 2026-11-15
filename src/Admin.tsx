@@ -271,7 +271,8 @@ export default function Admin({
     if (classFilter && !classes.some((c) => c.id === classFilter))
       setClassFilter("");
   }, [classes, classFilter]);
-  const [
+  const load = useCallback(async () => {
+    const [
       activities,
       sessions,
       attempts,
@@ -315,7 +316,6 @@ export default function Admin({
       setIdentity(nextIdentity);
       setRole("");
       setData(empty);
-      setCredential(null);
       setQr(null);
       try {
         if (id) {
@@ -589,7 +589,7 @@ export default function Admin({
                       const { error } = await supabase!.auth.signOut();
                       if (error) throw error;
                       setData(empty);
-                                     setRole("");
+                                      setRole("");
                       setIdentity(null);
                     })
                   }
