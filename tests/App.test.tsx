@@ -120,6 +120,19 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("permanent team workflow", () => {
+  it("offers credential instructions under a collapsed disclosure", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const summary = screen.getByText("Dúvidas sobre credenciais");
+    const disclosure = summary.closest("details");
+    expect(disclosure).not.toBeNull();
+    expect(disclosure?.open).toBe(false);
+    await user.click(summary);
+    expect(disclosure?.open).toBe(true);
+    await user.click(summary);
+    expect(disclosure?.open).toBe(false);
+    expect(screen.getByLabelText("Código da dupla")).toBeTruthy();
+  });
   it("offers both mandatory classes and saves two members exactly once", async () => {
     const user = userEvent.setup();
     render(<App />);
