@@ -61,7 +61,7 @@ export function calculateActivityAccuracy(
   const groups = new Map<string, { activityId: string; classId: string; sessionIds: Set<string> }>();
   const groupBySessionAndClass = new Map<string, string>();
   for (const s of data.sessions) {
-    if (s.status === "draft" || !activityById.has(s.activity_id)) continue;
+    if (s.status === "draft" || s.status === "archived" || !activityById.has(s.activity_id)) continue;
     for (const classId of s.class_ids) {
       if (classFilter && classFilter !== classId) continue;
       if (!classes.some((c) => c.id === classId)) continue;
