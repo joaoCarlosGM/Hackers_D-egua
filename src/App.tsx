@@ -514,12 +514,15 @@ function TeamFlow({
                     autoComplete="off"
                   />
                 </label>
-                <p>
-                  Para entrar pelo Kali Live Boot, você pode solicitar ao administrador
-                  credenciais mais curtas: código de 8 caracteres e segredo de 12.
-                  Os códigos antigos continuam funcionando até serem redefinidos.
-                  Se perder, peça uma nova credencial para sua dupla: seu histórico permanece.
-                </p>
+                <details className="credential-help">
+                  <summary>Dúvidas sobre credenciais</summary>
+                  <p>
+                    Para entrar pelo Kali Live Boot, você pode solicitar ao administrador
+                    credenciais mais curtas: código de 8 caracteres e segredo de 12.
+                    Os códigos antigos continuam funcionando até serem redefinidos.
+                    Se perder, peça uma nova credencial para sua dupla: seu histórico permanece.
+                  </p>
+                </details>
               </>
             )}
             <button className="primary" disabled={busy}>
