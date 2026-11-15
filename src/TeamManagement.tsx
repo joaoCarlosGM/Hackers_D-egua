@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { rpc, type Class, type ManagedTeam } from "./api";
+import { download, safeFilenamePart } from "./utils";
 
 type Credential = { access_code: string; credential: string };
 type Draft = { public_name: string; member1: string; member2: string; class_id: string };
@@ -208,6 +209,17 @@ export default function TeamManagement({
                       .then(() => setNotice("Mensagem copiada para envio individual. Verifique o destinatário antes de compartilhar."))
                       .catch(() => setNotice("Não foi possível copiar automaticamente. Selecione e copie a credencial manualmente."));
                   }}>Copiar mensagem privada</button>
+                  <button type="button" onClick={() => download(
+                    `credenciais-${safeFilenamePart(team.public_name)}.txt`,
+                    [
+                      "Hackers Pai D’égua",
+                      "Dupla: " + team.public_name,
+                      "Código: " + issued.access_code,
+                      "Credencial privada: " + issued.credential,
+                      "Acesso: https://joaocarlosgm.github.io/Hackers_D-egua/",
+                      "Não compartilhe estas informações com outras duplas.",
+                    ].join("\n"),
+                  )}>Baixar credenciais desta dupla</button>
                   <button type="button" onClick={() => setIssued(null)}>Ocultar credencial</button>
                 </section>
               )}

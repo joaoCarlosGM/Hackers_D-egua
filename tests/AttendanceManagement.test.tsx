@@ -8,8 +8,13 @@ const mock = vi.hoisted(() => ({
   rpc: vi.fn(),
   lessons: [] as AttendanceLesson[],
   roster: [] as AttendanceStudent[],
+  download: vi.fn(),
 }));
 vi.mock("../src/api", () => ({ rpc: mock.rpc }));
+vi.mock("../src/utils", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../src/utils")>();
+  return { ...original, download: mock.download };
+});
 import AttendanceManagement from "../src/AttendanceManagement";
 
 const classes = [
@@ -19,6 +24,7 @@ const classes = [
 
 beforeEach(() => {
   mock.rpc.mockReset();
+  mock.download.mockReset();
   mock.lessons = [{
     id: "l1", class_id: "c1", class_name: "Poraquê", title: "Comandos Linux",
     lesson_date: "2026-11-05", students: 2, present: 1, absent: 0, justified: 0, unmarked: 1,
@@ -96,6 +102,46 @@ describe("individual attendance", () => {
     }));
     await screen.findByText(/Chamada registrada no Supabase/);
   });
+  it("exports a private consolidated CSV of saved attendance across lessons in the class", async () => {
+    const user = userEvent.setup();
+    mock.lessons.push({
+      id: "l2", class_id: "c1", class_name: "Poraquê", title: "Introdução às redes",
+      lesson_date: "2026-11-06", students: 2, present: 1,
+      absent: 0, justified: 0, unmarked: 1,
+    });
+    render(<AttendanceManagement classes={classes} role="teacher" classFilter="c1" />);
+    await screen.findByText("Comandos Linux");
+    await user.click(screen.getByRole("button", { name: "Exportar todas as chamadas CSV" }));
+    await waitFor(() => expect(mock.download).toHaveBeenCalledTimes(1));
+    const [filename, contents, type] = mock.download.mock.calls[0] as string[];
+    expect(filename).toMatch(/^chamadas-poraque-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(type).toBe("text/csv;charset=utf-8");
+    expect(contents).toContain("Comandos Linux");
+    expect(contents).toContain("Introdução às redes");
+    expect(contents).toContain("Ana Silva");
+    expect(contents).toContain("João Lima");
+    expect(contents).toContain("Presente");
+    expect(contents).toContain("Não marcado");
+    expect(mock.rpc.mock.calls.filter(([name]) => name === "list_attendance_roster")).toHaveLength(2);
+  });
+
+  it("exports stored marks instead of unsaved changes in the lesson editor", async () => {
+    const user = userEvent.setup();
+    render(<AttendanceManagement classes={classes} role="admin" classFilter="c1" />);
+    await screen.findByText("Comandos Linux");
+    await user.click(screen.getByText("Comandos Linux"));
+    await user.click(screen.getByRole("button", { name: "Abrir chamada" }));
+    const select = await screen.findByRole("combobox", { name: "Presença de João Lima" });
+    await user.selectOptions(select, "absent");
+    await user.click(screen.getByRole("button", { name: "Exportar CSV desta aula" }));
+    await waitFor(() => expect(mock.download).toHaveBeenCalledTimes(1));
+    const [filename, contents] = mock.download.mock.calls[0] as string[];
+    expect(filename).toContain("chamada-poraque-2026-11-05-comandos-linux.csv");
+    expect(contents).toContain("Não marcado");
+    expect(contents).not.toContain('"Faltou"');
+    expect(mock.rpc.mock.calls.some(([name]) => name === "save_attendance_marks")).toBe(false);
+  });
+
   it("allows admin to create a class lesson and limits teacher to read-only", async () => {
     const user = userEvent.setup();
     const view = render(<AttendanceManagement classes={classes} role="teacher" classFilter="" />);

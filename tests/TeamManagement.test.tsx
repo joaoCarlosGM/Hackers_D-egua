@@ -7,8 +7,13 @@ import type { ManagedTeam, Class } from "../src/api";
 const mock = vi.hoisted(() => ({
   rpc: vi.fn(),
   teams: [] as ManagedTeam[],
+  download: vi.fn(),
 }));
 vi.mock("../src/api", () => ({ rpc: mock.rpc }));
+vi.mock("../src/utils", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../src/utils")>();
+  return { ...original, download: mock.download };
+});
 import TeamManagement from "../src/TeamManagement";
 
 const classes: Class[] = [
@@ -20,6 +25,7 @@ const onChanged = vi.fn().mockResolvedValue(undefined);
 beforeEach(() => {
   onChanged.mockClear();
   mock.rpc.mockReset();
+  mock.download.mockReset();
   mock.teams = [
     {
       id: "t1", public_name: "Boto Cor-de-Rosa", class_id: "poraque",
@@ -166,6 +172,13 @@ describe("team management", () => {
     expect((within(card).getByLabelText("Credencial privada de Camuflados") as HTMLInputElement).value)
       .toBe("ABCDEFGHJKLM");
     expect(screen.getByRole("button", { name: "Copiar mensagem privada" })).toBeTruthy();
+    await user.click(within(card).getByRole("button", { name: "Baixar credenciais desta dupla" }));
+    expect(mock.download).toHaveBeenCalledTimes(1);
+    expect(mock.download).toHaveBeenCalledWith(
+      "credenciais-camuflados.txt",
+      expect.stringContaining("Dupla: Camuflados"),
+    );
+    expect((mock.download.mock.calls[0][1] as string)).toContain("ABCDEFGHJKLM");
     await user.click(within(card).getByRole("button", { name: "Ocultar credencial" }));
     expect(screen.queryByRole("region", { name: "Credencial gerada para Camuflados" })).toBeNull();
     expect(mock.rpc).toHaveBeenCalledWith("issue_short_team_credential", { p_team_id: "t2" });

@@ -209,3 +209,29 @@
 .assessment-autosave-note > span { flex: 1 1 280px; font-size: .81rem; }
 .assessment-autosave-note button { flex: 0 0 auto; font-size: .75rem; }
 .assessment-autosave-note small { display: block; width: 100%; color: var(--muted); font-size: .73rem; }
+
+/* Private exports and the per-activity grade summary. */
+.attendance-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: .65rem;
+}
+.activity-accuracy {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.activity-accuracy .table-wrap {
+  overflow-x: auto;
+}
+.activity-accuracy table {
+  min-width: 590px;
+}
+@media (max-width: 700px) {
+  .attendance-actions {
+    justify-content: flex-start;
+  }
+}

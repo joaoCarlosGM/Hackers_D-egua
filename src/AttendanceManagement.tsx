@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { rpc, type Class } from "./api";
-import { csv, download } from "./utils";
+import { csv, download, safeFilenamePart } from "./utils";
 
 type AttendanceStatus = "" | "present" | "absent" | "justified";
 export type AttendanceLesson = {
@@ -174,15 +174,48 @@ export default function AttendanceManagement({
     return { present: count("present"), absent: count("absent"), justified: count("justified"), unmarked: count("") };
   }, [roster, marks]);
 
-  function exportAttendance() {
-    if (!active) return;
-    download("chamada-" + active.lesson_date + ".csv", csv([
-      ["Turma", "Aula", "Data", "Dupla", "Participante", "Presença"],
-      ...roster.map((s) => [
-        active.class_name, active.title, active.lesson_date,
-        s.public_name, s.full_name, statusLabels[marks[s.member_id] || ""],
-      ]),
-    ]), "text/csv;charset=utf-8");
+  async function exportAttendance(allLessons: boolean) {
+    const selected = allLessons ? lessons : active ? [active] : [];
+    if (selected.length === 0 || busy || loading || loadFailed || rosterLoading) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      // Always read saved marks from the staff-only Supabase RPC; pending
+      // selections in the editor must not silently appear as recorded presences.
+      const rows: unknown[][] = [
+        ["Turma", "Aula", "Data", "Dupla", "Participante", "Presença"],
+      ];
+      for (const lesson of selected) {
+        const students = await rpc<AttendanceStudent[]>("list_attendance_roster", {
+          p_lesson_id: lesson.id,
+        });
+        for (const student of students) {
+          const value = codes.includes(student.status as AttendanceStatus)
+            ? student.status as AttendanceStatus
+            : "";
+          rows.push([
+            lesson.class_name, lesson.title, lesson.lesson_date,
+            student.public_name, student.full_name, statusLabels[value],
+          ]);
+        }
+      }
+      const suffix = allLessons
+        ? safeFilenamePart(classFilter
+          ? classes.find((item) => item.id === classFilter)?.name ?? "turma"
+          : "todas-as-turmas") + "-" + todayLocal()
+        : safeFilenamePart(selected[0].class_name) + "-" + selected[0].lesson_date +
+          "-" + safeFilenamePart(selected[0].title);
+      download((allLessons ? "chamadas-" : "chamada-") + suffix + ".csv",
+        csv(rows), "text/csv;charset=utf-8");
+      setNotice(allLessons
+        ? `CSV privado gerado com ${selected.length} aula(s) e somente presenças salvas no Supabase.`
+        : "CSV privado gerado com as presenças salvas desta aula.");
+    } catch (err) {
+      setError(friendlyAttendanceError(err));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -193,11 +226,18 @@ export default function AttendanceManagement({
             <h2>Chamada das aulas</h2>
             <p>Registre a presença de cada integrante, mesmo quando participa em dupla. Somente administradores lançam ou corrigem presenças.</p>
           </div>
-          {canEdit && (
-            <button type="button" className="primary" disabled={loadFailed || busy} onClick={() => setCreating((v) => !v)}>
-              {creating ? "Fechar cadastro" : "+ Nova aula"}
+          <div className="attendance-actions">
+            <button type="button" disabled={busy || loading || loadFailed || lessons.length === 0}
+              onClick={() => void exportAttendance(true)}>
+              Exportar todas as chamadas CSV
             </button>
-          )}
+            {canEdit && (
+              <button type="button" className="primary" disabled={loadFailed || busy}
+                onClick={() => setCreating((v) => !v)}>
+                {creating ? "Fechar cadastro" : "+ Nova aula"}
+              </button>
+            )}
+          </div>
         </div>
         {error && <p className="error" role="alert">{error}</p>}
         {loadFailed && (
@@ -232,7 +272,7 @@ export default function AttendanceManagement({
             <button className="primary" disabled={busy}>Salvar aula</button>
           </form>
         )}
-        <p className="muted">Use a seta ao lado de cada aula para visualizar a chamada. “Não marcado” não conta como falta.</p>
+        <p className="muted">Use a seta ao lado de cada aula para visualizar a chamada. “Não marcado” não conta como falta. Os arquivos CSV contêm somente presenças salvas e devem ser mantidos privados.</p>
         {loading ? <p>Carregando aulas…</p> : loadFailed ? (
           <p>Não foi possível consultar as aulas no Supabase.</p>
         ) : lessons.length === 0 ? (
@@ -264,7 +304,7 @@ export default function AttendanceManagement({
               <h2>{active.title}</h2>
               <p>{active.class_name} · {active.lesson_date} · {roster.length} estudantes</p>
             </div>
-            <button type="button" disabled={rosterLoading} onClick={exportAttendance}>Exportar CSV privado</button>
+            <button type="button" disabled={busy || rosterLoading} onClick={() => void exportAttendance(false)}>Exportar CSV desta aula</button>
           </div>
           {rosterLoading ? <p>Carregando participantes…</p> : (
             <>
