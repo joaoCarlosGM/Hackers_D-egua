@@ -1000,9 +1000,12 @@ export default function Admin({
               )}
               <section className="card">
                 <h2>Atividades e publicação</h2>
-                <label><input type="checkbox" checked={showArchivedActivities}
-                  onChange={(e) => setShowArchivedActivities(e.target.checked)} />
-                  Mostrar atividades arquivadas</label>
+                <label style={{ display: "inline-flex", flexDirection: "row", alignItems: "center", gap: "8px", width: "fit-content", cursor: "pointer" }}>
+                  <input type="checkbox" checked={showArchivedActivities}
+                    style={{ margin: 0, width: "auto", flex: "none" }}
+                    onChange={(e) => setShowArchivedActivities(e.target.checked)} />
+                  <span>Exibir atividades arquivadas</span>
+                </label>
                 {visibleSessions.filter((s) => showArchivedActivities || s.status !== "archived").map((s) => {
                   const a = data.activities.find((a) => a.id === s.activity_id);
                   if (!a) return null;
