@@ -5,13 +5,12 @@ type Credential = { access_code: string; credential: string };
 type Draft = { public_name: string; member1: string; member2: string; class_id: string };
 
 export default function TeamManagement({
-  classes, canManage, selectedClassId, onChanged, onCredential,
+  classes, canManage, selectedClassId, onChanged,
 }: {
   classes: Class[];
   canManage: boolean;
   selectedClassId: string;
   onChanged: () => Promise<void>;
-  onCredential: (value: Credential) => void;
 }) {
   const [teams, setTeams] = useState<ManagedTeam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -167,7 +166,6 @@ export default function TeamManagement({
                         throw err;
                       }
                       setIssued({ ...value, team_id: team.id });
-                      onCredential(value);
                       setNotice("Novo código de 8 caracteres e credencial de 12 emitidos para esta dupla. Envie somente aos dois integrantes, por canal privado.");
                     });
                   }}>Emitir nova credencial</button>
