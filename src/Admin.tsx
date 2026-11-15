@@ -597,9 +597,8 @@ export default function Admin({
                   Atualizar dados
                 </button>
                 {(section === "notas" || section === "overview") && (
-                  <button onClick={exportGrades}>
-                    Exportar notas CSV (privado)
-                  </button>
+                  <><button onClick={exportGrades}>Exportar notas CSV (privado)</button>
+                  <button onClick={exportAverageGrades}>Exportar médias CSV (privado)</button></>
                 )}
                 <button
                   className="admin-signout"
@@ -1001,7 +1000,10 @@ export default function Admin({
               )}
               <section className="card">
                 <h2>Atividades e publicação</h2>
-                {visibleSessions.map((s) => {
+                <label><input type="checkbox" checked={showArchivedActivities}
+                  onChange={(e) => setShowArchivedActivities(e.target.checked)} />
+                  Mostrar atividades arquivadas</label>
+                {visibleSessions.filter((s) => showArchivedActivities || s.status !== "archived").map((s) => {
                   const a = data.activities.find((a) => a.id === s.activity_id);
                   if (!a) return null;
                   return (
@@ -1184,6 +1186,7 @@ export default function Admin({
                                   p_status: "archived",
                                 });
                                 await load();
+                                setNotice("Atividade arquivada. Ela não aparece mais na lista ativa nem na tabela de médias; os dados foram preservados.");
                               })
                             }
                           >
