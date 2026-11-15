@@ -50,6 +50,9 @@ No Dashboard do projeto **existente**, abra SQL Editor e execute **cada arquivo 
 8. `supabase/migrations/202611050004_attendance.sql`: chamada privada por estudante e por aula, RLS, auditoria e proteção do histórico contra transferências/exclusões. **Executar somente após a migration 007.**
 9. `supabase/migrations/202611050005_hide_inactive_ranking.sql`: oculta equipes desativadas do ranking público; reativar restaura a visibilidade sem perder histórico. **Depois da 008.**
 10. `supabase/migrations/202611050006_weighted_rank.sql`: ranking de até 1.000 pontos, CTF 80% e avaliações 20%, com agregado de notas por dupla e atualização automática. **Depois da 009.**
+11. `supabase/migrations/202611050007_quiz_answer_protection.sql`: reforça RLS e elimina gabaritos dos dados públicos. **Depois da 010.**
+12. `supabase/migrations/202611050008_short_team_credentials.sql`: credenciais individuais curtas, mantendo login de duplas antigas, sem recalcular pontuação. **Depois da 011.**
+
 
 Execute cada arquivo em uma transação (`BEGIN;` antes e `COMMIT;` depois do conteúdo) se o editor não garantir uma transação única. O seed de turmas é idempotente; os arquivos DDL são migrations versionadas, não scripts para reaplicar integralmente. Não reaplique uma migration já concluída. Em caso de erro, reverta apenas a transação aberta e investigue antes de seguir.
 
@@ -73,6 +76,10 @@ supabase migration list
 ```
 
 Não há credenciais remotas incluídas neste repositório e nenhuma migration é aplicada automaticamente pelo GitHub Actions.
+
+## Credenciais individuais de duplas para Live Boot
+
+O administrador pode gerar um código de 8 caracteres e uma credencial privada de 12 caracteres **para cada dupla**, em `#admin/duplas`. O cartão aparece logo abaixo da dupla e oferece `Copiar mensagem privada`. Somente a dupla selecionada perde as credenciais e sessões anteriores; duplas ainda não migradas mantêm o login antigo (16 + 48 caracteres). As notas e o ranking permanecem inalterados. Leia [o procedimento de ativação e envio individual](docs/short-duo-credentials.md). Antes de usar o botão novo, aplique a migration 012 no Supabase.
 
 ## Primeiro administrador, professores e autorização de acesso
 
