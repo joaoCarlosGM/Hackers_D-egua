@@ -1394,6 +1394,8 @@ export default function Admin({
                 onChanged={load}
                 onCredential={setCredential}
               />
+                </>
+              )}
               {section === "usuarios" && role === "admin" && identity && (
                 <AdminAccessManagement currentUserId={identity} />
               )}
