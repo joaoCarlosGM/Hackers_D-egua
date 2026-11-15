@@ -118,12 +118,12 @@ $$;
 -- O painel usa uma RPC nova: se esta migration não tiver sido aplicada,
 -- a emissão falha sem acionar a antiga rotina que gera segredo longo.
 create function public.issue_short_team_credential(p_team_id uuid)
-returns jsonb language plpgsql security definer set search_path = '' as $
+returns jsonb language plpgsql security definer set search_path = '' as $$
 begin
   perform app_private.require_admin();
   return public.rotate_team_credential(p_team_id);
 end;
-$;
+$$;
 
 revoke all on function public.issue_short_team_credential(uuid),
   public.rotate_team_credential(uuid),
