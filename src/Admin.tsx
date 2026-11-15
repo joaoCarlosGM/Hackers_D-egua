@@ -6,6 +6,7 @@ import AdminNavigation, { type AdminSection } from "./AdminNavigation";
 import TeamManagement from "./TeamManagement";
 import AdminAccessManagement from "./AdminAccessManagement";
 import AttendanceManagement from "./AttendanceManagement";
+import ActivityAccuracy from "./ActivityAccuracy";
 import { brandAssets } from "./Brand";
 import "./admin-attendance.css";
 import {
@@ -1260,6 +1261,7 @@ export default function Admin({
                     ? ` · ${classes.find((c) => c.id === classFilter)?.name ?? ""}`
                     : ""}
                 </h2>
+                <ActivityAccuracy classes={classes} data={data} classFilter={classFilter} />
                 {visibleAttempts.length === 0 && (
                   <p>Ainda não há participações.</p>
                 )}
