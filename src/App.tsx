@@ -10,7 +10,7 @@ import {
   type Team,
   type Participation,
 } from "./api";
-import { download } from "./utils";
+import { download, safeFilenamePart } from "./utils";
 import Admin from "./Admin";
 import Quiz from "./Quiz";
 import Brand, { brandAssets } from "./Brand";
@@ -568,7 +568,7 @@ function TeamFlow({
                 <button
                   onClick={() =>
                     download(
-                      "credenciais-da-dupla.txt",
+                      `credenciais-${safeFilenamePart(team.public_name)}.txt`,
                       `Hackers Pai D'égua\nDupla: ${team.public_name}\nCódigo: ${team.access_code}\nCredencial privada: ${team.credential}\nNão compartilhe publicamente. Guarde fora do Live Boot.`,
                     )
                   }
