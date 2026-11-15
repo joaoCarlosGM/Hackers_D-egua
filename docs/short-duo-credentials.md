@@ -27,13 +27,13 @@ Antes de usar o botão novo, aplique no **Supabase SQL Editor**, com backup:
 
 `supabase/migrations/202611050008_short_team_credentials.sql` (**migration 012**, depois da 011).
 
-O código frontend usa a RPC **`issue_short_team_credential`**, que só existe após a migration 012. Portanto, se a migration não estiver instalada, a emissão falha com uma mensagem clara **sem modificar a credencial antiga**. O deploy GitHub Pages **não executa SQL**; não repita migrations anteriores.
+O frontend usa a RPC **`issue_short_team_credential`**, que só existe após a migration 012. Portanto, se a migration não estiver instalada, a emissão falha com uma mensagem clara **sem modificar a credencial antiga**. O deploy GitHub Pages **não executa SQL**; não repita migrations anteriores.
 
 As credenciais geradas antes da migration continuam funcionando no formato legado de 16 caracteres para o código + 48 para o segredo até a primeira emissão de credenciais curtas da respectiva dupla. Depois, o aluno usa 8 + 12 no mesmo formulário de login.
 
 ## Política de segurança
 
-- Apenas `PAP_ADMIN`? Não: no Hackers Pai D’égua, **somente o papel `admin`** na tabela `public.admin_users` emite credenciais.
+- **Somente o papel `admin`** na tabela `public.admin_users` emite credenciais.
 - O login com segredo de 12 caracteres oferece **60 bits** de entropia aleatória, com limitação de tentativas por equipe. O código da dupla tem **40 bits** e é um identificador, não substitui o segredo.
 - Não publique o segredo em ranking, QR Code público, atividade ou grupo de WhatsApp.
 - O site não pode recuperar uma credencial privada depois que o cartão é fechado: o banco guarda apenas o hash bcrypt.
