@@ -503,7 +503,7 @@ function TeamFlow({
                   />
                 </label>
                 <label>
-                  Credencial privada da dupla
+                  Código privado de recuperação
                   <input
                     name="credential"
                     type="password"
