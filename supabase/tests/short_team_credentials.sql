@@ -41,18 +41,18 @@ select test_short.ok(
   (select value->>'credential' from test_short.state where key='team2')) ? 'token'),
  'legacy duo can still sign in');
 
-select test_short.denied($q$select public.rotate_team_credential(
+select test_short.denied($q$select public.issue_short_team_credential(
  (select (value->>'team_id')::uuid from test_short.state where key='team1'))$q$,
  'anonymous cannot issue a new credential');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000082',true);
-select test_short.denied($q$select public.rotate_team_credential(
+select test_short.denied($q$select public.issue_short_team_credential(
  (select (value->>'team_id')::uuid from test_short.state where key='team1'))$q$,
  'teacher cannot issue credentials');
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000083',true);
-select test_short.denied($q$select public.rotate_team_credential(
+select test_short.denied($q$select public.issue_short_team_credential(
  (select (value->>'team_id')::uuid from test_short.state where key='team1'))$q$,
  'ordinary Supabase user cannot issue credentials');
 
@@ -60,7 +60,7 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000081'
 select public.adjust_ctf(gen_random_uuid(),
  (select (value->>'team_id')::uuid from test_short.state where key='team1'),
  42,'Pontos anteriores às credenciais curtas');
-insert into test_short.state select 'new1',public.rotate_team_credential(
+insert into test_short.state select 'new1',public.issue_short_team_credential(
  (select (value->>'team_id')::uuid from test_short.state where key='team1'));
 select test_short.ok(
  (select length(value->>'access_code')=8 and length(value->>'credential')=12
