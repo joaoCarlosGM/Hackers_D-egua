@@ -218,7 +218,7 @@ export default function TeamManagement({
                       "Credencial privada: " + issued.credential,
                       "Acesso: https://joaocarlosgm.github.io/Hackers_D-egua/",
                       "Não compartilhe estas informações com outras duplas.",
-                    ].join("\\n"),
+                    ].join("\n"),
                   )}>Baixar credenciais desta dupla</button>
                   <button type="button" onClick={() => setIssued(null)}>Ocultar credencial</button>
                 </section>
