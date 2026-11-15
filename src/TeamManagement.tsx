@@ -157,7 +157,15 @@ export default function TeamManagement({
                   <button disabled={busy} onClick={() => {
                     if (!window.confirm("Emitir novo código curto e nova credencial somente para " + team.public_name + "? A dupla precisará das novas informações para entrar; sessões antigas serão encerradas. Confirme a identidade dos integrantes antes de entregar.")) return;
                     void change(async () => {
-                      const value = await rpc<Credential>("rotate_team_credential", { p_team_id: team.id });
+                      let value: Credential;
+                      try {
+                        value = await rpc<Credential>("issue_short_team_credential", { p_team_id: team.id });
+                      } catch (err) {
+                        if (/PGRST202|Could not find the function public\.issue_short_team_credential/i.test((err as Error).message)) {
+                          throw new Error("A emissão curta ainda não está ativada no Supabase. Aplique a migration 012 antes de gerar novas credenciais.");
+                        }
+                        throw err;
+                      }
                       setIssued({ ...value, team_id: team.id });
                       onCredential(value);
                       setNotice("Novo código de 8 caracteres e credencial de 12 emitidos para esta dupla. Envie somente aos dois integrantes, por canal privado.");
