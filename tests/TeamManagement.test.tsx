@@ -58,7 +58,7 @@ beforeEach(() => {
     }
     if (name === "delete_team")
       mock.teams = mock.teams.filter((t) => t.id !== p.p_team_id);
-    if (name === "rotate_team_credential") {
+    if (name === "issue_short_team_credential") {
       mock.teams = mock.teams.map((t) => t.id === p.p_team_id
         ? { ...t, access_code: "ABCDEFGH" } : t);
       return { access_code: "ABCDEFGH", credential: "ABCDEFGHJKLM" };
@@ -156,7 +156,7 @@ describe("team management", () => {
     expect(within(linked).getByText(/Eventos CTF: 1/)).toBeTruthy();
     expect((within(linked).getByRole("button", { name: "Excluir dupla" }) as HTMLButtonElement).disabled).toBe(true);
   });
-  it("receives a new private credential only after an administrator invokes rotation", async () => {
+  it("receives per-duo short credentials only after admin issuance", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "confirm").mockReturnValueOnce(true);
     view(true, "pitiu");
@@ -172,7 +172,24 @@ describe("team management", () => {
     expect(screen.getByRole("button", { name: "Copiar mensagem privada" })).toBeTruthy();
     await user.click(within(card).getByRole("button", { name: "Ocultar credencial" }));
     expect(screen.queryByRole("region", { name: "Credencial gerada para Camuflados" })).toBeNull();
-    expect(mock.rpc).toHaveBeenCalledWith("rotate_team_credential", { p_team_id: "t2" });
+    expect(mock.rpc).toHaveBeenCalledWith("issue_short_team_credential", { p_team_id: "t2" });
+    vi.restoreAllMocks();
+  });
+  it("does not revoke a duo when the short-credential migration is missing", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    mock.rpc.mockImplementation(async (name: string, params: Record<string, unknown>) => {
+      if (name === "list_teams_admin") return mock.teams.slice(Number(params.p_offset), Number(params.p_offset) + Number(params.p_limit));
+      if (name === "issue_short_team_credential")
+        throw new Error("Could not find the function public.issue_short_team_credential(p_team_id) in the schema cache");
+      return null;
+    });
+    view(true);
+    const card = (await screen.findByText(/Boto Cor-de-Rosa/)).closest("article")!;
+    await user.click(within(card).getByRole("button", { name: "Emitir nova credencial" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("migration 012");
+    expect(screen.queryByRole("region", { name: /Credencial gerada/ })).toBeNull();
+    expect(mock.rpc).toHaveBeenCalledWith("issue_short_team_credential", { p_team_id: "t1" });
     vi.restoreAllMocks();
   });
 });
