@@ -11,10 +11,12 @@ describe("student point calculator", () => {
     expect(screen.getByLabelText("Nota Atividade 02")).toBeTruthy();
     expect(screen.getByLabelText("Nota Atividade 03")).toBeTruthy();
     expect(screen.getByLabelText("Nota Atividade 04")).toBeTruthy();
-    expect(screen.getAllByText("Atividade de reposição")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Preencher as 13 próximas atividades" }));
+    expect(screen.getAllByText("Recuperação de nota")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Exibir todas as 16 atividades" }));
     expect(screen.getByLabelText("Nota Atividade 05")).toBeTruthy();
-    expect(screen.getByLabelText("Nota Atividade 17")).toBeTruthy();
+    expect(screen.getByLabelText("Nota Atividade 01")).toBeTruthy();
+    expect(screen.getByLabelText("Nota Atividade 16")).toBeTruthy();
+    expect(screen.queryByLabelText("Nota Atividade 17")).toBeNull();
     expect(screen.queryByLabelText("Nota Atividade 18")).toBeNull();
   });
 
@@ -22,7 +24,7 @@ describe("student point calculator", () => {
     render(<ScoreCalculator />);
     fireEvent.change(screen.getByLabelText("Nota Atividade 02"), { target: { value: "0" } });
     fireEvent.change(screen.getByLabelText("Nota Atividade 03"), { target: { value: "10" } });
-    fireEvent.change(screen.getByLabelText("Nota da atividade de reposição"), { target: { value: "9" } });
+    fireEvent.change(screen.getByLabelText("Nota da recuperação"), { target: { value: "9" } });
     expect(screen.getByText("90%", { exact: false })).toBeTruthy();
     expect(screen.getByText("9/10", { exact: false })).toBeTruthy();
     expect(screen.getAllByText("100", { exact: false }).length).toBeGreaterThan(0);
@@ -31,9 +33,9 @@ describe("student point calculator", () => {
 
   it("validates the single makeup grade independently of other activity results", () => {
     render(<ScoreCalculator />);
-    fireEvent.change(screen.getByLabelText("Nota da atividade de reposição"), { target: { value: "11" } });
+    fireEvent.change(screen.getByLabelText("Nota da recuperação"), { target: { value: "11" } });
     expect(screen.getByRole("alert")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Nota da atividade de reposição"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("Nota da recuperação"), { target: { value: "10" } });
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });
