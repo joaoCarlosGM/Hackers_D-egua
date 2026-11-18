@@ -80,6 +80,9 @@ export type Rank = {
   solved_count: number;
   /** Rounded private assessment aggregate, without per-activity grades. */
   assessment_band: number;
+  historical_score?: number | null;
+  ctf_baseline?: number;
+  future_activity_points?: number;
 };
 export type History = {
   team: Omit<Team, "token">;
