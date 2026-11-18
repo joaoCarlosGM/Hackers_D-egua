@@ -128,13 +128,25 @@ function Leaderboard({ classes }: { classes: Class[] }) {
   useEffect(() => {
     let alive = true;
     const load = async () => {
-      const { data, error } = await supabase!
+      // Compatibilidade temporária: a publicação do frontend pode ocorrer
+      // antes da aplicação da migration histórica no Supabase.
+      let result = await supabase!
         .from("public_leaderboard")
         .select("team_id,class_id,public_name,points,solved_count,assessment_band,historical_score,ctf_baseline,future_activity_points")
         .eq("is_visible", true)
         .order("points", { ascending: false })
         .order("solved_count", { ascending: false })
         .order("public_name");
+      if (result.error && /historical_score|ctf_baseline|future_activity_points|42703/.test(result.error.message + result.error.code)) {
+        result = await supabase!
+          .from("public_leaderboard")
+          .select("team_id,class_id,public_name,points,solved_count,assessment_band")
+          .eq("is_visible", true)
+          .order("points", { ascending: false })
+          .order("solved_count", { ascending: false })
+          .order("public_name");
+      }
+      const { data, error } = result;
       if (alive) {
         if (error) setError(error.message);
         else {
