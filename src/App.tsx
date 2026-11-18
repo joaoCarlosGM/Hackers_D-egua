@@ -15,6 +15,7 @@ import Admin from "./Admin";
 import Quiz from "./Quiz";
 import Brand, { brandAssets } from "./Brand";
 import { rankTeams } from "./ranking";
+import ScoreCalculator from "./ScoreCalculator";
 
 export default function App() {
   const [route, setRoute] = useState(location.hash.slice(1));
@@ -51,12 +52,13 @@ export default function App() {
         <nav>
           <a href="#">Minha dupla</a>
           <a href="#ranking">Ranking CTF</a>
+          <a href="#calculadora">Calculadora de pontos</a>
           <a href="#admin">Administração</a>
         </nav>
       </header>
       <main
         className={
-          route === "ranking"
+          (route === "ranking" || route === "calculadora")
             ? "ranking-page"
             : route.startsWith("admin")
               ? "admin-page"
@@ -80,6 +82,8 @@ export default function App() {
             )}
             {route === "ranking" ? (
               <Leaderboard classes={classes} />
+            ) : route === "calculadora" ? (
+              <ScoreCalculator />
             ) : route.startsWith("admin") ? (
               <Admin
                 classes={classes}
@@ -128,26 +132,13 @@ function Leaderboard({ classes }: { classes: Class[] }) {
   useEffect(() => {
     let alive = true;
     const load = async () => {
-      // Compatibilidade temporária: a publicação do frontend pode ocorrer
-      // antes da aplicação da migration histórica no Supabase.
-      let result = await supabase!
+      const { data, error } = await supabase!
         .from("public_leaderboard")
-        .select("team_id,class_id,public_name,points,solved_count,assessment_band,historical_score,ctf_baseline,future_activity_points")
+        .select("team_id,class_id,public_name,points,solved_count,assessment_band")
         .eq("is_visible", true)
         .order("points", { ascending: false })
         .order("solved_count", { ascending: false })
         .order("public_name");
-      if (result.error && /historical_score|ctf_baseline|future_activity_points|42703/.test(result.error.message + result.error.code)) {
-        const legacyResult = await supabase!
-          .from("public_leaderboard")
-          .select("team_id,class_id,public_name,points,solved_count,assessment_band")
-          .eq("is_visible", true)
-          .order("points", { ascending: false })
-          .order("solved_count", { ascending: false })
-          .order("public_name");
-        result = { ...result, data: legacyResult.data as typeof result.data, error: legacyResult.error };
-      }
-      const { data, error } = result;
       if (alive) {
         if (error) setError(error.message);
         else {
@@ -224,6 +215,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
           Modo projetor
         </button>
       </div>
+      <p><a href="#calculadora">Simular minha pontuação na calculadora</a></p>
       <div className="podium">
         {visible.slice(0, 3).map((r, i) => (
           <article className={`card place-${i + 1}`} key={r.team_id}>
@@ -265,7 +257,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
         </div>
       )}
       <p className="muted">
-        Pontuação histórica preservada, acrescida de atividades e desafios futuros. As notas pedagógicas são privadas.
+        Atividades: até 200 pontos pelo aproveitamento médio. CTFs: até 800 pontos no total. As notas individuais são privadas.
       </p>
     </section>
   );
