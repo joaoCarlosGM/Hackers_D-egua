@@ -14,3 +14,6 @@
 .score-calculator-results dt { opacity:.8; }
 .score-calculator-results dd { margin:0; font-weight:700; text-align:right; }
 @media (max-width:760px) { .score-calculator-layout { grid-template-columns:1fr; } .score-calculator-grade { flex-wrap:wrap; } }
+.score-calculator-makeup { border-top: 1px solid rgba(128,128,128,.25); margin-top: 1.4rem; padding-top: .7rem; }
+.score-calculator-grade select { width: min(100%, 22rem); max-width: 100%; }
+@media (max-width:760px) { .score-calculator-grade select { width: 100%; } }
