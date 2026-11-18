@@ -130,7 +130,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
     const load = async () => {
       const { data, error } = await supabase!
         .from("public_leaderboard")
-        .select("team_id,class_id,public_name,points,solved_count,assessment_band")
+        .select("team_id,class_id,public_name,points,solved_count,assessment_band,historical_score,ctf_baseline,future_activity_points")
         .eq("is_visible", true)
         .order("points", { ascending: false })
         .order("solved_count", { ascending: false })
@@ -252,7 +252,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
         </div>
       )}
       <p className="muted">
-        Ranking público de desafios. As notas pedagógicas são privadas.
+        Pontuação histórica preservada, acrescida de atividades e desafios futuros. As notas pedagógicas são privadas.
       </p>
     </section>
   );
