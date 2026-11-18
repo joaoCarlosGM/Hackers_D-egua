@@ -24,7 +24,7 @@ export default function ScoreCalculator() {
   const validMakeupTarget = makeupIndex >= 0 && makeupIndex < 16 && grades[makeupIndex] === "0";
   const effectiveGrades = grades.map((value, index) => hasMakeup && validMakeupTarget && index === makeupIndex ? makeupGrade : value);
   const ratios = effectiveGrades.flatMap((grade, index) => grade.trim() === "" ? [] :
-    [Number(grade) / lessons[index].maximum]);
+    [Number(grade) / (hasMakeup && validMakeupTarget && index === makeupIndex ? 10 : lessons[index].maximum)]);
   const invalidGrades = grades.some((grade, index) => grade.trim() !== "" &&
     (!Number.isFinite(Number(grade)) || Number(grade) < 0 || Number(grade) > lessons[index].maximum));
   const invalidMakeup = (hasMakeup && (!validMakeupTarget || !Number.isFinite(Number(makeupGrade)) || Number(makeupGrade) < 0 || Number(makeupGrade) > 10)) || (!hasMakeup && makeupTarget !== "");
