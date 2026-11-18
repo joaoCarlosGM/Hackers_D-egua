@@ -3,8 +3,8 @@ import { assessmentPointsFromRatios } from "./ranking";
 import "./score-calculator.css";
 
 const lessons = Array.from({ length: 16 }, (_, index) => ({
-  title: `Atividade ${String(index + 2).padStart(2, "0")}`,
-  maximum: index === 0 ? 8 : 10,
+  title: `Atividade ${String(index + 1).padStart(2, "0")}`,
+  maximum: index === 1 ? 8 : 10,
 }));
 
 function formatNumber(value: number) {
@@ -48,36 +48,36 @@ export default function ScoreCalculator() {
           <h2>Atividades avaliativas</h2>
           <p className="muted">Digite a nota original. Atividade 02 vale 8; as demais, 10. Deixe em branco o que ainda não foi aplicado. Digite 0 para uma atividade aplicada e não entregue.</p>
           <div className="score-calculator-fields">
-            {lessons.slice(0, expanded ? 16 : 3).map((lesson, index) => (
+            {lessons.map((lesson, index) => ({ ...lesson, index })).filter(({ index }) => expanded || (index >= 1 && index <= 3)).map(({ title, maximum, index }) => (
               <label className="score-calculator-grade" key={index}>
-                <span>{lesson.title}</span>
+                <span>{title}</span>
                 <span className="score-calculator-input">
-                  <input type="number" min={0} max={lesson.maximum} step="0.01"
+                  <input type="number" min={0} max={maximum} step="0.01"
                     value={grades[index]} placeholder="—" inputMode="decimal"
-                    aria-label={`Nota ${lesson.title}`}
+                    aria-label={`Nota ${title}`}
                     onChange={event => editGrade(index, event.target.value)}/>
-                  <span>/ {lesson.maximum}</span>
+                  <span>/ {maximum}</span>
                 </span>
               </label>
             ))}
           </div>
           <button type="button" onClick={() => setExpanded(!expanded)}>
-            {expanded ? "Ocultar próximas atividades" : "Preencher as 13 próximas atividades"}
+            {expanded ? "Mostrar somente atividades 02 a 04" : "Exibir todas as 16 atividades"}
           </button>
           <div className="score-calculator-makeup">
-            <h2>Atividade de reposição</h2>
-            <p className="muted">Uma única atividade, com 20 questões valendo 10 pontos no total. Informe apenas sua nota para consultar o aproveitamento. Esta nota não é somada automaticamente às atividades regulares: a substituição de uma falta depende de validação da equipe pedagógica.</p>
+            <h2>Recuperação de nota</h2>
+            <p className="muted">Uma única avaliação de recuperação, com 20 questões valendo 10 pontos no total. Informe apenas sua nota para consultar o aproveitamento. Esta nota não é somada automaticamente às atividades regulares: a substituição de uma falta depende de validação da equipe pedagógica.</p>
             <label className="score-calculator-grade">
-              <span>Nota da reposição</span>
+              <span>Nota da recuperação</span>
               <span className="score-calculator-input">
                 <input type="number" min={0} max={10} step="0.01" inputMode="decimal"
-                  value={makeupGrade} placeholder="—" aria-label="Nota da atividade de reposição"
+                  value={makeupGrade} placeholder="—" aria-label="Nota da recuperação"
                   onChange={event => setMakeupGrade(event.target.value)} />
                 <span>/ 10</span>
               </span>
             </label>
             {makeupGrade.trim() !== "" && !invalidMakeup && (
-              <p>Seu aproveitamento na reposição: <strong>{formatNumber(Number(makeupGrade) * 10)}%</strong>.</p>
+              <p>Seu aproveitamento na recuperação: <strong>{formatNumber(Number(makeupGrade) * 10)}%</strong>.</p>
             )}
           </div>
           <h2>CTFs</h2>
@@ -95,7 +95,7 @@ export default function ScoreCalculator() {
               </label>
             ))}
           </div>
-          {!valid && <p role="alert" className="error">Confira os valores. As notas e os CTFs precisam respeitar os limites indicados, inclusive a reposição de 0 a 10.</p>}
+          {!valid && <p role="alert" className="error">Confira os valores. As notas e os CTFs precisam respeitar os limites indicados, inclusive a recuperação de 0 a 10.</p>}
           <button type="button" onClick={() => {setGrades(Array(16).fill(""));setCtfs(["0","0","0"]);setMakeupGrade("");}}>
             Limpar simulação
           </button>
@@ -109,7 +109,7 @@ export default function ScoreCalculator() {
             <div><dt>Aproveitamento arredondado</dt><dd>{valid && ratios.length ? assessment.band + "%" : "—"}</dd></div>
             <div><dt>CTFs</dt><dd>{valid ? formatNumber(ctfPoints) : "—"} / 800</dd></div>
             <div><dt>Atividades informadas</dt><dd>{ratios.length} / 16</dd></div>
-            <div><dt>Reposição (informativa)</dt><dd>{makeupGrade.trim() !== "" && !invalidMakeup ? `${formatNumber(Number(makeupGrade))}/10` : "Não informada"}</dd></div>
+            <div><dt>Recuperação (informativa)</dt><dd>{makeupGrade.trim() !== "" && !invalidMakeup ? `${formatNumber(Number(makeupGrade))}/10` : "Não informada"}</dd></div>
           </dl>
           <p className="muted">Modelo legado: somamos os percentuais de cada atividade elegível da sua dupla, dividimos pelo número de atividades elegíveis, arredondamos para o múltiplo de 5% mais próximo e multiplicamos por 2. Exemplo: 81,67% vira 80%, ou 160 pontos. O ranking real também considera atividades elegíveis não entregues como zero.</p>
           <p className="muted">O saldo de CTF no ranking é registrado de forma agregada. Os limites por CTF mostrados nesta simulação são metas pedagógicas, não uma confirmação do detalhamento de pontos registrado no banco.</p>
