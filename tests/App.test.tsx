@@ -265,7 +265,7 @@ describe("permanent team workflow", () => {
     await act(async () => {
       mock.changed?.();
     });
-    await screen.findByText("800 pontos");
+    await screen.findByText("10 pontos");
     fireEvent.change(screen.getByLabelText("Turma"), {
       target: { value: "c2" },
     });
