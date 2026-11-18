@@ -1,0 +1,16 @@
+.score-calculator { max-width: 1080px; margin: 0 auto; }
+.score-calculator-intro { margin-bottom: 1.5rem; }
+.score-calculator-intro h1 { margin: .3rem 0 .6rem; }
+.score-calculator-layout { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(250px, 1fr); gap: 1rem; align-items: start; }
+.score-calculator-form, .score-calculator-results { min-width: 0; }
+.score-calculator-fields { display: grid; gap: .65rem; margin: 1rem 0; }
+.score-calculator-grade { display:flex; flex-direction:row; justify-content:space-between; gap:1rem; align-items:center; }
+.score-calculator-input { display:inline-flex; gap:.5rem; align-items:center; white-space:nowrap; }
+.score-calculator-input input { box-sizing:border-box; width:6rem; max-width:100%; }
+.score-calculator-total { font-size:clamp(1.6rem, 4vw, 2.6rem); font-weight:800; margin:.6rem 0 1.3rem; }
+.score-calculator-total small { font-size:.85rem; font-weight:500; }
+.score-calculator-results dl { margin:0 0 1.5rem; }
+.score-calculator-results dl div { display:flex; justify-content:space-between; gap:1rem; padding:.55rem 0; border-bottom:1px solid currentColor; border-color:rgba(128,128,128,.2); }
+.score-calculator-results dt { opacity:.8; }
+.score-calculator-results dd { margin:0; font-weight:700; text-align:right; }
+@media (max-width:760px) { .score-calculator-layout { grid-template-columns:1fr; } .score-calculator-grade { flex-wrap:wrap; } }
