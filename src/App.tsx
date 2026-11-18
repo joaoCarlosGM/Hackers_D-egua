@@ -258,8 +258,8 @@ function Leaderboard({ classes }: { classes: Class[] }) {
       <p className="muted">
         Atividades: até 200 pontos pelo aproveitamento médio. CTFs: até 800 pontos no total. As notas individuais são privadas.
       </p>
-      <div className="ranking-calculator-section" id="calculadora-no-ranking">
-        <ScoreCalculator />
+      <div className="ranking-calculator-action">
+        <a href="#calculadora">Simular minha pontuação na calculadora</a>
       </div>
     </section>
   );
