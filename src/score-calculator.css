@@ -17,3 +17,13 @@
 .score-calculator-makeup { border-top: 1px solid rgba(128,128,128,.25); margin-top: 1.4rem; padding-top: .7rem; }
 .score-calculator-grade select { width: min(100%, 22rem); max-width: 100%; }
 @media (max-width:760px) { .score-calculator-grade select { width: 100%; } }
+
+/* Centraliza a introdução e mantém a calculadora após a tabela do ranking. */
+.score-calculator-intro { text-align: center; max-width: 690px; margin: 0 auto 1.5rem; }
+.score-calculator-intro h1 { margin-left: 0; margin-right: 0; letter-spacing: .04em; }
+.ranking-calculator-section { margin: 2.5rem auto 1rem; width: 100%; }
+.ranking-calculator-section .score-calculator { margin-left: auto; margin-right: auto; }
+.ranking-calculator-section .score-calculator-layout { text-align: left; }
+@media (max-width: 760px) {
+  .ranking-calculator-section { margin-top: 1.75rem; }
+}
