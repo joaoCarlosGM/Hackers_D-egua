@@ -65,10 +65,11 @@ A migração experimental `202611180001_preserve_historical_ranking.sql` foi pre
 
 Acesso: link **Calculadora de pontos** no cabeçalho ou na página do ranking (`#calculadora`).
 
-- Inicie com as três atividades já aplicadas: Aula 02 de 0 a 8, Aula 03 e Aula 04 de 0 a 10.
-- Abra **Preencher as 13 próximas atividades** para simular até 16 listas.
+- Inicie com as três atividades já aplicadas: Atividade 02 de 0 a 8, Atividade 03 e Atividade 04 de 0 a 10.
+- Abra **Preencher as 13 próximas atividades** para simular até 16 listas, todas identificadas como **Atividade 02** a **Atividade 17**, sem misturar “Aula” e “Atividade”.
 - Campo em branco = lista não aplicada (fora da média simulada).
 - Campo preenchido com **0** = lista elegível sem entrega (incluída como zero).
+- Existe apenas **uma Atividade de reposição**, de 20 questões e 10 pontos. O aluno registra zero na atividade faltada, informa a nota da reposição e seleciona qual atividade substituir; a calculadora utiliza a nota substitutiva em escala 0–10 sem criar uma 17ª nota cumulativa. Essa substituição é **simulada** e ainda não corresponde a uma regra automatizada no backend.
 - Três campos independentes para CTF 1 (0–200), CTF 2 (0–250), CTF 3 (0–350).
 - A calculadora reproduz o arredondamento de 5% e mostra aproveitamento, pontos de atividades, pontos dos CTFs e total.
 - A simulação é **local**, não solicita credenciais, não consulta notas privadas, não altera resultados, não salva nem transmite valores digitados.
