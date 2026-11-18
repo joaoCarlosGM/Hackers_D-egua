@@ -1,67 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { rankTeams } from "../src/ranking";
+import { assessmentPointsFromRatios, rankTeams } from "../src/ranking";
 import type { Rank } from "../src/api";
 
 function team(name: string, points: number, assessment_band: number, solved_count = 0): Rank {
-  return {
-    team_id: name,
-    class_id: "poraque",
-    public_name: name,
-    points,
-    solved_count,
-    assessment_band,
-  };
+  return { team_id: name, class_id: "poraque", public_name: name, points, solved_count, assessment_band };
 }
 
-describe("weighted public ranking: CTF 80%, assessments 20%", () => {
-  it("preserves the prior scoreboard and only adds later graded work and CTF events", () => {
-    const snapshot = team("Boitatá", 0, 60);
-    snapshot.historical_score = 150;
-    snapshot.ctf_baseline = 0;
-    snapshot.future_activity_points = 8;
-    const next = rankTeams([snapshot]);
-    expect(next[0].rankingScore).toBe(158);
-    const afterCtf = { ...snapshot, points: 25 };
-    expect(rankTeams([afterCtf])[0].rankingScore).toBe(183);
-    expect(snapshot.historical_score).toBe(150);
+describe("legacy ranking: 20% assessments, 80% CTF", () => {
+  it("keeps the historical assessment display at 150 for a 75% band", () => {
+    expect(rankTeams([team("Boitatá", 0, 75)])[0].rankingScore).toBe(150);
   });
-
-  it("preserves existing historical scores when assessment averages change", () => {
-    const snapshot = { ...team("BotoByte", 0, 60), historical_score: 150, ctf_baseline: 0, future_activity_points: 0 };
-    expect(rankTeams([snapshot])[0].rankingScore).toBe(150);
-    expect(rankTeams([{ ...snapshot, assessment_band: 10 }])[0].rankingScore).toBe(150);
+  it("does not change when obsolete historical snapshot fields are present", () => {
+    const a = { ...team("A", 0, 75), historical_score: 999, future_activity_points: 99 };
+    expect(rankTeams([a])[0].rankingScore).toBe(150);
   });
-
-  it("allocates 800 points to the CTF leader and up to 200 to assessments", () => {
-    const result = rankTeams([
-      team("CTF Líder", 1000, 20, 8),
-      team("Complementar", 600, 80, 4),
-    ]);
-    expect(result.map((r) => [r.public_name, r.rankingScore])).toEqual([
-      ["CTF Líder", 840],
-      ["Complementar", 640],
-    ]);
+  it("adds the raw CTF score up to the fixed 800-point cap", () => {
+    expect(rankTeams([team("A", 300, 75)])[0].rankingScore).toBe(450);
+    expect(rankTeams([team("B", 1000, 100)])[0].rankingScore).toBe(1000);
   });
-  it("scores quizzes without CTF while keeping the maximum complementary weight", () => {
-    const result = rankTeams([team("Equipe A", 0, 75), team("Equipe B", 0, 100)]);
-    expect(result.map((r) => r.rankingScore)).toEqual([200, 150]);
+  it("never scales a team's CTF score using the current leader", () => {
+    expect(rankTeams([team("leader", 250, 0), team("other", 100, 0)])
+      .find(row => row.public_name === "other")?.rankingScore).toBe(100);
   });
-  it("prevents negative CTF penalties from producing a negative public total", () => {
-    const result = rankTeams([team("Penalizada", -10, 50), team("Desafio", 100, 0)]);
-    expect(result.map((r) => r.rankingScore)).toEqual([800, 100]);
+  it("normalizes Aula 02 (8 points) before averaging percentages", () => {
+    const result = assessmentPointsFromRatios([6 / 8, 8 / 10, 9 / 10]);
+    expect(result.average).toBeCloseTo(0.8166666667);
+    expect(result.band).toBe(80);
+    expect(result.points).toBe(160);
   });
-  it("ranks by composite score and uses raw CTF points to break ties", () => {
-    const result = rankTeams([team("B", 50, 100), team("A", 100, 0)]);
-    expect(result.map((r) => [r.public_name, r.rankingScore])).toEqual([
-      ["A", 800],
-      ["B", 600],
-    ]);
+  it("treats an eligible absence as zero, and excludes unassigned future activities", () => {
+    expect(assessmentPointsFromRatios([1, 0]).points).toBe(100);
+    expect(assessmentPointsFromRatios([1]).points).toBe(200);
+    expect(assessmentPointsFromRatios([]).points).toBe(0);
   });
-  it("never mutates the original rows used by the UI and rounds bounded inputs", () => {
-    const items = [team("A", 10, 130), team("B", 0, -40)];
-    const result = rankTeams(items);
-    expect(result[0].rankingScore).toBe(1000);
-    expect(result[1].rankingScore).toBe(0);
-    expect(items[0].assessment_band).toBe(130);
+  it("returns a safe nonnegative aggregate and does not mutate records", () => {
+    const items = [team("A", -10, 100), team("B", 0, -10)];
+    expect(rankTeams(items).map(r => r.rankingScore)).toEqual([200, 0]);
+    expect(items[0].points).toBe(-10);
   });
 });
