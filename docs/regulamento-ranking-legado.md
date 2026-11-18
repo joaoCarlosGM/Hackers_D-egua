@@ -66,10 +66,10 @@ A migração experimental `202611180001_preserve_historical_ranking.sql` foi pre
 Acesso: link **Calculadora de pontos** no cabeçalho ou na página do ranking (`#calculadora`).
 
 - Inicie com as três atividades já aplicadas: Atividade 02 de 0 a 8, Atividade 03 e Atividade 04 de 0 a 10.
-- Abra **Preencher as 13 próximas atividades** para simular até 16 listas, todas identificadas como **Atividade 02** a **Atividade 17**, sem misturar “Aula” e “Atividade”.
+- Abra **Exibir todas as 16 atividades** para simular até 16 listas, todas identificadas como **Atividade 01** a **Atividade 16**, sem misturar “Aula” e “Atividade”.
 - Campo em branco = lista não aplicada (fora da média simulada).
 - Campo preenchido com **0** = lista elegível sem entrega (incluída como zero).
-- Existe apenas **uma Atividade de reposição**, de 20 questões e 10 pontos. O aluno registra zero na atividade faltada, informa a nota da reposição e seleciona qual atividade substituir; a calculadora utiliza a nota substitutiva em escala 0–10 sem criar uma 17ª nota cumulativa. Essa substituição é **simulada** e ainda não corresponde a uma regra automatizada no backend.
+- Existe apenas **uma Recuperação de nota**, de 20 questões e 10 pontos. O aluno registra zero na atividade faltada, informa a nota da reposição e seleciona qual atividade substituir; a calculadora utiliza a nota substitutiva em escala 0–10 sem criar uma 17ª nota cumulativa. Essa substituição é **simulada** e ainda não corresponde a uma regra automatizada no backend.
 - Três campos independentes para CTF 1 (0–200), CTF 2 (0–250), CTF 3 (0–350).
 - A calculadora reproduz o arredondamento de 5% e mostra aproveitamento, pontos de atividades, pontos dos CTFs e total.
 - A simulação é **local**, não solicita credenciais, não consulta notas privadas, não altera resultados, não salva nem transmite valores digitados.
@@ -108,3 +108,7 @@ Acesso: link **Calculadora de pontos** no cabeçalho ou na página do ranking (`
 6. Definir em uma próxima alteração a lógica da reposição e dos tetos CTF por evento na camada de dados.
 
 **Fontes:** `src/ranking.ts`, `src/App.tsx`, `src/ScoreCalculator.tsx`, `supabase/migrations/202611050006_weighted_rank.sql`, `supabase/migrations/202611180001_preserve_historical_ranking.sql`, `tests/Ranking.test.ts`.
+
+## Correção de nomenclatura (18/11/2026)
+
+As 16 atividades regulares são numeradas **01 a 16**, sem Atividade 17. A visualização inicial destaca as Atividades 02, 03 e 04 já realizadas; a expansão mostra a sequência completa 01–16. Além delas há exatamente **uma Recuperação de nota**, de 20 questões e nota máxima 10, apresentada à parte e sem acúmulo automático no ranking. A Atividade 01 permanece em branco na simulação se não for elegível.
