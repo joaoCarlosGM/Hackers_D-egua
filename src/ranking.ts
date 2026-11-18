@@ -1,40 +1,29 @@
 import type { Rank } from "./api";
 
-/** Ranking público: CTF é o eixo principal (até 800), aulas complementam (até 200).
- * Placar histórico congelado + novas notas de atividades + novos eventos CTF.
- * O cálculo ponderado anterior é somente fallback para duplas sem snapshot.
- * Não há notas individuais nem respostas no resultado.
+/** Legacy educational score: arithmetic mean of eligible quiz percentages,
+ * rounded in five-percentage-point bands, worth at most 200 points.
+ * CTF balance remains independent and is capped at 800 points overall.
  */
-export type WeightedRank = Rank & {
-  rankingScore: number;
-};
+export function assessmentPointsFromRatios(ratios: number[]) {
+  if (!ratios.length) return { average: 0, band: 0, points: 0 };
+  const average = ratios.reduce((sum, value) => sum +
+    Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0)), 0) / ratios.length;
+  const band = Math.max(0, Math.min(100, Math.round(average * 20) * 5));
+  return { average, band, points: band * 2 };
+}
+
+export type WeightedRank = Rank & { rankingScore: number };
 
 export function rankTeams(rows: Rank[]): WeightedRank[] {
-  const maxCtf = Math.max(0, ...rows.map((r) => Number(r.points) || 0));
   return rows
-    .map((r) => {
-      const ctfPoints = Math.max(0, Number(r.points) || 0);
-      const assessmentBand = Math.max(0, Math.min(100, Number(r.assessment_band) || 0));
-      const ctfScore = maxCtf > 0 ? 800 * ctfPoints / maxCtf : 0;
-      const assessmentScore = 200 * assessmentBand / 100;
-      // Snapshot histórico é imutável; o complemento usa somente entregas
-      // de atividades criadas após a migração. Eventos CTF futuros somam
-      // a diferença sobre o saldo existente no instante do snapshot.
-      const historicalScore = r.historical_score;
-      const preservedScore = historicalScore == null ? null : Math.max(0, Number(historicalScore));
-      const futureQuiz = Math.max(0, Number(r.future_activity_points) || 0);
-      const futureCtf = ctfPoints - (Number(r.ctf_baseline) || 0);
-      return {
-        ...r,
-        rankingScore: Math.max(0, Math.round(preservedScore === null
-          ? ctfScore + assessmentScore
-          : preservedScore + futureQuiz + futureCtf)),
-      };
+    .map(row => {
+      // Never use legacy historical_score: it was only a proposed snapshot
+      // and would duplicate the already represented assessment component.
+      const ctf = Math.max(0, Math.min(800, Number(row.points) || 0));
+      const band = Math.max(0, Math.min(100, Number(row.assessment_band) || 0));
+      return { ...row, rankingScore: Math.round(ctf + band * 2) };
     })
-    .sort((a, b) =>
-      b.rankingScore - a.rankingScore ||
-      b.points - a.points ||
-      b.solved_count - a.solved_count ||
-      a.public_name.localeCompare(b.public_name, "pt-BR"),
-    );
+    .sort((a, b) => b.rankingScore - a.rankingScore ||
+      b.points - a.points || b.solved_count - a.solved_count ||
+      a.public_name.localeCompare(b.public_name, "pt-BR"));
 }
