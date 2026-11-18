@@ -14,6 +14,24 @@ function team(name: string, points: number, assessment_band: number, solved_coun
 }
 
 describe("weighted public ranking: CTF 80%, assessments 20%", () => {
+  it("preserves the prior scoreboard and only adds later graded work and CTF events", () => {
+    const snapshot = team("Boitatá", 0, 60);
+    snapshot.historical_score = 150;
+    snapshot.ctf_baseline = 0;
+    snapshot.future_activity_points = 8;
+    const next = rankTeams([snapshot]);
+    expect(next[0].rankingScore).toBe(158);
+    const afterCtf = { ...snapshot, points: 25 };
+    expect(rankTeams([afterCtf])[0].rankingScore).toBe(183);
+    expect(snapshot.historical_score).toBe(150);
+  });
+
+  it("preserves existing historical scores when assessment averages change", () => {
+    const snapshot = { ...team("BotoByte", 0, 60), historical_score: 150, ctf_baseline: 0, future_activity_points: 0 };
+    expect(rankTeams([snapshot])[0].rankingScore).toBe(150);
+    expect(rankTeams([{ ...snapshot, assessment_band: 10 }])[0].rankingScore).toBe(150);
+  });
+
   it("allocates 800 points to the CTF leader and up to 200 to assessments", () => {
     const result = rankTeams([
       team("CTF Líder", 1000, 20, 8),
