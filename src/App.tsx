@@ -138,13 +138,14 @@ function Leaderboard({ classes }: { classes: Class[] }) {
         .order("solved_count", { ascending: false })
         .order("public_name");
       if (result.error && /historical_score|ctf_baseline|future_activity_points|42703/.test(result.error.message + result.error.code)) {
-        result = await supabase!
+        const legacyResult = await supabase!
           .from("public_leaderboard")
           .select("team_id,class_id,public_name,points,solved_count,assessment_band")
           .eq("is_visible", true)
           .order("points", { ascending: false })
           .order("solved_count", { ascending: false })
           .order("public_name");
+        result = { ...result, data: legacyResult.data as typeof result.data, error: legacyResult.error };
       }
       const { data, error } = result;
       if (alive) {
