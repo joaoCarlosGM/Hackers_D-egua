@@ -837,3 +837,19 @@ footer p {
 .credential-help p {
   margin: 0.75rem 0 0;
 }
+
+/* Link to student calculator: centered under the entire leaderboard. */
+.ranking-calculator-action {
+  margin: 1.5rem auto 0;
+  text-align: center;
+  width: 100%;
+}
+.ranking-calculator-action a {
+  display: inline-block;
+  padding: .7rem 1rem;
+}
+.team-history-entry {
+  border-bottom: 1px solid #494963;
+  padding: .7rem 0;
+}
+.team-history-entry p { margin: .5rem 0; }
