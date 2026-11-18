@@ -41,7 +41,7 @@ export default function ScoreCalculator() {
       <div className="score-calculator-intro">
         <p className="eyebrow">SIMULAÇÃO · SEM ALTERAR NOTAS</p>
         <h1>Calculadora de pontos</h1>
-        <p>Simule o aproveitamento das avaliações (até 200 pontos) e os três CTFs (até 800 pontos). Nenhum dado digitado é enviado ou salvo.</p>
+        <p>O aproveitamento é da sua dupla, não da média da turma. Simule as avaliações (até 200 pontos) e os três CTFs (até 800 pontos). Nenhum dado digitado é enviado ou salvo.</p>
       </div>
       <div className="score-calculator-layout">
         <section className="card score-calculator-form">
@@ -111,7 +111,7 @@ export default function ScoreCalculator() {
             <div><dt>Atividades informadas</dt><dd>{ratios.length} / 16</dd></div>
             <div><dt>Reposição (informativa)</dt><dd>{makeupGrade.trim() !== "" && !invalidMakeup ? `${formatNumber(Number(makeupGrade))}/10` : "Não informada"}</dd></div>
           </dl>
-          <p className="muted">Modelo legado: a média dos percentuais das atividades informadas é arredondada em faixas de 5%, e cada 1% representa 2 pontos no ranking. O ranking real também pode considerar atividades elegíveis não entregues como zero.</p>
+          <p className="muted">Modelo legado: somamos os percentuais de cada atividade elegível da sua dupla, dividimos pelo número de atividades elegíveis, arredondamos para o múltiplo de 5% mais próximo e multiplicamos por 2. Exemplo: 81,67% vira 80%, ou 160 pontos. O ranking real também considera atividades elegíveis não entregues como zero.</p>
           <p className="muted">O saldo de CTF no ranking é registrado de forma agregada. Os limites por CTF mostrados nesta simulação são metas pedagógicas, não uma confirmação do detalhamento de pontos registrado no banco.</p>
         </aside>
       </div>
