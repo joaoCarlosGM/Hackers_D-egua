@@ -25,7 +25,7 @@ describe("student point calculator", () => {
     fireEvent.change(screen.getByLabelText("Nota da atividade de reposição"), { target: { value: "9" } });
     expect(screen.getByText("90%", { exact: false })).toBeTruthy();
     expect(screen.getByText("9/10", { exact: false })).toBeTruthy();
-    expect(screen.getByText("100", { exact: false })).toBeTruthy();
+    expect(screen.getAllByText("100", { exact: false }).length).toBeGreaterThan(0);
     expect(screen.queryByLabelText("Atividade substituída pela reposição")).toBeNull();
   });
 
