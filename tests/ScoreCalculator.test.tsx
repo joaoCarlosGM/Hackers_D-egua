@@ -18,20 +18,22 @@ describe("student point calculator", () => {
     expect(screen.queryByLabelText("Nota Atividade 18")).toBeNull();
   });
 
-  it("substitutes one missed eight-point activity by a ten-point makeup grade", () => {
+  it("shows one makeup grade without adding it to the ranking automatically", () => {
     render(<ScoreCalculator />);
     fireEvent.change(screen.getByLabelText("Nota Atividade 02"), { target: { value: "0" } });
     fireEvent.change(screen.getByLabelText("Nota Atividade 03"), { target: { value: "10" } });
     fireEvent.change(screen.getByLabelText("Nota da atividade de reposição"), { target: { value: "9" } });
-    fireEvent.change(screen.getByLabelText("Atividade substituída pela reposição"), { target: { value: "0" } });
-    expect(screen.getByText("190", { exact: false })).toBeTruthy();
-    expect(screen.getByText("Substitui Atividade 02")).toBeTruthy();
+    expect(screen.getByText("90%", { exact: false })).toBeTruthy();
+    expect(screen.getByText("9/10", { exact: false })).toBeTruthy();
+    expect(screen.getByText("100", { exact: false })).toBeTruthy();
+    expect(screen.queryByLabelText("Atividade substituída pela reposição")).toBeNull();
   });
 
-  it("requires an absent activity before using a makeup grade", () => {
+  it("validates the single makeup grade independently of other activity results", () => {
     render(<ScoreCalculator />);
-    fireEvent.change(screen.getByLabelText("Nota Atividade 02"), { target: { value: "8" } });
-    fireEvent.change(screen.getByLabelText("Nota da atividade de reposição"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("Nota da atividade de reposição"), { target: { value: "11" } });
     expect(screen.getByRole("alert")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Nota da atividade de reposição"), { target: { value: "10" } });
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });
