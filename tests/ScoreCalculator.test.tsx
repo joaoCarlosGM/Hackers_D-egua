@@ -1,0 +1,37 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import ScoreCalculator from "../src/ScoreCalculator";
+
+afterEach(cleanup);
+
+describe("student point calculator", () => {
+  it("uses consistent activity names and shows one makeup assessment", () => {
+    render(<ScoreCalculator />);
+    expect(screen.getByLabelText("Nota Atividade 02")).toBeTruthy();
+    expect(screen.getByLabelText("Nota Atividade 03")).toBeTruthy();
+    expect(screen.getByLabelText("Nota Atividade 04")).toBeTruthy();
+    expect(screen.getAllByText("Atividade de reposição")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Preencher as 13 próximas atividades" }));
+    expect(screen.getByLabelText("Nota Atividade 05")).toBeTruthy();
+    expect(screen.getByLabelText("Nota Atividade 17")).toBeTruthy();
+    expect(screen.queryByLabelText("Nota Atividade 18")).toBeNull();
+  });
+
+  it("substitutes one missed eight-point activity by a ten-point makeup grade", () => {
+    render(<ScoreCalculator />);
+    fireEvent.change(screen.getByLabelText("Nota Atividade 02"), { target: { value: "0" } });
+    fireEvent.change(screen.getByLabelText("Nota Atividade 03"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("Nota da atividade de reposição"), { target: { value: "9" } });
+    fireEvent.change(screen.getByLabelText("Atividade substituída pela reposição"), { target: { value: "0" } });
+    expect(screen.getByText("190", { exact: false })).toBeTruthy();
+    expect(screen.getByText("Substitui Atividade 02")).toBeTruthy();
+  });
+
+  it("requires an absent activity before using a makeup grade", () => {
+    render(<ScoreCalculator />);
+    fireEvent.change(screen.getByLabelText("Nota Atividade 02"), { target: { value: "8" } });
+    fireEvent.change(screen.getByLabelText("Nota da atividade de reposição"), { target: { value: "10" } });
+    expect(screen.getByRole("alert")).toBeTruthy();
+  });
+});
