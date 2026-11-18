@@ -215,7 +215,6 @@ function Leaderboard({ classes }: { classes: Class[] }) {
           Modo projetor
         </button>
       </div>
-      <p><a href="#calculadora">Simular minha pontuação na calculadora</a></p>
       <div className="podium">
         {visible.slice(0, 3).map((r, i) => (
           <article className={`card place-${i + 1}`} key={r.team_id}>
@@ -259,6 +258,9 @@ function Leaderboard({ classes }: { classes: Class[] }) {
       <p className="muted">
         Atividades: até 200 pontos pelo aproveitamento médio. CTFs: até 800 pontos no total. As notas individuais são privadas.
       </p>
+      <div className="ranking-calculator-action">
+        <a href="#calculadora">Simular minha pontuação na calculadora</a>
+      </div>
     </section>
   );
 }
@@ -278,6 +280,7 @@ function TeamFlow({
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [attempt, setAttempt] = useState<Participation | null>(null);
+  const [resultAttemptId, setResultAttemptId] = useState<string | null>(null);
   const [result, setResult] = useState<{
     points: number;
     max_points: number;
@@ -608,6 +611,7 @@ function TeamFlow({
                   setAttempt(null);
                   setSubmitted(false);
                   setResult(null);
+                  setResultAttemptId(null);
                 } catch (e) {
                   setError((e as Error).message);
                 } finally {
@@ -660,12 +664,12 @@ function TeamFlow({
                 onClick={async () => {
                   setError("");
                   try {
-                    setResult(
-                      await rpc("team_result", {
-                        p_token: team.token,
-                        p_attempt_id: attempt.attempt_id,
-                      }),
-                    );
+                    const next = await rpc<{ points: number; max_points: number; feedback: string }>("team_result", {
+                      p_token: team.token,
+                      p_attempt_id: attempt.attempt_id,
+                    });
+                    setResult(next);
+                    setResultAttemptId(attempt.attempt_id);
                   } catch (e) {
                     setError((e as Error).message);
                   }
@@ -673,7 +677,7 @@ function TeamFlow({
               >
                 Consultar resultado liberado
               </button>
-              {result && (
+              {result && resultAttemptId === attempt.attempt_id && (
                 <p>
                   Resultado liberado pelo professor: {result.points}/
                   {result.max_points} · {result.feedback}
@@ -696,30 +700,41 @@ function TeamFlow({
               </p>
             )}
             {history?.attempts.map((a) => (
-              <p key={a.id}>
-                <a href={`#atividade/${a.activity_session_id}`}>{a.title}</a> ·
-                tentativa {a.submission_no} ·{" "}
-                {a.submitted_at ? "Entregue" : "Em andamento"}
+              <div key={a.id} className="team-history-entry">
+                <p>
+                  <a href={`#atividade/${a.activity_session_id}`}>{a.title}</a> ·
+                  tentativa {a.submission_no} ·{" "}
+                  {a.submitted_at ? "Entregue" : "Em andamento"}
+                </p>
                 {a.submitted_at && (
                   <button
                     onClick={async () => {
                       setError("");
                       try {
-                        setResult(
-                          await rpc("team_result", {
+                        const next = await rpc<{ points: number; max_points: number; feedback: string }>(
+                          "team_result", {
                             p_token: team.token,
                             p_attempt_id: a.id,
-                          }),
-                        );
+                          });
+                        setResult(next);
+                        setResultAttemptId(a.id);
                       } catch (e) {
                         setError((e as Error).message);
+                        setResult(null);
+                        setResultAttemptId(null);
                       }
                     }}
                   >
-                    Consultar resultado desta entrega
+                    Consultar nota desta atividade
                   </button>
                 )}
-              </p>
+                {a.submitted_at && resultAttemptId === a.id && result && (
+                  <p className="success">
+                    Nota liberada: <strong>{result.points}/{result.max_points}</strong>
+                    {result.feedback ? ` · ${result.feedback}` : ""}
+                  </p>
+                )}
+              </div>
             ))}
           </section>
         </>
