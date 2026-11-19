@@ -25,6 +25,8 @@ export function rankTeams(rows: Rank[]): WeightedRank[] {
       return { ...row, rankingScore: Math.round(ctf + Math.min(200, band * 2 + recovery)) };
     })
     .sort((a, b) => b.rankingScore - a.rankingScore ||
+      (a.ctf_elapsed_seconds == null ? 1 : 0) - (b.ctf_elapsed_seconds == null ? 1 : 0) ||
+      (a.ctf_elapsed_seconds ?? 0) - (b.ctf_elapsed_seconds ?? 0) ||
       b.points - a.points || b.solved_count - a.solved_count ||
       a.public_name.localeCompare(b.public_name, "pt-BR"));
 }
