@@ -7,6 +7,7 @@ import TeamManagement from "./TeamManagement";
 import AdminAccessManagement from "./AdminAccessManagement";
 import AttendanceManagement from "./AttendanceManagement";
 import ActivityAccuracy, { calculateActivityAccuracy } from "./ActivityAccuracy";
+import ScoreCalculator from "./ScoreCalculator";
 import { brandAssets } from "./Brand";
 import "./admin-attendance.css";
 import {
@@ -667,6 +668,11 @@ export default function Admin({
                     {role === "admin" && <a href="#admin/usuarios"><strong>Gerenciar acessos</strong><span>Autorizar professores e administradores já cadastrados no Supabase Auth.</span></a>}
                   </div>
                 </>
+              )}
+              {section === "calculadora" && (
+                role === "admin"
+                  ? <ScoreCalculator />
+                  : <p role="alert">A calculadora é exclusiva para administradores.</p>
               )}
               {section === "turmas" && (
                 <ClassManagement
