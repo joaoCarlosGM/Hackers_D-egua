@@ -5,7 +5,7 @@ begin;
 
 -- Abortamos antes de migrar caso o banco já tenha mais de seis atividades
 -- regulares originais (revisões não ocupam vaga no currículo).
-do $
+do $$
 declare existing_regular integer;
 begin
  select count(*) into existing_regular
@@ -14,7 +14,7 @@ begin
  if existing_regular > 6 then
    raise exception 'Há % atividades originais sem módulo, mas o Módulo 1 aceita apenas 6. Classifique manualmente as exceções antes de aplicar.',existing_regular;
  end if;
-end $;
+end $$;
 
 -- As atividades existentes pertencem ao Módulo 1, conforme definição da coordenação.
 -- Revisões arquivadas permanecem identificadas no Módulo 1, mas não ocupam
