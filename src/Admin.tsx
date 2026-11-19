@@ -50,6 +50,7 @@ type Session = {
   is_recovery?: boolean;
   recovery_module?: string | null;
   recovery_sources?: string[];
+  module_number?: number | null;
 };
 type Attempt = {
   id: string;
@@ -196,6 +197,7 @@ export default function Admin({
         isRecovery: session?.is_recovery ?? false,
         recoveryModule: session?.recovery_module ?? "",
         recoverySources: session?.recovery_sources ?? [],
+        moduleNumber: session?.module_number ?? null,
       },
       questions: activityQuestions.length ? activityQuestions : [newQuestion()],
     };
@@ -410,12 +412,13 @@ export default function Admin({
     const form = e.currentTarget;
     const f = new FormData(form);
     await action(async () => {
+      if (![1,2,3].includes(Number(draftFields.moduleNumber))) throw new Error("Selecione o módulo 1, 2 ou 3.");
       if (draftFields.isRecovery) {
         if (questions.length !== 20 || questions.some((q) => q.points !== 1))
           throw new Error("A recuperação exige 20 questões de um ponto interno cada (nota final sobre 10).");
         if (!draftFields.recoveryModule?.trim()) throw new Error("Informe o módulo da recuperação.");
         if (!draftFields.recoverySources?.length) throw new Error("Selecione as atividades encerradas cujas faltas podem ser recuperadas.");
-        const { error: recoverySchemaError } = await supabase!.from("activity_sessions").select("is_recovery,recovery_module").limit(1);
+        const { error: recoverySchemaError } = await supabase!.from("activity_sessions").select("is_recovery,recovery_module,module_number").limit(1);
         if (recoverySchemaError) throw new Error("A recuperação ainda não foi ativada no Supabase. Aplique a migration 202611190001_module_recovery.sql antes de salvar.");
       }
       await rpc("save_assessment", {
@@ -430,7 +433,8 @@ export default function Admin({
           allow_backtracking: f.get("backtracking") === "on",
           release_results: f.get("release") === "on",
           is_recovery: draftFields.isRecovery ?? false,
-          recovery_module: draftFields.isRecovery ? draftFields.recoveryModule?.trim() : null,
+          module_number: draftFields.moduleNumber,
+          recovery_module: draftFields.isRecovery ? `Módulo ${draftFields.moduleNumber}` : null,
           recovery_sources: draftFields.isRecovery ? (draftFields.recoverySources ?? []) : [],
         },
         p_activity_id: editing?.id ?? null,
@@ -775,12 +779,30 @@ export default function Admin({
                     ))}
                 </fieldset>
                 <fieldset>
+                  <legend>Organização por módulo</legend>
+                  <label>
+                    Módulo da atividade
+                    <select value={draftFields.moduleNumber ?? ""}
+                      required onChange={(event) => changeFields({
+                        moduleNumber: event.target.value ? Number(event.target.value) : null,
+                        recoveryModule: event.target.value ? `Módulo ${event.target.value}` : "",
+                        recoverySources: [],
+                      })}>
+                      <option value="">Selecione o módulo</option>
+                      {[1, 2, 3].map(moduleNumber => (
+                        <option key={moduleNumber} value={moduleNumber}>Módulo {moduleNumber}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <p className="muted">Cada módulo reúne suas atividades, um CTF próprio e uma única recuperação de nota.</p>
+                </fieldset>
+                <fieldset>
                   <legend>Tipo de avaliação</legend>
                   <label className="check">
                     <input type="checkbox" checked={Boolean(draftFields.isRecovery)}
                       onChange={(e) => changeFields({
                         isRecovery: e.target.checked,
-                        recoveryModule: e.target.checked ? (fieldsRef.current.recoveryModule || "Módulo 1") : "",
+                        recoveryModule: e.target.checked && fieldsRef.current.moduleNumber ? `Módulo ${fieldsRef.current.moduleNumber}` : "",
                         recoverySources: e.target.checked ? (fieldsRef.current.recoverySources ?? []) : [],
                         timeLimit: e.target.checked ? "20" : "",
                       })} />
@@ -788,16 +810,11 @@ export default function Admin({
                   </label>
                   {draftFields.isRecovery && (
                     <>
-                      <label>
-                        Módulo
-                        <input required maxLength={40} value={draftFields.recoveryModule ?? ""}
-                          onChange={(e) => changeFields({ recoveryModule: e.target.value })}
-                          placeholder="Ex.: Módulo 1" />
-                      </label>
+                      <p className="muted"><strong>{draftFields.moduleNumber ? `Recuperação do Módulo ${draftFields.moduleNumber}` : "Selecione o módulo acima"}</strong></p>
                       <fieldset>
                         <legend>Atividades com faltas cobertas por esta recuperação</legend>
                         {data.sessions.filter((session) =>
-                          !session.is_recovery &&
+                          !session.is_recovery && session.module_number === draftFields.moduleNumber &&
                           (session.status === "closed" || session.status === "archived") &&
                           session.class_ids.some((id) => draftFields.classIds.includes(id)) &&
                           data.activities.some((a) => a.id === session.activity_id && !a.revision_of)
