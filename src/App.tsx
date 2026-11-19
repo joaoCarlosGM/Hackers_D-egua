@@ -134,13 +134,13 @@ function Leaderboard({ classes }: { classes: Class[] }) {
     const load = async () => {
       let { data, error } = await supabase!
         .from("public_leaderboard")
-        .select("team_id,class_id,public_name,points,solved_count,assessment_band,recovery_bonus")
+        .select("team_id,class_id,public_name,points,solved_count,assessment_band,recovery_bonus,ctf_elapsed_seconds")
         .eq("is_visible", true)
         .order("points", { ascending: false })
         .order("solved_count", { ascending: false })
         .order("public_name");
       // Enquanto a migration ainda não foi aplicada, preservar ranking legado.
-      if (error && /recovery_bonus|42703|PGRST204/i.test(error.message + error.code)) {
+      if (error && /recovery_bonus|ctf_elapsed_seconds|42703|PGRST204/i.test(error.message + error.code)) {
         const legacy = await supabase!
           .from("public_leaderboard")
           .select("team_id,class_id,public_name,points,solved_count,assessment_band")
