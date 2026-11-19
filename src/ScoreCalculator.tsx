@@ -111,7 +111,7 @@ export default function ScoreCalculator() {
             <div><dt>Atividades informadas</dt><dd>{ratios.length} / 16</dd></div>
             <div><dt>Recuperação (informativa)</dt><dd>{makeupGrade.trim() !== "" && !invalidMakeup ? `${formatNumber(Number(makeupGrade))}/10` : "Não informada"}</dd></div>
           </dl>
-          <p className="muted">Pontuação progressiva: cada atividade regular vale até 12,5 pontos, multiplicados pela proporção de acertos. As 16 atividades somam no máximo 200 pontos. Atividades ainda não realizadas não geram pontos; atividades encerradas e não entregues rendem zero; atividades arquivadas não contam. O aproveitamento médio aparece separadamente como informação pedagógica.</p>
+          <p className="muted">Pontuação progressiva: a média das atividades aplicadas é arredondada para o múltiplo de 5% mais próximo. Os pontos são calculados como 200 × (atividades aplicadas / 16) × (aproveitamento arredondado / 100). As 16 atividades somam no máximo 200 pontos. Atividades ainda não realizadas não geram pontos; atividades encerradas e não entregues rendem zero; atividades arquivadas não contam. O aproveitamento médio aparece separadamente como informação pedagógica.</p>
           <p className="muted">O saldo de CTF no ranking é registrado de forma agregada. Os limites por CTF mostrados nesta simulação são metas pedagógicas, não uma confirmação do detalhamento de pontos registrado no banco.</p>
         </aside>
       </div>
