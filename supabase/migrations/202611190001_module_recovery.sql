@@ -5,15 +5,16 @@
 begin;
 
 alter table public.activity_sessions
+  add column module_number smallint check (module_number between 1 and 3),
   add column is_recovery boolean not null default false,
   add column recovery_module text,
   add column recovery_sources uuid[] not null default '{}',
   add constraint recovery_module_valid check (
     (not is_recovery and recovery_module is null and cardinality(recovery_sources)=0)
-    or (is_recovery and recovery_module is not null and length(btrim(recovery_module)) between 1 and 40 and cardinality(recovery_sources) between 1 and 16)
+    or (is_recovery and module_number is not null and recovery_module = ('Módulo ' || module_number::text) and cardinality(recovery_sources) between 1 and 16)
   );
 create unique index recovery_one_per_module
-  on public.activity_sessions(lower(btrim(recovery_module))) where is_recovery;
+  on public.activity_sessions(module_number) where is_recovery;
 
 alter table public.public_leaderboard
   add column recovery_bonus numeric(6,2) not null default 0
@@ -119,17 +120,19 @@ create or replace function public.save_assessment(
 language plpgsql security definer set search_path='' as $$
 declare aid uuid;q jsonb;pos integer:=0; recovery boolean:=coalesce((p_settings->>'is_recovery')::boolean,false);
 module_code text:=nullif(btrim(p_settings->>'recovery_module'),'');
+module_no smallint:=nullif(p_settings->>'module_number','')::smallint;
 sources uuid[]:=array[]::uuid[];
 begin
  perform app_private.require_staff();
+ if module_no is null or module_no not between 1 and 3 then raise exception 'Selecione o módulo 1, 2 ou 3'; end if;
  if recovery then
-   if module_code is null or length(module_code)>40 then raise exception 'Informe um módulo de recuperação (até 40 caracteres)'; end if;
+   module_code:='Módulo ' || module_no::text;
    if jsonb_typeof(p_settings->'recovery_sources') is distinct from 'array' then raise exception 'Selecione atividades com faltas elegíveis'; end if;
    select coalesce(array_agg(value::uuid),array[]::uuid[]) into sources
      from jsonb_array_elements_text(p_settings->'recovery_sources') as v(value);
    if cardinality(sources) < 1 or cardinality(sources) > 16 then raise exception 'Selecione entre 1 e 16 atividades do módulo'; end if;
    if (select count(distinct id) from public.activity_sessions where id=any(sources)
-        and status in ('closed','archived') and not is_recovery and class_ids && p_class_ids) <> cardinality(sources) then
+        and status in ('closed','archived') and not is_recovery and module_number=module_no and class_ids && p_class_ids) <> cardinality(sources) then
      raise exception 'As atividades vinculadas devem estar encerradas e pertencer às turmas selecionadas';
    end if;
    if jsonb_typeof(p_questions) is distinct from 'array' or jsonb_array_length(p_questions)<>20 then
@@ -141,11 +144,9 @@ begin
    -- O índice único é a autoridade final contra duplicação concorrente.
    if exists (
      select 1 from public.activity_sessions s
-     where s.is_recovery and lower(btrim(s.recovery_module))=lower(module_code)
+     where s.is_recovery and s.module_number=module_no
        and (p_activity_id is null or s.activity_id<>p_activity_id)
    ) then raise exception 'Este módulo já possui uma recuperação cadastrada'; end if;
- elsif module_code is not null then
-   raise exception 'Módulo de recuperação informado para atividade comum';
  end if;
  if p_activity_id is not null then
    perform 1 from public.activities where id=p_activity_id for update;
@@ -172,7 +173,7 @@ begin
    time_limit_seconds=case when recovery then 1200 else nullif(p_settings->>'time_limit_seconds','')::integer end,
    allow_backtracking=coalesce((p_settings->>'allow_backtracking')::boolean,true),
    release_results=coalesce((p_settings->>'release_results')::boolean,false),
-   ctf_enabled=false,is_recovery=recovery,recovery_module=case when recovery then module_code else null end,
+   ctf_enabled=false,module_number=module_no,is_recovery=recovery,recovery_module=case when recovery then module_code else null end,
    recovery_sources=case when recovery then sources else array[]::uuid[] end
  where activity_id=aid;
  return aid;
@@ -192,7 +193,7 @@ begin
    select 1 from public.activity_sessions regular
    where regular.id=any(sess.recovery_sources)
      and class_id=any(regular.class_ids)
-     and not regular.is_recovery and regular.status in ('closed','archived')
+     and not regular.is_recovery and regular.module_number=sess.module_number and regular.status in ('closed','archived')
      and not exists (
        select 1 from public.attempts at join public.grades g on g.attempt_id=at.id
        where at.team_id=new.team_id and at.activity_session_id=regular.id
