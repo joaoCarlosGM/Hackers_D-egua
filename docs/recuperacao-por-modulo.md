@@ -38,3 +38,28 @@
 - `src/Admin.tsx` — cadastro, validação, projeção e encerramento de 20 minutos.
 - `src/ranking.ts` — soma do bônus ao aproveitamento legado, com teto de 200.
 - `src/App.tsx` — consulta de pontuação pública.
+
+
+## Plano curricular consolidado (18/11/2026)
+
+| Módulo | Atividades regulares | CTF | Recuperação |
+| --- | --- | --- | --- |
+| **Módulo 1** | **6** atividades | **CTF 1: até 200 pontos** | **Uma recuperação de até +10 pontos** |
+| **Módulo 2** | **5** atividades | **CTF 2: até 250 pontos** | **Uma recuperação de até +10 pontos** |
+| **Módulo 3** | **5** atividades | **CTF 3: até 350 pontos** | **Uma recuperação de até +10 pontos** |
+| **Total** | **16 atividades** | **800 pontos** | **Até 30 de bônus, dentro do teto pedagógico de 200 pontos** |
+
+As avaliações cadastradas até esta data pertencem ao **Módulo 1**. A migration
+`202611190003_module_capacity.sql` associa todas as sessões regulares existentes
+ao Módulo 1; ela não modifica notas. Revisões derivadas não ocupam uma vaga
+das 16 atividades oficiais. O cadastro regular é limitado no banco a **6/5/5**.
+
+O tempo de cada CTF é informado pelo administrador em minutos e segundos.
+O ranking usa esse tempo **somente se duas duplas empatarem em pontos**;
+a dupla com menor tempo total registrado nos CTFs tem precedência.
+Registros históricos sem tempo não recebem duração presumida.
+
+**Implantação na ordem:** `202611190001_module_recovery.sql` →
+`202611190002_modules_and_ctf_time.sql` →
+`202611190003_module_capacity.sql`, somente após backup e testes.
+O GitHub Pages não executa migrations no Supabase.
