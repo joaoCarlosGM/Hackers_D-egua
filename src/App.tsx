@@ -233,6 +233,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
             <div className="medal">{["🥇", "🥈", "🥉"][i]}</div>
             <h2>{r.public_name}</h2>
             <strong>{r.rankingScore} pontos</strong>
+            {r.timeTieBonus === 1 && <small>+1 ponto por desempate no tempo do CTF</small>}
           </article>
         ))}
       </div>
@@ -260,7 +261,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
                       {classes.find((c) => c.id === r.class_id)?.name}
                     </small>
                   </td>
-                  <td className="score">{r.rankingScore}</td>
+                  <td className="score">{r.rankingScore}{r.timeTieBonus === 1 && <small title="Bônus de 1 ponto por menor tempo do CTF"> · +1 desempate</small>}</td>
                 </tr>
               ))}
             </tbody>
@@ -268,7 +269,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
         </div>
       )}
       <p className="muted">
-        Atividades: até 200 pontos pelo aproveitamento médio. CTFs: até 800 pontos no total. As notas individuais são privadas.
+        Atividades: até 200 pontos pelo aproveitamento médio. CTFs: até 800 pontos. Em empate real, a dupla com menor tempo registrado nos CTFs recebe +1 ponto de desempate, respeitando o teto de 1.000. As notas individuais são privadas.
       </p>
       <div className="ranking-calculator-action">
         <a href="#calculadora">Simular minha pontuação na calculadora</a>
