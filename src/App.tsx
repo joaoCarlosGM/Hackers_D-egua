@@ -134,7 +134,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
     const load = async () => {
       const { data, error } = await supabase!
         .from("public_leaderboard")
-        .select("team_id,class_id,public_name,points,solved_count,assessment_band")
+        .select("team_id,class_id,public_name,points,solved_count,assessment_band,recovery_bonus")
         .eq("is_visible", true)
         .order("points", { ascending: false })
         .order("solved_count", { ascending: false })
