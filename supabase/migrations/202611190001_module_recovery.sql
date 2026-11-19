@@ -15,8 +15,8 @@ create unique index recovery_one_per_module
   on public.activity_sessions(lower(btrim(recovery_module))) where is_recovery;
 
 alter table public.public_leaderboard
-  add column recovery_bonus numeric(5,2) not null default 0
-  check (recovery_bonus between 0 and 10);
+  add column recovery_bonus numeric(6,2) not null default 0
+  check (recovery_bonus between 0 and 200);
 
 -- A função legada deve ignorar recuperações tanto no numerador como no denominador.
 create or replace function app_private.refresh_assessment_band(p_team_id uuid)
@@ -41,8 +41,8 @@ end $$;
 
 -- Elegibilidade: a dupla possui pelo menos uma atividade regular elegível
 -- sem entrega válida na mesma turma. O bônus máximo é 10 por módulo.
--- Várias recuperações de módulos distintos são somadas, mas o componente
--- pedagógico total permanece limitado a 200 no frontend.
+-- Cada módulo contribui com até 10; módulos distintos podem somar bônus,
+-- mas o componente pedagógico total permanece limitado a 200 no frontend.
 create or replace function app_private.refresh_recovery_bonus(p_team_id uuid)
 returns void language plpgsql security definer set search_path='' as $$
 declare result numeric:=0;
@@ -69,8 +69,8 @@ begin
         )
     );
   update public.public_leaderboard
-  set recovery_bonus=least(10::numeric,result),updated_at=clock_timestamp()
-  where team_id=p_team_id and recovery_bonus is distinct from least(10::numeric,result);
+  set recovery_bonus=least(200::numeric,result),updated_at=clock_timestamp()
+  where team_id=p_team_id and recovery_bonus is distinct from least(200::numeric,result);
 end $$;
 
 -- Atualiza o bônus com notas, entregas e alterações de sessões;
