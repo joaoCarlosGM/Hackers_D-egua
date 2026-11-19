@@ -15,7 +15,6 @@ import Admin from "./Admin";
 import Quiz from "./Quiz";
 import Brand, { brandAssets } from "./Brand";
 import { rankTeams } from "./ranking";
-import ScoreCalculator from "./ScoreCalculator";
 
 export default function App() {
   const [route, setRoute] = useState(location.hash.slice(1));
@@ -52,13 +51,12 @@ export default function App() {
         <nav>
           <a href="#">Minha dupla</a>
           <a href="#ranking">Ranking CTF</a>
-          <a href="#calculadora">Calculadora de pontos</a>
           <a href="#admin">Administração</a>
         </nav>
       </header>
       <main
         className={
-          (route === "ranking" || route === "calculadora")
+          (route === "ranking")
             ? "ranking-page"
             : route.startsWith("admin")
               ? "admin-page"
@@ -82,14 +80,13 @@ export default function App() {
             )}
             {route === "ranking" ? (
               <Leaderboard classes={classes} />
-            ) : route === "calculadora" ? (
-              <ScoreCalculator />
-            ) : route.startsWith("admin") ? (
+            ) : route.startsWith("admin") || route === "calculadora" ? (
               <Admin
                 classes={classes}
                 onClassesChanged={reloadClasses}
                 section={
-                  route === "admin/atividades" ? "atividades"
+                  (route === "calculadora" || route === "admin/calculadora") ? "calculadora"
+                    : route === "admin/atividades" ? "atividades"
                     : route === "admin/turmas" ? "turmas"
                     : route === "admin/duplas" ? "duplas"
                     : route === "admin/notas" ? "notas"
@@ -134,23 +131,13 @@ function Leaderboard({ classes }: { classes: Class[] }) {
     const load = async () => {
       let { data, error } = await supabase!
         .from("public_leaderboard")
-        .select("team_id,class_id,public_name,points,solved_count,assessment_band,assessment_points,recovery_bonus,ctf_elapsed_seconds")
+        .select("team_id,class_id,public_name,points,solved_count,assessment_band,assessment_points,legacy_assessment_points,future_activity_points,recovery_bonus,ctf_elapsed_seconds")
         .eq("is_visible", true)
         .order("points", { ascending: false })
         .order("solved_count", { ascending: false })
         .order("public_name");
-      // Enquanto a migration ainda não foi aplicada, preservar ranking legado.
-      if (error && /assessment_points|recovery_bonus|ctf_elapsed_seconds|42703|PGRST204/i.test(error.message + error.code)) {
-        const legacy = await supabase!
-          .from("public_leaderboard")
-          .select("team_id,class_id,public_name,points,solved_count,assessment_band")
-          .eq("is_visible", true)
-          .order("points", { ascending: false })
-          .order("solved_count", { ascending: false })
-          .order("public_name");
-        data = legacy.data as typeof data;
-        error = legacy.error;
-      }
+      // Do not fall back to a different scoring model: that would publish
+      // invented/retroactively recalculated values while a migration is absent.
       if (alive) {
         if (error) setError(error.message);
         else {
@@ -269,11 +256,9 @@ function Leaderboard({ classes }: { classes: Class[] }) {
         </div>
       )}
       <p className="muted">
-        Atividades: 16 avaliações de até 12,5 pontos cada (200 no total). CTFs: até 800 pontos. Em empate real, a dupla com menor tempo registrado nos CTFs recebe +1 ponto de desempate, respeitando o teto de 1.000. As notas individuais são privadas.
+        Atividades: pontuação histórica preservada, com acréscimos das próximas avaliações e teto de 200 pontos. CTFs: até 800 pontos. Em empate real, a dupla com menor tempo registrado nos CTFs recebe +1 ponto de desempate, respeitando o teto de 1.000. As notas individuais são privadas.
       </p>
-      <div className="ranking-calculator-action">
-        <a href="#calculadora">Simular minha pontuação na calculadora</a>
-      </div>
+
     </section>
   );
 }
