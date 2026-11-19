@@ -17,8 +17,9 @@ psql_test < supabase/tests/bootstrap.sql
 for migration in supabase/migrations/*.sql; do
   # Snapshot pontual não pertence ao regulamento legado: requer nomes reais
   # do ranking histórico e nunca deve ser aplicado em bancos novos.
-  if [[ "$migration" == *"202611180001_preserve_historical_ranking.sql" ]]; then
-    echo "Ignorando migração histórica descontinuada: $migration"
+  if [[ "$migration" == *"202611180001_preserve_historical_ranking.sql" ||
+        "$migration" == *"202611190006_freeze_published_ranking.sql" ]]; then
+    echo "Ignorando snapshot específico de produção, não aplicável ao banco descartável: $migration"
     continue
   fi
   psql_test < "$migration"
