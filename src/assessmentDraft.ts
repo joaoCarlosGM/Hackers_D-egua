@@ -10,6 +10,7 @@ export type AssessmentFields = {
   isRecovery?: boolean;
   recoveryModule?: string;
   recoverySources?: string[];
+  moduleNumber?: number | null;
 };
 
 export type LocalAssessmentDraft = {
@@ -35,6 +36,7 @@ export function blankAssessmentFields(): AssessmentFields {
     isRecovery: false,
     recoveryModule: "",
     recoverySources: [],
+    moduleNumber: null,
   };
 }
 
@@ -79,7 +81,7 @@ export function writeAssessmentDraft(
   try {
     const meaningful = !!(fields.title.trim() || fields.description.trim() ||
       fields.classIds.length || fields.timeLimit ||
-      !fields.backtracking || fields.release || fields.isRecovery || fields.recoveryModule || fields.recoverySources?.length ||
+      !fields.backtracking || fields.release || fields.isRecovery || fields.recoveryModule || fields.recoverySources?.length || fields.moduleNumber ||
       questions.length !== 1 ||
       questions.some((q) =>
         q.prompt.trim() || (q.explanation ?? "").trim() || q.points !== 10 ||
