@@ -58,7 +58,12 @@ describe("legacy ranking: 20% assessments, 80% CTF", () => {
     const result = assessmentPointsFromRatios([6 / 8, 8 / 10, 9 / 10]);
     expect(result.average).toBeCloseTo(0.8166666667);
     expect(result.band).toBe(80);
-    expect(result.points).toBe(30.63);
+    expect(result.points).toBe(30);
+  });
+  it("uses the rounded band over only the applied share of the 16 activities", () => {
+    expect(assessmentPointsFromRatios([1, 1, 1]).points).toBe(37.5);
+    expect(assessmentPointsFromRatios([1, 1, 0.8]).band).toBe(95);
+    expect(assessmentPointsFromRatios([1, 1, 0.8]).points).toBe(35.63);
   });
   it("treats an eligible absence as zero, and excludes unassigned future activities", () => {
     expect(assessmentPointsFromRatios([1, 0]).points).toBe(12.5);
