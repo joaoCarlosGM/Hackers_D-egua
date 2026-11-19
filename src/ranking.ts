@@ -8,9 +8,10 @@ export function assessmentPointsFromRatios(ratios: number[]) {
   const average = ratios.reduce((sum, value) => sum +
     Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0)), 0) / ratios.length;
   const band = Math.max(0, Math.min(100, Math.round(average * 20) * 5));
-  const points = Math.round(ratios.reduce((sum, value) => sum +
-    Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0)), 0) * 1250) / 100;
-  return { average, band, points: Math.min(200, points) };
+  // Cada avaliação aplicada habilita 1/16 dos 200 pontos; utiliza
+  // o aproveitamento médio ARREDONDADO para faixas de 5%.
+  const points = Math.round(Math.min(200, ratios.length * band / 8) * 100) / 100;
+  return { average, band, points };
 }
 
 export type WeightedRank = Rank & {
