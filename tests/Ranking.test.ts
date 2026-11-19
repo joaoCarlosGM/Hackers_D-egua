@@ -27,17 +27,32 @@ describe("legacy ranking: 20% assessments, 80% CTF", () => {
     expect(rankTeams([team("leader", 250, 0), team("other", 100, 0)])
       .find(row => row.public_name === "other")?.rankingScore).toBe(100);
   });
-  it("breaks equal-point ties with shorter recorded CTF completion time", () => {
+  it("adds exactly one tie-break point for the uniquely fastest CTF time", () => {
     const slower = { ...team("Lento", 150, 75), ctf_elapsed_seconds: 1200 };
     const faster = { ...team("Rápido", 150, 75), ctf_elapsed_seconds: 840 };
-    expect(rankTeams([slower, faster]).map(row => row.public_name)).toEqual(["Rápido", "Lento"]);
-    const morePoints = { ...team("Mais pontos", 160, 75), ctf_elapsed_seconds: 1800 };
-    expect(rankTeams([faster, morePoints])[0].public_name).toBe("Mais pontos");
+    const ranked = rankTeams([slower, faster]);
+    expect(ranked.map(row => row.public_name)).toEqual(["Rápido", "Lento"]);
+    expect(ranked[0].baseScore).toBe(300);
+    expect(ranked[0].rankingScore).toBe(301);
+    expect(ranked[0].timeTieBonus).toBe(1);
+    expect(ranked[1].rankingScore).toBe(300);
+    const higher = { ...team("Mais pontos", 152, 75), ctf_elapsed_seconds: 1800 };
+    expect(rankTeams([faster, higher]).map(row => row.timeTieBonus)).toEqual([0, 0]);
   });
-  it("does not invent historical times in a tie", () => {
+  it("does not grant a point when there is only one known time or times are equal", () => {
     const unknown = team("Sem tempo", 150, 75);
     const measured = { ...team("Medido", 150, 75), ctf_elapsed_seconds: 900 };
-    expect(rankTeams([unknown, measured])[0].public_name).toBe("Medido");
+    expect(rankTeams([unknown, measured]).every(row => row.timeTieBonus === 0)).toBe(true);
+    const tied = { ...team("Também medido", 150, 75), ctf_elapsed_seconds: 900 };
+    expect(rankTeams([measured, tied]).every(row => row.timeTieBonus === 0)).toBe(true);
+  });
+  it("does not exceed the official 1000-point cap at a perfect-score tie", () => {
+    const a = { ...team("A", 800, 100), ctf_elapsed_seconds: 120 };
+    const b = { ...team("B", 800, 100), ctf_elapsed_seconds: 240 };
+    const ranking = rankTeams([a,b]);
+    expect(ranking[0].timeTieBonus).toBe(1);
+    expect(ranking[0].rankingScore).toBe(1000);
+    expect(ranking[1].rankingScore).toBe(1000);
   });
   it("normalizes Aula 02 (8 points) before averaging percentages", () => {
     const result = assessmentPointsFromRatios([6 / 8, 8 / 10, 9 / 10]);
