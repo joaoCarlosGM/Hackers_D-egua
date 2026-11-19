@@ -134,13 +134,13 @@ function Leaderboard({ classes }: { classes: Class[] }) {
     const load = async () => {
       let { data, error } = await supabase!
         .from("public_leaderboard")
-        .select("team_id,class_id,public_name,points,solved_count,assessment_band,recovery_bonus,ctf_elapsed_seconds")
+        .select("team_id,class_id,public_name,points,solved_count,assessment_band,assessment_points,recovery_bonus,ctf_elapsed_seconds")
         .eq("is_visible", true)
         .order("points", { ascending: false })
         .order("solved_count", { ascending: false })
         .order("public_name");
       // Enquanto a migration ainda não foi aplicada, preservar ranking legado.
-      if (error && /recovery_bonus|ctf_elapsed_seconds|42703|PGRST204/i.test(error.message + error.code)) {
+      if (error && /assessment_points|recovery_bonus|ctf_elapsed_seconds|42703|PGRST204/i.test(error.message + error.code)) {
         const legacy = await supabase!
           .from("public_leaderboard")
           .select("team_id,class_id,public_name,points,solved_count,assessment_band")
@@ -269,7 +269,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
         </div>
       )}
       <p className="muted">
-        Atividades: até 200 pontos pelo aproveitamento médio. CTFs: até 800 pontos. Em empate real, a dupla com menor tempo registrado nos CTFs recebe +1 ponto de desempate, respeitando o teto de 1.000. As notas individuais são privadas.
+        Atividades: 16 avaliações de até 12,5 pontos cada (200 no total). CTFs: até 800 pontos. Em empate real, a dupla com menor tempo registrado nos CTFs recebe +1 ponto de desempate, respeitando o teto de 1.000. As notas individuais são privadas.
       </p>
       <div className="ranking-calculator-action">
         <a href="#calculadora">Simular minha pontuação na calculadora</a>
