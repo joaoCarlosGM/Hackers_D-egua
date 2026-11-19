@@ -62,7 +62,7 @@ begin
       select 1 from public.activity_sessions regular
       where t.class_id=any(regular.class_ids)
         and not regular.is_recovery
-        and regular.status in ('open','closed','archived')
+        and regular.status in ('closed','archived')
         and not exists (
           select 1 from public.attempts a join public.grades g on g.attempt_id=a.id
           where a.team_id=t.id and a.activity_session_id=regular.id and a.submitted_at is not null
@@ -165,6 +165,35 @@ begin
  where activity_id=aid;
  return aid;
 end $$;
+
+
+-- Impede acesso à recuperação para duplas sem ausência em uma atividade encerrada.
+-- A função de adesão existente cria tentativas na tabela public.attempts.
+create or replace function app_private.enforce_recovery_eligibility()
+returns trigger language plpgsql security definer set search_path='' as $
+declare sess public.activity_sessions; class_id uuid;
+begin
+ select * into sess from public.activity_sessions where id=new.activity_session_id;
+ if not sess.is_recovery then return new; end if;
+ select t.class_id into class_id from public.teams t where t.id=new.team_id;
+ if not exists (
+   select 1 from public.activity_sessions regular
+   where class_id=any(regular.class_ids)
+     and not regular.is_recovery and regular.status in ('closed','archived')
+     and not exists (
+       select 1 from public.attempts at join public.grades g on g.attempt_id=at.id
+       where at.team_id=new.team_id and at.activity_session_id=regular.id
+         and at.submitted_at is not null
+     )
+ ) then
+   raise exception 'Recuperação exclusiva para duplas com falta em atividade encerrada';
+ end if;
+ return new;
+end $;
+create trigger verify_recovery_eligibility
+before insert on public.attempts
+for each row execute function app_private.enforce_recovery_eligibility();
+revoke all on function app_private.enforce_recovery_eligibility() from public,anon,authenticated;
 
 -- Uma vez iniciado, impedimos que uma recuperação deixe de ser recuperação por edição de sessão.
 -- A nota de recuperação é exibida em escala 0–10 para os próprios alunos.
