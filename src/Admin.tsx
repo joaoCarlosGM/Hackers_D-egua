@@ -1544,20 +1544,34 @@ export default function Admin({
                     const f = new FormData(form);
                     const eventId = crypto.randomUUID();
                     void action(async () => {
-                      await rpc("adjust_ctf", {
+                      const elapsedSeconds = Number(f.get("minutes")) * 60 + Number(f.get("seconds"));
+                      if (!Number.isInteger(elapsedSeconds) || elapsedSeconds <= 0 || elapsedSeconds > 86400)
+                        throw new Error("Informe o tempo real de resolução do CTF.");
+                      await rpc("record_module_ctf", {
                         p_event_id: eventId,
                         p_team_id: f.get("team"),
+                        p_module: Number(f.get("module")),
                         p_points: Number(f.get("points")),
+                        p_elapsed_seconds: elapsedSeconds,
                         p_reason: f.get("reason"),
                       });
                       form.reset();
                       setNotice(
-                        "Ajuste CTF registrado em auditoria. As notas pedagógicas não foram alteradas.",
+                        "Resultado CTF do módulo registrado com tempo para desempate. Nenhuma nota pedagógica foi alterada.",
                       );
                     });
                   }}
                 >
-                  <h2>Ajustar pontos CTF</h2>
+                  <h2>Registrar CTF por módulo</h2>
+                  <p className="muted">Cada módulo tem um CTF. O tempo é usado somente no desempate, sem acrescentar ou retirar pontos.</p>
+                  <label>Módulo do CTF
+                    <select name="module" required defaultValue="">
+                      <option value="" disabled>Selecione</option>
+                      <option value="1">Módulo 1 · máximo 200 pontos</option>
+                      <option value="2">Módulo 2 · máximo 250 pontos</option>
+                      <option value="3">Módulo 3 · máximo 350 pontos</option>
+                    </select>
+                  </label>
                   <label>
                     Dupla
                     <select name="team" required>
@@ -1571,20 +1585,28 @@ export default function Admin({
                     </select>
                   </label>
                   <label>
-                    Ajuste de pontos (positivo ou negativo)
+                    Pontuação conquistada no CTF
                     <input
                       name="points"
                       type="number"
                       required
-                      min={-100000}
-                      max={100000}
+                      min={0}
+                      max={350}
                     />
                   </label>
+                  <div className="grid">
+                    <label>Tempo de resolução — minutos
+                      <input name="minutes" type="number" min={0} max={1440} step={1} required defaultValue={0} />
+                    </label>
+                    <label>Tempo de resolução — segundos
+                      <input name="seconds" type="number" min={0} max={59} step={1} required defaultValue={0} />
+                    </label>
+                  </div>
                   <label>
                     Justificativa
                     <input name="reason" required maxLength={500} />
                   </label>
-                  <button disabled={busy}>Registrar ajuste auditado</button>
+                  <button disabled={busy}>Registrar resultado do CTF</button>
                 </form>
               )}
             </AdminNavigation>
