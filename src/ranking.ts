@@ -1,15 +1,16 @@
 import type { Rank } from "./api";
 
-/** Legacy educational score: arithmetic mean of eligible quiz percentages,
- * rounded in five-percentage-point bands, worth at most 200 points.
- * CTF balance remains independent and is capped at 800 points overall.
+/** Progressive scoring: 16 regular assessments earn at most 12.5 points each.
+ * The mean and rounded band remain informational, not pre-awarded points.
  */
 export function assessmentPointsFromRatios(ratios: number[]) {
   if (!ratios.length) return { average: 0, band: 0, points: 0 };
   const average = ratios.reduce((sum, value) => sum +
     Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0)), 0) / ratios.length;
   const band = Math.max(0, Math.min(100, Math.round(average * 20) * 5));
-  return { average, band, points: band * 2 };
+  const points = Math.round(ratios.reduce((sum, value) => sum +
+    Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0)), 0) * 1250) / 100;
+  return { average, band, points: Math.min(200, points) };
 }
 
 export type WeightedRank = Rank & {
@@ -29,9 +30,9 @@ export type WeightedRank = Rank & {
 export function rankTeams(rows: Rank[]): WeightedRank[] {
   const base = rows.map(row => {
     const ctf = Math.max(0, Math.min(800, Number(row.points) || 0));
-    const band = Math.max(0, Math.min(100, Number(row.assessment_band) || 0));
+    const progressive = Math.max(0, Math.min(200, Number(row.assessment_points ?? 0) || 0));
     const recovery = Math.max(0, Number(row.recovery_bonus) || 0);
-    const baseScore = Math.round(ctf + Math.min(200, band * 2 + recovery));
+    const baseScore = Math.round((ctf + Math.min(200, progressive + recovery)) * 100) / 100;
     return { ...row, baseScore, rankingScore: baseScore, timeTieBonus: 0 as 0 | 1 };
   });
   const groups = new Map<number, typeof base>();
