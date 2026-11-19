@@ -1362,7 +1362,9 @@ export default function Admin({
                           : "Em andamento"}{" "}
                         ·{" "}
                         {g
-                          ? `${g.points} / ${g.max_points} pontos`
+                          ? s?.is_recovery
+                            ? `${(g.points * 10 / (g.max_points || 20)).toLocaleString("pt-BR", {maximumFractionDigits:2})} / 10 (recuperação)`
+                            : `${g.points} / ${g.max_points} pontos`
                           : "Sem nota"}
                       </p>
                       <p>
