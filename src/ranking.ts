@@ -48,7 +48,7 @@ export function rankTeams(rows: Rank[]): WeightedRank[] {
       Number(team.ctf_elapsed_seconds) >= 0
     );
     // Só pontua se há pelo menos dois tempos comparáveis.
-    if (timed.length < 2) continue;
+    if (timed.length !== group.length || timed.length < 2) continue;
     const fastest = Math.min(...timed.map(team => Number(team.ctf_elapsed_seconds)));
     const winners = timed.filter(team => Number(team.ctf_elapsed_seconds) === fastest);
     if (winners.length !== 1) continue;
