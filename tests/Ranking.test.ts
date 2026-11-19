@@ -14,6 +14,11 @@ describe("legacy ranking: 20% assessments, 80% CTF", () => {
     const a = { ...team("A", 0, 75), historical_score: 999, future_activity_points: 99 };
     expect(rankTeams([a])[0].rankingScore).toBe(150);
   });
+  it("awards up to ten recovery points without changing the legacy mean", () => {
+    expect(rankTeams([{ ...team("Dupla", 0, 75), recovery_bonus: 8 }])[0].rankingScore).toBe(158);
+    expect(rankTeams([{ ...team("Dupla", 0, 100), recovery_bonus: 10 }])[0].rankingScore).toBe(200);
+    expect(rankTeams([{ ...team("Dupla", 800, 100), recovery_bonus: 10 }])[0].rankingScore).toBe(1000);
+  });
   it("adds the raw CTF score up to the fixed 800-point cap", () => {
     expect(rankTeams([team("A", 300, 75)])[0].rankingScore).toBe(450);
     expect(rankTeams([team("B", 1000, 100)])[0].rankingScore).toBe(1000);
