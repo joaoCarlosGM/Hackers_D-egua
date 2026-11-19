@@ -7,6 +7,8 @@ export type AssessmentFields = {
   timeLimit: string;
   backtracking: boolean;
   release: boolean;
+  isRecovery?: boolean;
+  recoveryModule?: string;
 };
 
 export type LocalAssessmentDraft = {
@@ -29,6 +31,8 @@ export function blankAssessmentFields(): AssessmentFields {
     timeLimit: "",
     backtracking: true,
     release: false,
+    isRecovery: false,
+    recoveryModule: "",
   };
 }
 
@@ -73,7 +77,7 @@ export function writeAssessmentDraft(
   try {
     const meaningful = !!(fields.title.trim() || fields.description.trim() ||
       fields.classIds.length || fields.timeLimit ||
-      !fields.backtracking || fields.release ||
+      !fields.backtracking || fields.release || fields.isRecovery || fields.recoveryModule ||
       questions.length !== 1 ||
       questions.some((q) =>
         q.prompt.trim() || (q.explanation ?? "").trim() || q.points !== 10 ||
