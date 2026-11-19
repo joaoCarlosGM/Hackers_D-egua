@@ -21,7 +21,8 @@ export function rankTeams(rows: Rank[]): WeightedRank[] {
       // and would duplicate the already represented assessment component.
       const ctf = Math.max(0, Math.min(800, Number(row.points) || 0));
       const band = Math.max(0, Math.min(100, Number(row.assessment_band) || 0));
-      return { ...row, rankingScore: Math.round(ctf + band * 2) };
+      const recovery = Math.max(0, Number(row.recovery_bonus) || 0);
+      return { ...row, rankingScore: Math.round(ctf + Math.min(200, band * 2 + recovery)) };
     })
     .sort((a, b) => b.rankingScore - a.rankingScore ||
       b.points - a.points || b.solved_count - a.solved_count ||
