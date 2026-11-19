@@ -794,7 +794,7 @@ export default function Admin({
                       ))}
                     </select>
                   </label>
-                  <p className="muted">Cada módulo reúne suas atividades, um CTF próprio e uma única recuperação de nota.</p>
+                  <p className="muted">Módulo 1: 6 atividades. Módulo 2: 5 atividades. Módulo 3: 5 atividades. Cada módulo tem um CTF e uma recuperação de nota.</p>
                 </fieldset>
                 <fieldset>
                   <legend>Tipo de avaliação</legend>
