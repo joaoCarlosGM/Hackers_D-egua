@@ -132,13 +132,25 @@ function Leaderboard({ classes }: { classes: Class[] }) {
   useEffect(() => {
     let alive = true;
     const load = async () => {
-      const { data, error } = await supabase!
+      let { data, error } = await supabase!
         .from("public_leaderboard")
         .select("team_id,class_id,public_name,points,solved_count,assessment_band,recovery_bonus")
         .eq("is_visible", true)
         .order("points", { ascending: false })
         .order("solved_count", { ascending: false })
         .order("public_name");
+      // Enquanto a migration ainda não foi aplicada, preservar ranking legado.
+      if (error && /recovery_bonus|42703|PGRST204/i.test(error.message + error.code)) {
+        const legacy = await supabase!
+          .from("public_leaderboard")
+          .select("team_id,class_id,public_name,points,solved_count,assessment_band")
+          .eq("is_visible", true)
+          .order("points", { ascending: false })
+          .order("solved_count", { ascending: false })
+          .order("public_name");
+        data = legacy.data as typeof data;
+        error = legacy.error;
+      }
       if (alive) {
         if (error) setError(error.message);
         else {
