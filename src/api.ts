@@ -81,6 +81,7 @@ export type Rank = {
   /** Rounded private assessment aggregate, without per-activity grades. */
   assessment_band: number;
   recovery_bonus?: number;
+  ctf_elapsed_seconds?: number | null;
   historical_score?: number | null;
   ctf_baseline?: number;
   future_activity_points?: number;
