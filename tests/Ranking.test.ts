@@ -10,9 +10,9 @@ describe("legacy ranking: 20% assessments, 80% CTF", () => {
   it("keeps the historical assessment display at 150 for a 75% band", () => {
     expect(rankTeams([{ ...team("Boitatá", 0, 75), legacy_assessment_points: 120 }])[0].rankingScore).toBe(120);
   });
-  it("does not change when obsolete historical snapshot fields are present", () => {
+  it("ignores obsolete historical_score fields without suppressing future earned points", () => {
     const a = { ...team("A", 0, 75), historical_score: 999, future_activity_points: 99 };
-    expect(rankTeams([{...a, legacy_assessment_points: 120}])[0].rankingScore).toBe(120);
+    expect(rankTeams([{...a, legacy_assessment_points: 120}])[0].rankingScore).toBe(200);
   });
   it("awards up to ten recovery points without changing the legacy mean", () => {
     expect(rankTeams([{ ...team("Dupla", 0, 75), legacy_assessment_points: 120, future_activity_points: 12.5, recovery_bonus: 8 }])[0].rankingScore).toBe(140.5);
