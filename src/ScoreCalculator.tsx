@@ -41,7 +41,7 @@ export default function ScoreCalculator() {
       <div className="score-calculator-intro">
         <p className="eyebrow">SIMULAÇÃO · SEM ALTERAR NOTAS</p>
         <h1>Calculadora de pontos</h1>
-        <p>O aproveitamento é da sua dupla, não da média da turma. Simule as avaliações (até 200 pontos) e os três CTFs (até 800 pontos). Nenhum dado digitado é enviado ou salvo.</p>
+        <p>O aproveitamento é da sua dupla, não da média da turma. Cada uma das 16 atividades regulares vale até 12,5 pontos (200 pontos no curso completo), e os três CTFs valem até 800 pontos. Nenhum dado digitado é enviado ou salvo.</p>
       </div>
       <div className="score-calculator-layout">
         <section className="card score-calculator-form">
@@ -66,7 +66,7 @@ export default function ScoreCalculator() {
           </button>
           <div className="score-calculator-makeup">
             <h2>Recuperação de nota</h2>
-            <p className="muted">Uma única avaliação de recuperação, com 20 questões valendo 10 pontos no total. Informe apenas sua nota para consultar o aproveitamento. Esta nota não é somada automaticamente às atividades regulares: a substituição de uma falta depende de validação da equipe pedagógica.</p>
+            <p className="muted">Uma recuperação por módulo, com 20 questões e nota máxima de 10. O bônus de recuperação é contabilizado no ranking apenas quando a dupla é elegível por falta, sem alterar a média das atividades regulares.</p>
             <label className="score-calculator-grade">
               <span>Nota da recuperação</span>
               <span className="score-calculator-input">
@@ -111,7 +111,7 @@ export default function ScoreCalculator() {
             <div><dt>Atividades informadas</dt><dd>{ratios.length} / 16</dd></div>
             <div><dt>Recuperação (informativa)</dt><dd>{makeupGrade.trim() !== "" && !invalidMakeup ? `${formatNumber(Number(makeupGrade))}/10` : "Não informada"}</dd></div>
           </dl>
-          <p className="muted">Modelo legado: somamos os percentuais de cada atividade elegível da sua dupla, dividimos pelo número de atividades elegíveis, arredondamos para o múltiplo de 5% mais próximo e multiplicamos por 2. Exemplo: 81,67% vira 80%, ou 160 pontos. O ranking real também considera atividades elegíveis não entregues como zero.</p>
+          <p className="muted">Pontuação progressiva: cada atividade regular vale até 12,5 pontos, multiplicados pela proporção de acertos. As 16 atividades somam no máximo 200 pontos. Atividades ainda não realizadas não geram pontos; atividades encerradas e não entregues rendem zero; atividades arquivadas não contam. O aproveitamento médio aparece separadamente como informação pedagógica.</p>
           <p className="muted">O saldo de CTF no ranking é registrado de forma agregada. Os limites por CTF mostrados nesta simulação são metas pedagógicas, não uma confirmação do detalhamento de pontos registrado no banco.</p>
         </aside>
       </div>
