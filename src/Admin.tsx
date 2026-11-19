@@ -47,6 +47,8 @@ type Session = {
   release_results: boolean;
   ctf_enabled: boolean;
   closes_at: string | null;
+  is_recovery?: boolean;
+  recovery_module?: string | null;
 };
 type Attempt = {
   id: string;
@@ -190,6 +192,8 @@ export default function Admin({
         timeLimit: session?.time_limit_seconds ? String(session.time_limit_seconds / 60) : "",
         backtracking: session?.allow_backtracking ?? true,
         release: session?.release_results ?? false,
+        isRecovery: session?.is_recovery ?? false,
+        recoveryModule: session?.recovery_module ?? "",
       },
       questions: activityQuestions.length ? activityQuestions : [newQuestion()],
     };
@@ -404,6 +408,13 @@ export default function Admin({
     const form = e.currentTarget;
     const f = new FormData(form);
     await action(async () => {
+      if (draftFields.isRecovery) {
+        if (questions.length !== 20 || questions.some((q) => q.points !== 1))
+          throw new Error("A recuperação exige 20 questões de um ponto interno cada (nota final sobre 10).");
+        if (!draftFields.recoveryModule?.trim()) throw new Error("Informe o módulo da recuperação.");
+        const { error: recoverySchemaError } = await supabase!.from("activity_sessions").select("is_recovery,recovery_module").limit(1);
+        if (recoverySchemaError) throw new Error("A recuperação ainda não foi ativada no Supabase. Aplique a migration 202611190001_module_recovery.sql antes de salvar.");
+      }
       await rpc("save_assessment", {
         p_title: f.get("title"),
         p_description: f.get("description"),
@@ -415,6 +426,8 @@ export default function Admin({
             : null,
           allow_backtracking: f.get("backtracking") === "on",
           release_results: f.get("release") === "on",
+          is_recovery: draftFields.isRecovery ?? false,
+          recovery_module: draftFields.isRecovery ? draftFields.recoveryModule?.trim() : null,
         },
         p_activity_id: editing?.id ?? null,
       });
@@ -757,12 +770,47 @@ export default function Admin({
                       </label>
                     ))}
                 </fieldset>
+                <fieldset>
+                  <legend>Tipo de avaliação</legend>
+                  <label className="check">
+                    <input type="checkbox" checked={Boolean(draftFields.isRecovery)}
+                      onChange={(e) => changeFields({
+                        isRecovery: e.target.checked,
+                        recoveryModule: e.target.checked ? (fieldsRef.current.recoveryModule ?? "Módulo 1") : "",
+                        timeLimit: e.target.checked ? "20" : "",
+                      })} />
+                    Recuperação de nota (uma por módulo, bônus de até 10 pontos)
+                  </label>
+                  {draftFields.isRecovery && (
+                    <>
+                      <label>
+                        Módulo
+                        <input required maxLength={40} value={draftFields.recoveryModule ?? ""}
+                          onChange={(e) => changeFields({ recoveryModule: e.target.value })}
+                          placeholder="Ex.: Módulo 1" />
+                      </label>
+                      <p className="muted">Obrigatoriamente 20 questões, cada uma com 1 ponto interno.
+                        A nota oficial é convertida para 0–10, com 20 minutos por dupla.
+                        A recuperação não altera a média das atividades regulares.
+                        Cadastre uma única recuperação por módulo e utilize o QR Code na projeção.</p>
+                      <button type="button" onClick={() => {
+                        const next = Array.from({ length: 20 }, (_, i) => ({
+                          ...(questionsRef.current[i] ?? newQuestion()), points: 1,
+                        }));
+                        questionsRef.current = next;
+                        setQuestions(next);
+                        persistLocal(fieldsRef.current, next);
+                      }}>Preparar 20 questões de recuperação</button>
+                    </>
+                  )}
+                </fieldset>
                 <div className="grid">
                   <label>
                     Cronômetro em minutos (vazio desativa)
                     <input
                       name="time_limit"
                       type="number"
+                      disabled={Boolean(draftFields.isRecovery)}
                       min={0.5}
                       max={240}
                       step={0.5}
