@@ -87,7 +87,6 @@ export type Rank = {
   ctf_elapsed_seconds?: number | null;
   historical_score?: number | null;
   ctf_baseline?: number;
-  future_activity_points?: number;
 };
 export type History = {
   team: Omit<Team, "token">;
