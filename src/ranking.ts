@@ -31,9 +31,12 @@ export type WeightedRank = Rank & {
 export function rankTeams(rows: Rank[]): WeightedRank[] {
   const base = rows.map(row => {
     const ctf = Math.max(0, Math.min(800, Number(row.points) || 0));
-    const progressive = Math.max(0, Math.min(200, Number(row.assessment_points ?? 0) || 0));
+    // Frozen historical baseline is never recalculated from older activities.
+    // Future credit comes only from post-baseline eligible quiz submissions.
+    const historical = Math.max(0, Math.min(200, Number(row.legacy_assessment_points) || 0));
+    const future = Math.max(0, Number(row.future_activity_points) || 0);
     const recovery = Math.max(0, Number(row.recovery_bonus) || 0);
-    const baseScore = Math.round((ctf + Math.min(200, progressive + recovery)) * 100) / 100;
+    const baseScore = Math.round((ctf + Math.min(200, historical + future + recovery)) * 100) / 100;
     return { ...row, baseScore, rankingScore: baseScore, timeTieBonus: 0 as 0 | 1 };
   });
   const groups = new Map<number, typeof base>();
