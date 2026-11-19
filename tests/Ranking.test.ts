@@ -8,20 +8,27 @@ function team(name: string, points: number, assessment_band: number, solved_coun
 
 describe("legacy ranking: 20% assessments, 80% CTF", () => {
   it("keeps the historical assessment display at 150 for a 75% band", () => {
-    expect(rankTeams([{ ...team("Boitatá", 0, 75), assessment_points: 35 }])[0].rankingScore).toBe(35);
+    expect(rankTeams([{ ...team("Boitatá", 0, 75), legacy_assessment_points: 120 }])[0].rankingScore).toBe(120);
   });
   it("does not change when obsolete historical snapshot fields are present", () => {
     const a = { ...team("A", 0, 75), historical_score: 999, future_activity_points: 99 };
-    expect(rankTeams([{...a, assessment_points: 35}])[0].rankingScore).toBe(35);
+    expect(rankTeams([{...a, legacy_assessment_points: 120}])[0].rankingScore).toBe(120);
   });
   it("awards up to ten recovery points without changing the legacy mean", () => {
-    expect(rankTeams([{ ...team("Dupla", 0, 75), assessment_points: 35, recovery_bonus: 8 }])[0].rankingScore).toBe(43);
-    expect(rankTeams([{ ...team("Dupla", 0, 100), assessment_points: 200, recovery_bonus: 10 }])[0].rankingScore).toBe(200);
-    expect(rankTeams([{ ...team("Dupla", 800, 100), assessment_points: 200, recovery_bonus: 10 }])[0].rankingScore).toBe(1000);
+    expect(rankTeams([{ ...team("Dupla", 0, 75), legacy_assessment_points: 120, future_activity_points: 12.5, recovery_bonus: 8 }])[0].rankingScore).toBe(140.5);
+    expect(rankTeams([{ ...team("Dupla", 0, 100), legacy_assessment_points: 190, future_activity_points: 12.5, recovery_bonus: 10 }])[0].rankingScore).toBe(200);
+    expect(rankTeams([{ ...team("Dupla", 800, 100), legacy_assessment_points: 200, recovery_bonus: 10 }])[0].rankingScore).toBe(1000);
   });
   it("adds the raw CTF score up to the fixed 800-point cap", () => {
-    expect(rankTeams([{...team("A", 300, 75),assessment_points:35}])[0].rankingScore).toBe(335);
-    expect(rankTeams([{...team("B", 1000, 100),assessment_points:200}])[0].rankingScore).toBe(1000);
+    expect(rankTeams([{...team("A", 300, 75),legacy_assessment_points:120}])[0].rankingScore).toBe(420);
+    expect(rankTeams([{...team("B", 1000, 100),legacy_assessment_points:200}])[0].rankingScore).toBe(1000);
+  });
+  it("preserves historical scores and adds only new points", () => {
+    const row = { ...team("BotoByte", 0, 100), legacy_assessment_points: 120,
+      assessment_points: 37.5, future_activity_points: 0 };
+    expect(rankTeams([row])[0].rankingScore).toBe(120);
+    expect(rankTeams([{...row, future_activity_points: 12.5}])[0].rankingScore).toBe(132.5);
+    expect(rankTeams([{...row, future_activity_points: 200}])[0].rankingScore).toBe(200);
   });
   it("never scales a team's CTF score using the current leader", () => {
     expect(rankTeams([team("leader", 250, 0), team("other", 100, 0)])
@@ -47,8 +54,8 @@ describe("legacy ranking: 20% assessments, 80% CTF", () => {
     expect(rankTeams([measured, tied]).every(row => row.timeTieBonus === 0)).toBe(true);
   });
   it("does not exceed the official 1000-point cap at a perfect-score tie", () => {
-    const a = { ...team("A", 800, 100), assessment_points: 200, ctf_elapsed_seconds: 120 };
-    const b = { ...team("B", 800, 100), assessment_points: 200, ctf_elapsed_seconds: 240 };
+    const a = { ...team("A", 800, 100), legacy_assessment_points: 200, ctf_elapsed_seconds: 120 };
+    const b = { ...team("B", 800, 100), legacy_assessment_points: 200, ctf_elapsed_seconds: 240 };
     const ranking = rankTeams([a,b]);
     expect(ranking[0].timeTieBonus).toBe(1);
     expect(ranking[0].rankingScore).toBe(1000);
