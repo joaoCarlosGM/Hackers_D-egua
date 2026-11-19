@@ -167,6 +167,7 @@ it("keeps the local draft until the database confirms success", async () => {
   await screen.findByText("Cadastrar nova atividade");
   await user.click(screen.getByText("Cadastrar nova atividade"));
   await user.type(screen.getByLabelText("Título"), "Atividade para recuperação");
+  await user.selectOptions(screen.getByLabelText("Módulo da atividade"), "1");
   await user.click(screen.getByRole("checkbox", { name: "Poraquê" }));
   await user.type(screen.getByRole("textbox", { name: "Enunciado" }), "Questão de teste");
   await user.type(screen.getByRole("textbox", { name: "Texto da alternativa 1 da questão 1" }), "Correta");
@@ -187,6 +188,7 @@ it("lets a teacher create, preview, publish and start a quiz with a real activit
   await user.click(screen.getByText("Cadastrar nova atividade"));
   await screen.findByRole("heading", { name: "Nova atividade" });
   await user.type(screen.getByLabelText("Título"), "Avaliação Linux");
+  await user.selectOptions(screen.getByLabelText("Módulo da atividade"), "1");
   await user.type(screen.getByLabelText("Descrição"), "Aula de software livre");
   await user.click(screen.getByRole("checkbox", { name: "Poraquê" }));
   await user.click(screen.getByRole("checkbox", { name: "Pitiú" }));
