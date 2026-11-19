@@ -3,6 +3,19 @@
 -- Não altera notas, tentativas nem resultados CTF.
 begin;
 
+-- Abortamos antes de migrar caso o banco já tenha mais de seis atividades
+-- regulares originais (revisões não ocupam vaga no currículo).
+do $
+declare existing_regular integer;
+begin
+ select count(*) into existing_regular
+ from public.activity_sessions s join public.activities a on a.id=s.activity_id
+ where not s.is_recovery and a.revision_of is null and s.module_number is null;
+ if existing_regular > 6 then
+   raise exception 'Há % atividades originais sem módulo, mas o Módulo 1 aceita apenas 6. Classifique manualmente as exceções antes de aplicar.',existing_regular;
+ end if;
+end $;
+
 -- As atividades existentes pertencem ao Módulo 1, conforme definição da coordenação.
 -- Revisões arquivadas permanecem identificadas no Módulo 1, mas não ocupam
 -- vagas das 16 atividades regulares oficiais.
