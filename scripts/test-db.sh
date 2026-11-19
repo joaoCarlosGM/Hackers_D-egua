@@ -14,7 +14,16 @@ done
 [ "$ready" -eq 1 ] || { docker_local logs "$container"; exit 1; }
 psql_test() { docker_local exec -i "$container" psql -h 127.0.0.1 -U postgres -v ON_ERROR_STOP=1 "$@"; }
 psql_test < supabase/tests/bootstrap.sql
-for migration in supabase/migrations/*.sql; do psql_test < "$migration"; done
+for migration in supabase/migrations/*.sql; do
+  # Snapshot pontual não pertence ao regulamento legado: requer nomes reais
+  # do ranking histórico e nunca deve ser aplicado em bancos novos.
+  if [[ "$migration" == *"202611180001_preserve_historical_ranking.sql" ]]; then
+    echo "Ignorando migração histórica descontinuada: $migration"
+    continue
+  fi
+  psql_test < "$migration"
+done
+psql_test < supabase/tests/postflight_modules_recovery.sql
 psql_test < supabase/tests/acceptance.sql
 psql_test < supabase/tests/assessments.sql
 psql_test < supabase/tests/quiz_answer_security.sql
