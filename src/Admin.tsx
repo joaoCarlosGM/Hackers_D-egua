@@ -1105,10 +1105,29 @@ export default function Admin({
                       <details className="admin-accordion admin-activity-item">
                         <summary>
                           <span className="admin-accordion-title"><strong>{a.title}</strong>
-                            <small>{classes.filter((c) => s.class_ids.includes(c.id)).map((c) => c.name).join(" · ")} · {s.status}</small>
+                            <small>{s.module_number ? `Módulo ${s.module_number} · ` : "Módulo pendente · "}{classes.filter((c) => s.class_ids.includes(c.id)).map((c) => c.name).join(" · ")} · {s.status}</small>
                           </span>
                         </summary>
                         <div className="admin-accordion-body">
+                        <label style={{ display: "inline-flex", gap: "8px", alignItems: "center" }}>
+                          Módulo
+                          <select value={s.module_number ?? ""}
+                            aria-label={`Módulo de ${a.title}`}
+                            onChange={(e) => {
+                              const moduleNumber = Number(e.target.value);
+                              if (!moduleNumber) return;
+                              void action(async () => {
+                                await rpc("assign_assessment_module", {
+                                  p_session_id: s.id,
+                                  p_module: moduleNumber,
+                                });
+                                await load();
+                              });
+                            }}>
+                            <option value="">Não classificado</option>
+                            {[1,2,3].map(n => <option key={n} value={n}>Módulo {n}</option>)}
+                          </select>
+                        </label>
                       <p>
                         {classes
                           .filter((c) => s.class_ids.includes(c.id))
