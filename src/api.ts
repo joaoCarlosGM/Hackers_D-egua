@@ -80,6 +80,7 @@ export type Rank = {
   solved_count: number;
   /** Rounded private assessment aggregate, without per-activity grades. */
   assessment_band: number;
+  assessment_points?: number;
   recovery_bonus?: number;
   ctf_elapsed_seconds?: number | null;
   historical_score?: number | null;
