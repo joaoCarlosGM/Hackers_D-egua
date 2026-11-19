@@ -124,7 +124,8 @@ module_no smallint:=nullif(p_settings->>'module_number','')::smallint;
 sources uuid[]:=array[]::uuid[];
 begin
  perform app_private.require_staff();
- if module_no is null or module_no not between 1 and 3 then raise exception 'Selecione o módulo 1, 2 ou 3'; end if;
+ if recovery and (module_no is null or module_no not between 1 and 3) then raise exception 'Selecione o módulo 1, 2 ou 3 para a recuperação'; end if;
+ if module_no is not null and module_no not between 1 and 3 then raise exception 'Módulo inválido'; end if;
  if recovery then
    module_code:='Módulo ' || module_no::text;
    if jsonb_typeof(p_settings->'recovery_sources') is distinct from 'array' then raise exception 'Selecione atividades com faltas elegíveis'; end if;
