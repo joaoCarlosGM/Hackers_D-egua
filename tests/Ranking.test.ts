@@ -27,6 +27,18 @@ describe("legacy ranking: 20% assessments, 80% CTF", () => {
     expect(rankTeams([team("leader", 250, 0), team("other", 100, 0)])
       .find(row => row.public_name === "other")?.rankingScore).toBe(100);
   });
+  it("breaks equal-point ties with shorter recorded CTF completion time", () => {
+    const slower = { ...team("Lento", 150, 75), ctf_elapsed_seconds: 1200 };
+    const faster = { ...team("Rápido", 150, 75), ctf_elapsed_seconds: 840 };
+    expect(rankTeams([slower, faster]).map(row => row.public_name)).toEqual(["Rápido", "Lento"]);
+    const morePoints = { ...team("Mais pontos", 160, 75), ctf_elapsed_seconds: 1800 };
+    expect(rankTeams([faster, morePoints])[0].public_name).toBe("Mais pontos");
+  });
+  it("does not invent historical times in a tie", () => {
+    const unknown = team("Sem tempo", 150, 75);
+    const measured = { ...team("Medido", 150, 75), ctf_elapsed_seconds: 900 };
+    expect(rankTeams([unknown, measured])[0].public_name).toBe("Medido");
+  });
   it("normalizes Aula 02 (8 points) before averaging percentages", () => {
     const result = assessmentPointsFromRatios([6 / 8, 8 / 10, 9 / 10]);
     expect(result.average).toBeCloseTo(0.8166666667);
