@@ -183,7 +183,7 @@ end $$;
 -- Impede acesso à recuperação para duplas sem ausência em uma atividade encerrada.
 -- A função de adesão existente cria tentativas na tabela public.attempts.
 create or replace function app_private.enforce_recovery_eligibility()
-returns trigger language plpgsql security definer set search_path='' as $
+returns trigger language plpgsql security definer set search_path='' as $$
 declare sess public.activity_sessions; class_id uuid;
 begin
  select * into sess from public.activity_sessions where id=new.activity_session_id;
@@ -203,7 +203,7 @@ begin
    raise exception 'Recuperação exclusiva para duplas com falta em atividade encerrada';
  end if;
  return new;
-end $;
+end $$;
 create trigger verify_recovery_eligibility
 before insert on public.attempts
 for each row execute function app_private.enforce_recovery_eligibility();
