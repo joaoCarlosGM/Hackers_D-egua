@@ -1,6 +1,6 @@
 -- Pontuação progressiva: 16 avaliações regulares × 12,5 pontos = 200.
--- A média percentual continua informativa (assessment_band), mas não
--- representa pontos conquistados antecipadamente.
+-- O aproveitamento arredondado (assessment_band) multiplica somente
+-- a parcela do curso já aplicada: 200 × (n/16) × (band/100).
 -- Arquivadas, recuperações, rascunhos e avaliações não iniciadas são excluídas.
 -- Mantém notas, respostas e pontos CTF inalterados.
 begin;
@@ -38,8 +38,9 @@ begin
   if n>0 then
     next_band:=least(100,greatest(0,round(20*earned/n)::integer*5))::smallint;
   end if;
-  -- 200/16 = 12,5 por avaliação regular, com nota proporcional.
-  next_points:=round(least(200::numeric,greatest(0::numeric,earned*12.5)),2);
+  -- Aproveitamento arredondado (faixas de 5%) aplicado somente à fração
+  -- de avaliações regulares já realizadas: (200 × n/16 × band/100).
+  next_points:=round(least(200::numeric,greatest(0::numeric,n::numeric * next_band::numeric / 8)),2);
   update public.public_leaderboard
     set assessment_band=next_band,
         assessment_points=next_points,
