@@ -10,7 +10,8 @@ describe("administrative module navigation", () => {
     render(<AdminNavigation section="overview" role="admin"><p>Resumo pedagógico</p></AdminNavigation>);
     const navigation = screen.getByRole("navigation", { name: "Seções da administração" });
     const links = within(navigation).getAllByRole("link");
-    expect(links).toHaveLength(8);
+    expect(links).toHaveLength(9);
+    expect(within(navigation).getByRole("link", { name: /Calculadora/ }).getAttribute("href")).toBe("#admin/calculadora");
     expect(within(navigation).getByRole("link", { name: /Início/ }).getAttribute("aria-current")).toBe("page");
     expect(within(navigation).getByRole("link", { name: /Turmas/ }).getAttribute("href")).toBe("#admin/turmas");
     expect(within(navigation).getByRole("link", { name: /Duplas/ }).getAttribute("href")).toBe("#admin/duplas");
@@ -24,6 +25,7 @@ describe("administrative module navigation", () => {
     const navigation = screen.getByRole("navigation", { name: "Seções da administração" });
     expect(within(navigation).queryByRole("link", { name: /CTF/ })).toBeNull();
     expect(within(navigation).queryByRole("link", { name: /Usuários/ })).toBeNull();
+    expect(within(navigation).queryByRole("link", { name: /Calculadora/ })).toBeNull();
     expect(within(navigation).getByRole("link", { name: /Chamada/ })).toBeTruthy();
     expect(within(navigation).getByRole("link", { name: /Notas/ }).getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("link", { name: /Abrir ranking CTF/ }).getAttribute("href")).toBe("#ranking");
