@@ -1081,7 +1081,7 @@ export default function Admin({
                             archived: "Arquivada",
                           }[s.status]
                         }{" "}
-                        · revisão {a.revision}
+                        · revisão {a.revision}{s.is_recovery ? ` · Recuperação ${s.recovery_module ?? ""} · 20 minutos` : ""}
                       </p>
                       <div className="toolbar">
                         {s.status === "draft" && (
@@ -1168,6 +1168,7 @@ export default function Admin({
                                 await rpc("transition_assessment", {
                                   p_session_id: s.id,
                                   p_status: "open",
+                                  ...(s.is_recovery ? { p_closes_at: new Date(Date.now() + 20 * 60_000).toISOString() } : {}),
                                 });
                                 const url = activityLink(s.id);
                                 setQr({
