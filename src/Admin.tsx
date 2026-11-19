@@ -49,6 +49,7 @@ type Session = {
   closes_at: string | null;
   is_recovery?: boolean;
   recovery_module?: string | null;
+  recovery_sources?: string[];
 };
 type Attempt = {
   id: string;
@@ -194,6 +195,7 @@ export default function Admin({
         release: session?.release_results ?? false,
         isRecovery: session?.is_recovery ?? false,
         recoveryModule: session?.recovery_module ?? "",
+        recoverySources: session?.recovery_sources ?? [],
       },
       questions: activityQuestions.length ? activityQuestions : [newQuestion()],
     };
@@ -412,6 +414,7 @@ export default function Admin({
         if (questions.length !== 20 || questions.some((q) => q.points !== 1))
           throw new Error("A recuperação exige 20 questões de um ponto interno cada (nota final sobre 10).");
         if (!draftFields.recoveryModule?.trim()) throw new Error("Informe o módulo da recuperação.");
+        if (!draftFields.recoverySources?.length) throw new Error("Selecione as atividades encerradas cujas faltas podem ser recuperadas.");
         const { error: recoverySchemaError } = await supabase!.from("activity_sessions").select("is_recovery,recovery_module").limit(1);
         if (recoverySchemaError) throw new Error("A recuperação ainda não foi ativada no Supabase. Aplique a migration 202611190001_module_recovery.sql antes de salvar.");
       }
@@ -428,6 +431,7 @@ export default function Admin({
           release_results: f.get("release") === "on",
           is_recovery: draftFields.isRecovery ?? false,
           recovery_module: draftFields.isRecovery ? draftFields.recoveryModule?.trim() : null,
+          recovery_sources: draftFields.isRecovery ? (draftFields.recoverySources ?? []) : [],
         },
         p_activity_id: editing?.id ?? null,
       });
@@ -776,7 +780,8 @@ export default function Admin({
                     <input type="checkbox" checked={Boolean(draftFields.isRecovery)}
                       onChange={(e) => changeFields({
                         isRecovery: e.target.checked,
-                        recoveryModule: e.target.checked ? (fieldsRef.current.recoveryModule ?? "Módulo 1") : "",
+                        recoveryModule: e.target.checked ? (fieldsRef.current.recoveryModule || "Módulo 1") : "",
+                        recoverySources: e.target.checked ? (fieldsRef.current.recoverySources ?? []) : [],
                         timeLimit: e.target.checked ? "20" : "",
                       })} />
                     Recuperação de nota (uma por módulo, bônus de até 10 pontos)
@@ -789,6 +794,27 @@ export default function Admin({
                           onChange={(e) => changeFields({ recoveryModule: e.target.value })}
                           placeholder="Ex.: Módulo 1" />
                       </label>
+                      <fieldset>
+                        <legend>Atividades com faltas cobertas por esta recuperação</legend>
+                        {data.sessions.filter((session) =>
+                          !session.is_recovery &&
+                          (session.status === "closed" || session.status === "archived") &&
+                          session.class_ids.some((id) => draftFields.classIds.includes(id)) &&
+                          data.activities.some((a) => a.id === session.activity_id && !a.revision_of)
+                        ).map((session) => (
+                          <label className="check" key={session.id}>
+                            <input type="checkbox"
+                              checked={(draftFields.recoverySources ?? []).includes(session.id)}
+                              onChange={(event) => changeFields({
+                                recoverySources: event.target.checked
+                                  ? [...new Set([...(fieldsRef.current.recoverySources ?? []), session.id])]
+                                  : (fieldsRef.current.recoverySources ?? []).filter(id => id !== session.id),
+                              })} />
+                            {data.activities.find(a => a.id === session.activity_id)?.title ?? session.id}
+                          </label>
+                        ))}
+                        <p className="muted">A recuperação é liberada apenas para duplas com pelo menos uma ausência nas atividades selecionadas. Atividades ainda abertas não são elegíveis.</p>
+                      </fieldset>
                       <p className="muted">Obrigatoriamente 20 questões, cada uma com 1 ponto interno.
                         A nota oficial é convertida para 0–10, com 20 minutos por dupla.
                         A recuperação não altera a média das atividades regulares.
