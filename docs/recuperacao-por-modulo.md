@@ -63,3 +63,34 @@ Registros históricos sem tempo não recebem duração presumida.
 `202611190002_modules_and_ctf_time.sql` →
 `202611190003_module_capacity.sql`, somente após backup e testes.
 O GitHub Pages não executa migrations no Supabase.
+
+## Desempate com 1 ponto (regra nova)
+
+Quando duas ou mais duplas possuem **pontuação-base idêntica**, os tempos
+de resolução dos CTFs registrados são comparados. A dupla com **menor tempo
+total válido e único** recebe **+1 ponto de desempate**, exclusivamente
+na classificação pública. Não há bônus se a pontuação-base é diferente,
+se há menos de dois tempos válidos comparáveis ou se os melhores tempos
+também empatam. O placar jamais supera **1.000 pontos**; em empate de
+1000 pontos, a precedência é mantida pelo critério de desempate, sem
+criar o ponto 1001.
+
+A coluna `ctf_elapsed_seconds` é derivada das durações reais informadas
+no formulário de CTF por módulo. Durações históricas sem medição seguem
+nulas, nunca inferidas.
+
+## SQL de implantação e validação
+
+1. [Pré-verificação somente leitura](../supabase/tests/preflight_modules_recovery.sql)
+2. [Migration 001: recuperação por módulo](../supabase/migrations/202611190001_module_recovery.sql)
+3. [Migration 002: módulos e tempo de CTF](../supabase/migrations/202611190002_modules_and_ctf_time.sql)
+4. [Migration 003: atividades 6/5/5](../supabase/migrations/202611190003_module_capacity.sql)
+5. [Pós-verificação somente leitura](../supabase/tests/postflight_modules_recovery.sql)
+
+**ATENÇÃO:** não execute `202611180001_preserve_historical_ranking.sql`.
+É uma migration antiga e incompatível com este modelo; também foi excluída
+do teste de banco descartável no CI.
+
+Até os arquivos SQL serem aplicados no Supabase e os testes passarem
+nesse projeto específico, a funcionalidade de recuperação e de
+desempate por tempo deve ser considerada **não homologada em produção**.
