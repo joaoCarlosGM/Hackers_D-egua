@@ -129,7 +129,7 @@ function Leaderboard({ classes }: { classes: Class[] }) {
   useEffect(() => {
     let alive = true;
     const load = async () => {
-      let { data, error } = await supabase!
+      const { data, error } = await supabase!
         .from("public_leaderboard")
         .select("team_id,class_id,public_name,points,solved_count,assessment_band,assessment_points,legacy_assessment_points,future_activity_points,recovery_bonus,ctf_elapsed_seconds")
         .eq("is_visible", true)
