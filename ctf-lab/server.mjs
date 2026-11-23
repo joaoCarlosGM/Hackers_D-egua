@@ -58,7 +58,7 @@ async function command(bin,args,input="",timeout=30000){
 }
 async function createLab(s){
   const name=box(s);
-  await command("docker",["run","-d","--rm","--name",name,"--network","none","--cap-drop","ALL","--cap-add","NET_BIND_SERVICE","--cap-add","CHOWN",
+  await command("docker",["run","-d","--rm","--name",name,"--network","none","--cap-drop","ALL","--cap-add","NET_BIND_SERVICE","--cap-add","CHOWN","--cap-add","SETGID","--cap-add","SETUID",
     "--memory","256m","--cpus","0.8","--pids-limit","80","--read-only",
     "--tmpfs","/tmp:rw,nosuid,nodev,size=16m","--tmpfs","/run:rw,nosuid,nodev,size=8m",
     "--tmpfs","/home/aluno:rw,nosuid,nodev,size=64m","--tmpfs","/var/tmp:rw,nosuid,nodev,size=32m",IMAGE]);
