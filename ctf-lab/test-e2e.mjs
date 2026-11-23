@@ -35,6 +35,12 @@ async function terminal(text,pattern){
 const nav=await terminal("cat /var/tmp/arquivo/relatorios/.operacao/.relatorio.txt",/FLAG\{ARQUIVO_[A-F0-9]+\}/);
 const f1=nav.match(/FLAG\{ARQUIVO_[A-F0-9]+\}/)[0];
 assert((await req("/api/flag","POST",{challenge:1,flag:f1})).accepted);
+const otherInvite=(await req("/api/admin/invites","POST",{ctfId:ctf.id,team:"Dupla Isolada"},true)).invite;
+const otherJoined=await req("/api/join","POST",{code:otherInvite.code});
+const originalToken=sessionToken;
+sessionToken=otherJoined.token;
+assert.equal((await req("/api/flag","POST",{challenge:1,flag:f1})).accepted,false,"Flag de outra dupla deve ser rejeitada");
+sessionToken=originalToken;
 const permission=await terminal("chmod g+r /home/aluno/desafios/permissoes/segredo.txt; cat /home/aluno/desafios/permissoes/segredo.txt",/FLAG\{GRUPO_[A-F0-9]+\}/);
 const f2=permission.match(/FLAG\{GRUPO_[A-F0-9]+\}/)[0];
 assert((await req("/api/flag","POST",{challenge:2,flag:f2})).accepted);
