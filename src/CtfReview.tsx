@@ -180,7 +180,7 @@ function LabWorkshop({ token, onExit }: { token: string; onExit?: () => void }) 
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, []);
-  const current = drafts[challenge] ?? session?.writeups[challenge] ?? { command: "", reason: "", evidence: "" };
+  const current: Writeup = drafts[challenge] ?? session?.writeups[challenge] ?? { command: "", reason: "", evidence: "" };
   async function saveWriteup(draft: Writeup, id = challenge, submit = false) {
     if (!session) return;
     await request("/api/writeup", token, { challenge: id, command: draft.command, reason: draft.reason, evidence: draft.evidence, submit });
@@ -386,6 +386,7 @@ function Replay({ report }: { report: AuditReport }) {
       return <article key={ch.id} className="card"><strong>{ch.id}. {ch.title}</strong>
         <p><b>Comando:</b> {w?.command || "Não enviado"}</p>
         <p><b>Raciocínio:</b> {w?.reason || "Não enviado"}</p>
+        <p><b>Entrega:</b> {w?.submittedAt ? new Date(w.submittedAt).toLocaleString("pt-BR") : "Rascunho"}</p>
         <p><b>Evidência:</b> {w?.evidence || "Não enviada"}</p></article>;
     })}
     <button type="button" onClick={() => downloadFile("auditoria-revisao.json",JSON.stringify(report,null,2),"application/json")}>Exportar relatório JSON</button>
