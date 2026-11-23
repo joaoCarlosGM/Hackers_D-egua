@@ -32,7 +32,23 @@ Preencha ctf-lab/.env.integration:
 
 **NUNCA compartilhe a Secret API Key, use VITE_* para guardá-la ou faça commit do arquivo de integração.**
 
-## Inicializar (dois terminais WSL)
+## Inicialização simples — um único comando
+
+Após preparar os dois arquivos de ambiente, execute na raiz do repositório:
+
+    bash ctf-lab/start-platform.sh
+
+O script instala as dependências, constrói/inicia o executor Docker, valida a API local e abre o Vite na porta 5173. Acesse:
+
+    http://127.0.0.1:5173/Hackers_D-egua/#admin/revisao-ctf
+
+Para o acesso de uma dupla:
+
+    http://127.0.0.1:5173/Hackers_D-egua/#ctf-revisao
+
+Pressione Ctrl+C para encerrar os servidores locais. Antes disso, encerre as revisões no painel para remover os contêineres.
+
+## Alternativa — dois terminais WSL
 
 Terminal 1 — executor Docker e xterm.js:
 
