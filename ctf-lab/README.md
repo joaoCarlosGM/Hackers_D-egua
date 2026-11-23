@@ -29,7 +29,7 @@ O xterm.js é carregado de CDN e necessita de internet. **Os comandos NÃO são 
 
 1. Arquivo oculto na árvore /var/tmp/; use cd, ls, find e cat.
 2. Permissões do grupo investigadores em ~/desafios/permissoes/segredo.txt; use groups, ls -l, chmod g+r, cat. O comando chmod no shell é alias para sudo chmod restrito ao único arquivo de laboratório; é o executável chmod real.
-3. Arquivo ~/desafios/logs/auth.log com registros falsos de força bruta; identifique o IP mais frequente. A flag utiliza o formato FLAG{198.51.100.X}.
+3. Arquivo ~/desafios/logs/auth.log com registros falsos de força bruta; identifique o IP mais frequente. A flag utiliza o formato FLAG{IP_198.51.100.X_TOKEN}, com o token individual no cabeçalho do log.
 4. Consulta real a DNS TXT pelo comando dig @127.0.0.1 ctf.hackerspaidegua.local TXT (dnsmasq dentro do contêiner).
 
 ## Segurança e limites desta primeira versão
