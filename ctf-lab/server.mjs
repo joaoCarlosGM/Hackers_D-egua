@@ -45,7 +45,7 @@ const record=(s,type,details={})=>{s.events.push({at:iso(),type,...details});if(
 const box=s=>"hpde-lab-"+s.id.replace(/-/g,"").slice(0,22);
 const digest=(s,n)=>createHmac("sha256",state.key).update(s.id+":"+n).digest("hex").slice(0,14).toUpperCase();
 const flag=(s,n)=>"FLAG{"+["ARQUIVO","GRUPO","IP","DNS"][n-1]+"_"+digest(s,n)+"}";
-const attacker=s=>"198.51.100."+(10+parseInt(digest(s,3).slice(0,4),16)%220);
+const attacker=s=>s.attackerIp || "198.51.100."+(10+parseInt(digest(s,3).slice(0,4),16)%220);
 async function command(bin,args,input="",timeout=30000){
   return new Promise((resolve,reject)=>{
     const p=spawn(bin,args,{stdio:["pipe","pipe","pipe"]});let out="",err="",done=false;
@@ -133,7 +133,10 @@ const server=http.createServer(async(req,res)=>{
         const s=state.sessions.find(x=>x.id===invite.sessionId);
         return send(res,200,{token:s.token,session:sessionView(s)});
       }
-      const s={id:randomUUID(),ctfId:invite.ctfId,team:invite.team,token:token(),createdAt:iso(),completedAt:null,solved:[],writeups:{},events:[]};
+      const reserved=new Set(state.sessions.map(x=>x.attackerIp).filter(Boolean));
+      let ipLast=10;while(ipLast<255&&reserved.has("198.51.100."+ipLast))ipLast++;
+      if(ipLast>254)return send(res,503,{error:"Limite de 245 sessões locais atingido"});
+      const s={id:randomUUID(),ctfId:invite.ctfId,team:invite.team,attackerIp:"198.51.100."+ipLast,token:token(),createdAt:iso(),completedAt:null,solved:[],writeups:{},events:[]};
       await createLab(s);state.sessions.push(s);invite.sessionId=s.id;persist();
       return send(res,201,{token:s.token,session:sessionView(s)});
     }
