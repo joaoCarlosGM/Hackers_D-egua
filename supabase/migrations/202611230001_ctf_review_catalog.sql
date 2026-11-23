@@ -52,14 +52,21 @@ alter table public.ctf_review_catalog enable row level security;
 alter table public.ctf_review_sessions enable row level security;
 alter table public.ctf_review_events enable row level security;
 revoke all on public.ctf_review_catalog,public.ctf_review_sessions,public.ctf_review_events from public,anon,authenticated;
-grant select,insert,update,delete on public.ctf_review_catalog,public.ctf_review_sessions,public.ctf_review_events to service_role;
-grant usage,select on sequence public.ctf_review_events_id_seq to service_role;
+do $do$
+begin
+ if exists(select 1 from pg_roles where rolname='service_role') then
+  grant select,insert,update,delete on public.ctf_review_catalog,public.ctf_review_sessions,public.ctf_review_events to service_role;
+  grant usage,select on sequence public.ctf_review_events_id_seq to service_role;
+ end if;
+end
+$do$;
 
 -- Alunos veem somente revisões destinadas à turma da própria sessão ativa.
 create or replace function public.ctf_review_visible(p_team_token text)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare tid uuid:=app_private.team_for_token(p_team_token);
-declare cid uuid;
+declare
+ tid uuid:=app_private.team_for_token(p_team_token);
+ cid uuid;
 begin
  select class_id into cid from public.teams where id=tid and status='active';
  if cid is null then raise exception 'Dupla desativada' using errcode='42501'; end if;
@@ -81,10 +88,11 @@ grant execute on function public.ctf_review_visible(text) to anon,authenticated;
 -- Join idempotente por dupla: o professor não escolhe o team_id do aluno.
 create or replace function public.ctf_review_enter(p_team_token text,p_review_id uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare tid uuid:=app_private.team_for_token(p_team_token);
-declare teamrow public.teams;
-declare reviewrow public.ctf_review_catalog;
-declare sid uuid;
+declare
+ tid uuid:=app_private.team_for_token(p_team_token);
+ teamrow public.teams;
+ reviewrow public.ctf_review_catalog;
+ sid uuid;
 begin
  select * into teamrow from public.teams where id=tid and status='active';
  if not found then raise exception 'Dupla inativa' using errcode='42501'; end if;
