@@ -193,7 +193,6 @@ function LabWorkshop({ token, onExit }: { token: string; onExit?: () => void }) 
     }, 1800);
     return () => clearTimeout(t);
     // The edit draft is the source of truth; do not re-run on polling.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drafts, challenge]);
   async function submitFlag() {
     setBusy(true); setError("");
