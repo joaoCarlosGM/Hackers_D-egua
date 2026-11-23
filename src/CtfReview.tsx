@@ -478,12 +478,16 @@ export function CtfReviewAdmin({ classes }: { classes: Class[] }) {
     <div className="card">
       <div className="ctf-topline"><h2>Acompanhamento das duplas</h2><button onClick={()=>void load().catch(e=>setError((e as Error).message))}>Atualizar</button></div>
       {sessions.length===0&&<p>Sem sessões registradas.</p>}
-      <div className="ctf-grid">{sessions.map(s=><article key={s.id} className="ctf-entry">
-        <h3>{s.team_name}</h3>
-        <p>Progresso: {s.solved_ids.length}/4 desafios · Write-ups: {Object.keys(s.writeups||{}).length}/4</p>
-        <p>Última atividade: {new Date(s.updated_at).toLocaleString("pt-BR")}</p>
-        <button disabled={busy} onClick={()=>void inspect(s.id)}>Abrir auditoria e playback</button>
-      </article>)}</div>
+      <div className="ctf-grid">{sessions.map(s=>{
+        const idleMinutes=Math.max(0,Math.floor((Date.now()-Date.parse(s.updated_at))/60000));
+        const status=s.solved_ids.length===4?"Concluída":idleMinutes<2?"Ativa":"Ociosa há "+idleMinutes+" min";
+        return <article key={s.id} className="ctf-entry">
+          <h3>{s.team_name}</h3>
+          <p><strong>{status}</strong> · Progresso: {s.solved_ids.length}/4 desafios · Write-ups: {Object.keys(s.writeups||{}).length}/4</p>
+          <p>Última atividade: {new Date(s.updated_at).toLocaleString("pt-BR")}</p>
+          <button disabled={busy} onClick={()=>void inspect(s.id)}>Abrir auditoria e playback</button>
+        </article>;
+      })}</div>
     </div>
     {report&&<div className="card"><button onClick={()=>setReport(null)}>Fechar auditoria</button><Replay key={report.session.id} report={report}/></div>}
   </section>;
