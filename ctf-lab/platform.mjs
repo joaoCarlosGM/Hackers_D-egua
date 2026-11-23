@@ -9,6 +9,7 @@ export function createPlatformIntegration(deps) {
   const db=ready?createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}}):null;
   const identityCache=new Map();
   const pending=[];
+  const lastPresence=new Map();
   let writing=false;
   const required=()=>{if(!ready)throw Error("Integração Supabase indisponível: configure CTF_SUPABASE_URL, CTF_SUPABASE_PUBLIC_KEY e CTF_SUPABASE_SECRET_KEY no executor local.");};
   const unwrap=(response,label)=>{
@@ -96,6 +97,15 @@ export function createPlatformIntegration(deps) {
     const batch=pending.splice(0,75);
     try{
       unwrap(await db.from("ctf_review_events").insert(batch),"Gravar auditoria");
+      const at=Date.now();
+      const sessionIds=[...new Set(batch.map(x=>x.session_id))].filter(id=>at-(lastPresence.get(id)||0)>15000);
+      for(const id of sessionIds)lastPresence.set(id,at);
+      if(sessionIds.length){
+        await Promise.all(sessionIds.map(id=>db.from("ctf_review_sessions")
+          .update({updated_at:new Date(at).toISOString()}).eq("id",id)
+          .then(({error})=>{if(error)console.error("Heartbeat CTF:",error.message);})
+          .catch(e=>console.error("Heartbeat CTF:",e.message))));
+      }
     }catch(e){
       pending.unshift(...batch);
       console.error("Falha ao gravar auditoria no Supabase:",e.message);
