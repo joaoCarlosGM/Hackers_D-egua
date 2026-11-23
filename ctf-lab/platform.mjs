@@ -64,9 +64,16 @@ export function createPlatformIntegration(deps) {
     if(!s.platform)return true;
     const c=await review(s.ctfId);
     if(!running(c))throw Error("Revisão pausada ou encerrada");
-    if(!s.teamId)return true;
     const cached=identityCache.get(s.id);
-    if(!cached)throw Error("Faça login novamente na dupla para renovar sua sessão");
+    if(!s.teamId){
+      if(!cached?.staffJwt)throw Error("A demonstração exige novo login do professor");
+      if(Date.now()-cached.verifiedAt<12000)return true;
+      const staffId=await staff({headers:{authorization:"Bearer "+cached.staffJwt}});
+      if(staffId!==s.staffId)throw Error("Sessão do professor inválida");
+      cached.verifiedAt=Date.now();
+      return true;
+    }
+    if(!cached?.teamToken)throw Error("Faça login novamente na dupla para renovar sua sessão");
     if(Date.now()-cached.verifiedAt<12000)return true;
     const visible=unwrap(await anon.rpc("ctf_review_visible",{p_team_token:cached.teamToken}),"Verificação da dupla");
     if(!Array.isArray(visible)||!visible.find(r=>r.id===c.id))throw Error("Acesso à revisão revogado");
@@ -190,6 +197,7 @@ export function createPlatformIntegration(deps) {
         if(!row)row=unwrap(await db.from("ctf_review_sessions").insert({review_id:id,
           staff_id:userId,team_name:"Professor — demonstração"}).select("*").single(),"Criar demonstração");
         const s=await provisionRow(row,c,null);
+        identityCache.set(s.id,{staffJwt:String(req.headers.authorization).replace(/^Bearer /i,""),verifiedAt:0});
         return send(res,200,{token:s.token,session:deps.sessionView(s)});
       }
       if(method==="GET"&&pathname==="/api/platform/staff/reports"){
