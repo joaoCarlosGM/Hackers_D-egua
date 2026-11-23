@@ -184,7 +184,7 @@ server.on("upgrade",(req,socket,head)=>{
 wss.on("connection",(ws,s)=>{
   const other=activeSockets.get(s.id);if(other&&other.readyState===1)other.close(1000,"Nova conexão");
   activeSockets.set(s.id,ws);
-  const proc=spawn("script",["-q","-f","-c","docker exec -i -u aluno "+box(s)+" /bin/bash -li","/dev/null"],{stdio:["pipe","pipe","pipe"]});
+  const proc=spawn("script",["-q","-f","-c","docker exec -it -u aluno "+box(s)+" /bin/bash -li","/dev/null"],{stdio:["pipe","pipe","pipe"]});
   record(s,"terminal_open");
   proc.stdout.on("data",chunk=>{if(ws.readyState===1)ws.send(chunk);record(s,"terminal_output",{base64:chunk.toString("base64")});});
   proc.stderr.on("data",chunk=>{if(ws.readyState===1)ws.send(chunk);});
