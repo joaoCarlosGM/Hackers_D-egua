@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { randomBytes, randomUUID, createHmac, timingSafeEqual } from "node:crypto";
 import { WebSocketServer } from "ws";
+import { createPlatformIntegration } from "./platform.mjs";
 
 const ROOT=path.dirname(fileURLToPath(import.meta.url));
 const PORT=Number(process.env.CTF_PORT || 4100);
@@ -41,7 +42,13 @@ const isRunning=c=>c&&c.status==="running"&&!c.pausedAt&&Date.parse(c.deadline)>
 const authHeader=req=>String(req.headers.authorization||"").replace(/^Bearer /i,"");
 const admin=req=>eq(authHeader(req),ADMIN_KEY);
 const student=req=>state.sessions.find(s=>eq(s.token,authHeader(req)));
-const record=(s,type,details={})=>{s.events.push({at:iso(),type,...details});if(s.events.length>30000)s.events.splice(0,s.events.length-30000);persist();};
+const record=(s,type,details={})=>{
+  const event={at:iso(),type,...details};
+  s.events.push(event);
+  if(s.events.length>30000)s.events.splice(0,s.events.length-30000);
+  if(s.platform)platform.enqueueEvent(s,event);
+  persist();
+};
 const box=s=>"hpde-lab-"+s.id.replace(/-/g,"").slice(0,22);
 const digest=(s,n)=>createHmac("sha256",state.key).update(s.id+":"+n).digest("hex").slice(0,14).toUpperCase();
 const flag=(s,n)=>"FLAG{"+["ARQUIVO","GRUPO","IP","DNS"][n-1]+"_"+digest(s,n)+"}";
@@ -77,9 +84,24 @@ async function body(req){
   return chunks?JSON.parse(chunks):{};
 }
 const tickets=new Map(),activeSockets=new Map();
+const platform=createPlatformIntegration({
+ state,token,iso,persist,createLab,destroyLab,record,CHALLENGES,box,command,sessionView,publicCtf,send,body,clean
+});
 const server=http.createServer(async(req,res)=>{
   try{
     const pathname=new URL(req.url,"http://localhost").pathname;
+    if(pathname.startsWith("/api/platform/"))return await platform.handle(req,res,pathname);
+    const vend={
+      "/vendor/xterm.js":["@xterm/xterm/lib/xterm.js","application/javascript"],
+      "/vendor/xterm.css":["@xterm/xterm/css/xterm.css","text/css"],
+      "/vendor/xterm-fit.js":["@xterm/addon-fit/lib/addon-fit.js","application/javascript"]
+    };
+    if(req.method==="GET"&&vend[pathname]){
+      const [p,ct]=vend[pathname],file=path.join(ROOT,"node_modules",p);
+      if(!fs.existsSync(file))return send(res,503,{error:"xterm.js não instalado no executor"});
+      res.writeHead(200,{"content-type":ct,"cache-control":"public,max-age=3600","x-content-type-options":"nosniff"});
+      return res.end(fs.readFileSync(file));
+    }
     if(req.method==="GET"&&(pathname==="/"||pathname==="/index.html")){
       res.writeHead(200,{"content-type":"text/html; charset=utf-8","cache-control":"no-store",
         "content-security-policy":"default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' ws://127.0.0.1:4100; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'"});
@@ -146,12 +168,14 @@ const server=http.createServer(async(req,res)=>{
     if(req.method==="POST"&&pathname==="/api/flag"){
       const s=student(req);if(!s)return send(res,401,{error:"Sessão inválida"});
       if(!isRunning(currentCtf(s.ctfId)))return send(res,409,{error:"Revisão pausada ou encerrada"});
+      if(s.platform)await platform.sessionAccess(s);
       const b=await body(req),id=Number(b.challenge);
       if(![1,2,3,4].includes(id))return send(res,400,{error:"Desafio inválido"});
       const expected=id===3?"FLAG{"+attacker(s)+"}":flag(s,id);
       const ok=eq(clean(b.flag,120),expected);
       record(s,"flag_submission",{challenge:id,result:ok?"accepted":"rejected"});
       if(ok&&!s.solved.includes(id)){s.solved.push(id);record(s,"solved",{challenge:id});if(s.solved.length===4)s.completedAt=iso();}
+      if(s.platform)await platform.saveProgress(s);
       return send(res,200,{accepted:ok,solved:s.solved});
     }
     if(req.method==="POST"&&pathname==="/api/writeup"){
@@ -159,11 +183,14 @@ const server=http.createServer(async(req,res)=>{
       if(!isRunning(currentCtf(s.ctfId)))return send(res,409,{error:"Revisão pausada ou encerrada"});
       const b=await body(req),id=Number(b.challenge);if(![1,2,3,4].includes(id))return send(res,400,{error:"Desafio inválido"});
       s.writeups[id]={command:clean(b.command),reason:clean(b.reason),evidence:clean(b.evidence),savedAt:iso()};
-      record(s,"writeup_saved",{challenge:id});return send(res,200,{ok:true});
+      record(s,"writeup_saved",{challenge:id});
+      if(s.platform)await platform.saveProgress(s);
+      return send(res,200,{ok:true});
     }
     if(req.method==="POST"&&pathname==="/api/ticket"){
       const s=student(req);if(!s)return send(res,401,{error:"Sessão inválida"});
       if(!isRunning(currentCtf(s.ctfId)))return send(res,409,{error:"Revisão pausada ou encerrada"});
+      if(s.platform)await platform.sessionAccess(s);
       const t=token();tickets.set(t,{sessionId:s.id,until:Date.now()+30000});
       return send(res,200,{ticket:t});
     }
@@ -176,12 +203,13 @@ const server=http.createServer(async(req,res)=>{
   }catch(e){console.error(e);send(res,500,{error:e.message||"Erro interno"});}
 });
 const wss=new WebSocketServer({noServer:true,handleProtocols:protocols=>protocols.has("ctf-v1")?"ctf-v1":false});
-server.on("upgrade",(req,socket,head)=>{
+server.on("upgrade",async(req,socket,head)=>{
   const protocols=String(req.headers["sec-websocket-protocol"]||"").split(",").map(x=>x.trim());
   const value=protocols.find(x=>x.startsWith("ticket."))?.slice(7);
   const info=tickets.get(value);if(value)tickets.delete(value);
   const s=info&&info.until>Date.now()?state.sessions.find(x=>x.id===info.sessionId):null;
   if(!s||!isRunning(currentCtf(s.ctfId))){socket.end("HTTP/1.1 401 Unauthorized\r\n\r\n");return;}
+  if(s.platform){try{await platform.sessionAccess(s);}catch{socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");return;}}
   wss.handleUpgrade(req,socket,head,ws=>wss.emit("connection",ws,s));
 });
 wss.on("connection",(ws,s)=>{
