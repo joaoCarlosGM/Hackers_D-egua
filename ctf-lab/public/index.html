@@ -188,13 +188,17 @@ function remaining(c){if(c.pausedAt)return Math.max(0,Date.parse(c.deadline)-Dat
 function renderStudent(){
  if(!studentSession)return;
  const s=studentSession,c=s.ctf;
+ const selectedBefore=$("writeChallenge").value||"1";
+ const editing=$("writeupForm").contains(document.activeElement);
+ const draft=editing?[$("writeCommand").value,$("writeReason").value,$("writeEvidence").value]:null;
  $("workshop").classList.remove("hidden");
  $("teamInfo").textContent="Dupla: "+s.team+" · "+c.title+" · "+c.status;
  $("progress").textContent=s.solved.length+"/4";
  $("timer").textContent=c.pausedAt?"PAUSADO":new Date(remaining(c)).toISOString().slice(14,19);
  $("challenges").innerHTML=c.challenges.map(ch=>'<div class="card '+(s.solved.includes(ch.id)?"challenge-done":"")+'"><h3>'+ch.id+'. '+esc(ch.title)+'</h3><p>'+esc(ch.description)+'</p><p class="muted">'+(s.solved.includes(ch.id)?"Concluído":"Pendente")+' — sem pontos</p><div class="row"><input data-flag="'+ch.id+'" placeholder="FLAG{...}" style="min-width:150px"><button data-submit="'+ch.id+'">Validar flag</button></div></div>').join("");
  $("writeChallenge").innerHTML=c.challenges.map(ch=>'<option value="'+ch.id+'">'+ch.id+'. '+esc(ch.title)+'</option>').join("");
- fillWriteup();
+ $("writeChallenge").value=selectedBefore;
+ if(draft){$("writeCommand").value=draft[0];$("writeReason").value=draft[1];$("writeEvidence").value=draft[2];}else fillWriteup();
 }
 $("challenges").onclick=async e=>{
  const b=e.target.closest("button[data-submit]");if(!b)return;
@@ -207,6 +211,15 @@ function fillWriteup(){
  $("writeCommand").value=w.command||"";$("writeReason").value=w.reason||"";$("writeEvidence").value=w.evidence||"";
 }
 $("writeChallenge").onchange=fillWriteup;
+let writeAutoTimer;
+["writeCommand","writeReason","writeEvidence"].forEach(id=>$(id).addEventListener("input",()=>{
+ clearTimeout(writeAutoTimer);
+ writeAutoTimer=setTimeout(async()=>{
+  if(!studentSession)return;
+  try{await api("/api/writeup","POST",{challenge:Number($("writeChallenge").value),command:$("writeCommand").value,reason:$("writeReason").value,evidence:$("writeEvidence").value});}
+  catch(e){notice("Rascunho não salvo: "+e.message,true);}
+ },1000);
+}));
 $("writeupForm").onsubmit=async e=>{
  e.preventDefault();try{await api("/api/writeup","POST",{challenge:Number($("writeChallenge").value),command:$("writeCommand").value,reason:$("writeReason").value,evidence:$("writeEvidence").value});await refreshStudent();notice("Write-up salvo na sessão demonstrativa.");}catch(err){notice(err.message,true);}
 };
