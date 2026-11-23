@@ -182,8 +182,11 @@ const server=http.createServer(async(req,res)=>{
       const s=student(req);if(!s)return send(res,401,{error:"Sessão inválida"});
       if(!isRunning(currentCtf(s.ctfId)))return send(res,409,{error:"Revisão pausada ou encerrada"});
       const b=await body(req),id=Number(b.challenge);if(![1,2,3,4].includes(id))return send(res,400,{error:"Desafio inválido"});
-      s.writeups[id]={command:clean(b.command),reason:clean(b.reason),evidence:clean(b.evidence),savedAt:iso()};
-      record(s,"writeup_saved",{challenge:id});
+      const commandText=clean(b.command),reasonText=clean(b.reason),evidenceText=clean(b.evidence);
+      if(b.submit===true&&(!commandText||!reasonText))return send(res,400,{error:"Para entregar, informe o comando utilizado e o raciocínio técnico"});
+      s.writeups[id]={command:commandText,reason:reasonText,evidence:evidenceText,
+        savedAt:iso(),submittedAt:b.submit===true?iso():null};
+      record(s,b.submit===true?"writeup_submitted":"writeup_saved",{challenge:id});
       if(s.platform)await platform.saveProgress(s);
       return send(res,200,{ok:true});
     }
