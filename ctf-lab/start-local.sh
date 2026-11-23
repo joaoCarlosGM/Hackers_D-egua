@@ -11,6 +11,12 @@ if [ ! -f .data/admin.key ]; then
   node -e 'process.stdout.write(require("node:crypto").randomBytes(28).toString("hex"))' > .data/admin.key
   chmod 600 .data/admin.key
 fi
+# Opcional: credenciais de integração Supabase exclusivamente no servidor local.
+if [ -f .env.integration ]; then
+  set -a
+  . ./.env.integration
+  set +a
+fi
 export CTF_ADMIN_KEY="$(cat .data/admin.key)"
 export CTF_PORT=4100
 export CTF_IMAGE=hackers-ctf-revisao:local
