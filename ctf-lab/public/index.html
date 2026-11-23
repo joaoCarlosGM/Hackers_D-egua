@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hackers Pai D'Égua — Revisão Pré-CTF</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
+<style>
+:root{font-family:system-ui,Arial,sans-serif;background:#141624;color:#f3f4fc}
+*{box-sizing:border-box}body{margin:0}header{background:#222233;border-bottom:2px solid #ee66a6;padding:18px clamp(14px,4vw,36px);display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h1{font-size:1.3rem;margin:0}h2{font-size:1.15rem}h3{font-size:1rem}small,.muted{color:#b8c2d2}strong{font-weight:750}
+.brand{font-weight:900;letter-spacing:.04em}.sub{font-size:.77rem;font-weight:600;color:#9aefdc}.tag{padding:5px 10px;border-radius:20px;background:#43325a;color:#f2e4ff;font-size:.74rem;font-weight:700}
+nav{display:flex;gap:8px;flex-wrap:wrap}button,input,textarea,select{font:inherit}button{cursor:pointer;border:1px solid #65749b;border-radius:9px;background:#313a56;color:#fff;padding:9px 13px}button:hover{background:#425681}button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:#5588ff;border-color:#5588ff;color:#fff}button.positive{background:#20785c;border-color:#44aa88}.active{background:#4b2e83}
+main{max-width:1280px;margin:0 auto;padding:26px 18px}.panel{border:1px solid #3b4663;background:#222637;border-radius:14px;padding:20px;margin-bottom:18px}.banner{background:#32274a;border-left:4px solid #ee66a6;padding:12px 16px;margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}.row>*{min-width:0}
+label{display:grid;gap:6px;margin:12px 0;font-size:.9rem}input,textarea,select{background:#121725;color:#f2f2f2;border:1px solid #5b6781;border-radius:8px;padding:10px;width:100%}textarea{min-height:82px;resize:vertical}
+.card{border:1px solid #505e79;border-radius:10px;padding:14px;background:#292e40;margin:7px 0}.card h3{margin:0 0 6px}.card p{font-size:.89rem;line-height:1.4}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.metric{background:#151e2e;padding:12px;border-radius:9px}.metric strong{font-size:1.5rem;display:block}
+#terminal,#replay{height:350px;background:#0e141b;border:1px solid #41566b;border-radius:12px;padding:8px;overflow:hidden}
+#replay{height:260px}.terminal-head{background:#131e2a;padding:9px 12px;border-radius:10px 10px 0 0;color:#b2f6cf;font:12px monospace}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#121925;padding:12px;border-radius:8px;max-height:300px;overflow:auto;font:12px monospace}
+.status{color:#b3f5cc}.error{color:#ffa5b0}.hidden{display:none!important}.challenge-done{border-color:#44aa88}.notice{margin:12px 0;min-height:20px}
+@media(max-width:650px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}main{padding:13px}#terminal{height:300px}}
+</style>
+</head>
+<body>
+<header>
+<div><div class="brand">HACKERS PAI D'ÉGUA</div><div class="sub">LABORATÓRIO — REVISÃO PRÉ-CTF</div></div>
+<span class="tag">DEMONSTRAÇÃO · SEM NOTAS NEM PONTOS</span>
+<nav><button data-page="professor" class="active">Professor · Cadastro</button><button data-page="dupla">Terminal da dupla</button><button data-page="auditoria">Auditoria / Replay</button></nav>
+</header>
+<main>
+<div class="banner">Ambiente local de teste: comandos Linux reais somente em contêineres Docker isolados. Nenhum resultado modifica o ranking ou as avaliações oficiais.</div>
+<div id="feedback" class="notice" role="status"></div>
+
+<section id="professor" class="view">
+ <div class="panel">
+  <h2>Acesso do professor — laboratório local</h2>
+  <p class="muted">Informe a chave CTF_ADMIN_KEY usada ao iniciar o executor. Não é a senha da plataforma oficial.</p>
+  <div class="row"><input id="adminkey" type="password" placeholder="Chave local do executor" style="max-width:420px"><button id="adminlogin" class="primary">Carregar administração</button></div>
+ </div>
+ <div class="grid">
+  <div class="panel">
+   <h2>Cadastrar revisão</h2>
+   <form id="ctfform">
+    <label>Título<input name="title" required minlength="3" placeholder="Revisão Pré-CTF — Aula 7"></label>
+    <label>Descrição<textarea name="description" placeholder="Objetivo da demonstração"></textarea></label>
+    <label>Duração (minutos)<input name="minutes" type="number" min="5" max="120" value="60" required></label>
+    <p class="muted">Os quatro desafios-base são aplicados automaticamente. O cadastro não executa scripts arbitrários.</p>
+    <button class="primary">Criar CTF sem pontuação</button>
+   </form>
+  </div>
+  <div class="panel">
+   <h2>Preparar dupla demonstrativa</h2>
+   <form id="inviteform">
+    <label>CTF em andamento<select id="inviteCtf" required></select></label>
+    <label>Nome da dupla<input id="inviteTeam" placeholder="Dupla Demonstrativa" value="Dupla Demonstrativa" required></label>
+    <button>Gerar código de acesso</button>
+   </form>
+   <p id="inviteResult" class="status"></p>
+   <p class="muted">Para testar: gere um código, copie e use a aba "Terminal da dupla".</p>
+  </div>
+ </div>
+ <div class="panel"><h2>CTFs cadastrados</h2><div id="ctfs"></div></div>
+</section>
+
+<section id="dupla" class="view hidden">
+ <div class="panel">
+  <h2>Entrar na revisão</h2>
+  <p class="muted">Use um código emitido pelo professor no painel local.</p>
+  <div class="row"><input id="teamcode" placeholder="Código da dupla" style="max-width:440px"><button id="join" class="primary">Entrar / recuperar sessão</button></div>
+  <div id="teamInfo" class="muted">Nenhuma sessão iniciada.</div>
+ </div>
+ <div id="workshop" class="hidden">
+  <div class="panel">
+   <div class="stats">
+    <div class="metric"><small>Progresso</small><strong id="progress">0/4</strong></div>
+    <div class="metric"><small>Tempo restante</small><strong id="timer">60:00</strong></div>
+    <div class="metric"><small>Conexão</small><strong id="connection">—</strong></div>
+   </div>
+  </div>
+  <div class="grid"><div class="panel" style="grid-column:span 2">
+   <h2>Terminal Linux real</h2>
+   <p class="muted">Digite <code>cat ~/missao.txt</code> ou <code>pwd</code>. Os comandos são executados em um contêiner isolado.</p>
+   <div class="terminal-head">aluno@hackers-ctf — xterm.js · Linux Docker</div>
+   <div id="terminal" tabindex="0"></div>
+   <div class="row" style="margin-top:10px"><button id="connect" class="positive">Conectar / reconectar terminal</button><small>Uma conexão ativa por dupla. O sistema de arquivos é preservado durante a sessão.</small></div>
+  </div></div>
+  <div class="panel">
+   <h2>Quatro desafios · sem pontuação</h2>
+   <div id="challenges" class="grid"></div>
+  </div>
+  <div class="panel">
+   <h2>Write-up integrado</h2>
+   <p class="muted">Documente os comandos, a hipótese e a evidência. O registro é formativo, sem nota.</p>
+   <form id="writeupForm">
+    <label>Desafio<select id="writeChallenge"></select></label>
+    <label>Comando utilizado<textarea id="writeCommand" required></textarea></label>
+    <label>Raciocínio técnico<textarea id="writeReason" required></textarea></label>
+    <label>Evidências / saída observada<textarea id="writeEvidence"></textarea></label>
+    <div class="actions"><button class="primary">Salvar write-up</button><button type="button" id="exportWriteup">Exportar writeup_dupla.md</button></div>
+   </form>
+  </div>
+ </div>
+</section>
+
+<section id="auditoria" class="view hidden">
+ <div class="panel">
+  <h2>Auditoria demonstrativa</h2>
+  <p class="muted">Histórico registrado pelo executor. Sem lançamento de notas. Comandos digitados são entradas brutas; o replay usa as saídas reais do PTY.</p>
+  <div class="row"><button id="loadAudit">Atualizar sessões</button><select id="auditSessions" style="max-width:540px"></select><button id="getReport">Abrir relatório</button><button id="downloadReport">Exportar JSON</button></div>
+ </div>
+ <div id="auditDetail" class="hidden">
+  <div class="panel"><h2 id="reportTitle">Relatório</h2><div id="reportSummary"></div></div>
+  <div class="panel"><h2>Playback do terminal</h2>
+   <div id="replay"></div>
+   <div class="row" style="margin-top:10px">
+    <button id="replayStart" class="primary">Reproduzir</button><button id="replayPause">Pausar</button><button id="replayStep">Próximo evento</button><button id="replayReset">Reiniciar</button>
+    <span id="replayPosition" class="muted"></span>
+   </div>
+  </div>
+  <div class="panel"><h2>Linha do tempo — eventos recentes</h2><pre id="eventList"></pre></div>
+ </div>
+</section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+let page="professor",adminKey="",adminState=null,studentToken=sessionStorage.getItem("hpde:ctf:token")||"",studentSession=null;
+let terminal=null,socket=null,report=null,replayTerm=null,replayIndex=0,replayRunning=false,replayTimer=null;
+const TerminalClass=window.Terminal && (window.Terminal.Terminal||window.Terminal);
+const FitClass=window.FitAddon && (window.FitAddon.FitAddon||window.FitAddon);
+function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function notice(message,bad=false){$("feedback").textContent=message;$("feedback").className=bad?"notice error":"notice status";}
+async function api(url,method="GET",body=null,admin=false){
+ const headers={};if(body)headers["content-type"]="application/json";
+ if(admin&&adminKey)headers.authorization="Bearer "+adminKey;
+ if(!admin&&studentToken)headers.authorization="Bearer "+studentToken;
+ const r=await fetch(url,{method,headers,body:body?JSON.stringify(body):undefined,cache:"no-store"});
+ const data=await r.json();if(!r.ok)throw Error(data.error||"Erro "+r.status);return data;
+}
+function show(p){page=p;document.querySelectorAll(".view").forEach(e=>e.classList.toggle("hidden",e.id!==p));document.querySelectorAll("nav button").forEach(e=>e.classList.toggle("active",e.dataset.page===p));if(p==="dupla"&&terminal)setTimeout(()=>{terminal.fitAddon&&terminal.fitAddon.fit();terminal.focus();},60);}
+document.querySelectorAll("[data-page]").forEach(e=>e.addEventListener("click",()=>show(e.dataset.page)));
+$("adminlogin").onclick=async()=>{adminKey=$("adminkey").value;try{await reloadAdmin();notice("Administração carregada.");}catch(e){notice(e.message,true);}};
+async function reloadAdmin(){
+ const data=await api("/api/admin/state","GET",null,true);adminState=data;
+ const choices=data.ctfs.filter(c=>c.status==="running").map(c=>'<option value="'+esc(c.id)+'">'+esc(c.title)+'</option>').join("");
+ $("inviteCtf").innerHTML=choices||'<option value="">Inicie um CTF primeiro</option>';
+ $("ctfs").innerHTML=data.ctfs.map(c=>'<article class="card"><h3>'+esc(c.title)+'</h3><p>'+esc(c.description)+'</p><p class="muted">Estado: '+esc(c.status)+' · 4 desafios · '+(c.duration/60)+' min · SEM PONTUAÇÃO</p><div class="actions">'+
+  (c.status==="draft"?'<button data-ctf="'+c.id+'" data-action="publish">Publicar</button>':'')+
+  (c.status==="published"?'<button data-ctf="'+c.id+'" data-action="start">Iniciar revisão</button>':'')+
+  (c.status==="running"&&!c.pausedAt?'<button data-ctf="'+c.id+'" data-action="pause">Pausar</button>':'')+
+  (c.status==="running"&&c.pausedAt?'<button data-ctf="'+c.id+'" data-action="resume">Retomar</button>':'')+
+  (c.status==="running"?'<button data-ctf="'+c.id+'" data-action="extend">+ 5 minutos</button>':'')+
+  (["running","published"].includes(c.status)?'<button data-ctf="'+c.id+'" data-action="close">Encerrar</button>':'')+
+  '</div></article>').join("");
+}
+$("ctfs").onclick=async e=>{
+ const b=e.target.closest("button[data-ctf]");if(!b)return;
+ try{if(b.dataset.action==="close"&&!confirm("Encerrar e destruir os laboratórios deste CTF?"))return;
+ await api("/api/admin/ctfs/"+b.dataset.ctf+"/"+b.dataset.action,"POST",b.dataset.action==="extend"?{seconds:300}:{},true);
+ await reloadAdmin();notice("Ação executada: "+b.dataset.action);
+ }catch(err){notice(err.message,true);}
+};
+$("ctfform").onsubmit=async e=>{
+ e.preventDefault();const f=new FormData(e.target);
+ try{await api("/api/admin/ctfs","POST",{title:f.get("title"),description:f.get("description"),duration:Number(f.get("minutes"))*60},true);
+ e.target.reset();await reloadAdmin();notice("Revisão cadastrada, sem pontuação.");}catch(err){notice(err.message,true);}
+};
+$("inviteform").onsubmit=async e=>{
+ e.preventDefault();
+ try{const x=await api("/api/admin/invites","POST",{ctfId:$("inviteCtf").value,team:$("inviteTeam").value},true);
+ $("inviteResult").textContent="Código da dupla (copie): "+x.invite.code;
+ $("teamcode").value=x.invite.code;notice("Convite gerado; abra Terminal da dupla.");}catch(err){notice(err.message,true);}
+};
+$("join").onclick=async()=>{
+ try{const r=await api("/api/join","POST",{code:$("teamcode").value});
+ studentToken=r.token;sessionStorage.setItem("hpde:ctf:token",studentToken);
+ studentSession=r.session;renderStudent();notice("Instância Linux preparada; conecte o terminal.");}catch(err){notice(err.message,true);}
+};
+async function refreshStudent(){
+ if(!studentToken)return;const r=await api("/api/me");studentSession=r.session;renderStudent();
+}
+function remaining(c){if(c.pausedAt)return Math.max(0,Date.parse(c.deadline)-Date.parse(c.pausedAt));return Math.max(0,Date.parse(c.deadline)-Date.now());}
+function renderStudent(){
+ if(!studentSession)return;
+ const s=studentSession,c=s.ctf;
+ const selectedBefore=$("writeChallenge").value||"1";
+ const editing=$("writeupForm").contains(document.activeElement);
+ const draft=editing?[$("writeCommand").value,$("writeReason").value,$("writeEvidence").value]:null;
+ $("workshop").classList.remove("hidden");
+ $("teamInfo").textContent="Dupla: "+s.team+" · "+c.title+" · "+c.status;
+ $("progress").textContent=s.solved.length+"/4";
+ $("timer").textContent=c.pausedAt?"PAUSADO":new Date(remaining(c)).toISOString().slice(14,19);
+ $("challenges").innerHTML=c.challenges.map(ch=>'<div class="card '+(s.solved.includes(ch.id)?"challenge-done":"")+'"><h3>'+ch.id+'. '+esc(ch.title)+'</h3><p>'+esc(ch.description)+'</p><p class="muted">'+(s.solved.includes(ch.id)?"Concluído":"Pendente")+' — sem pontos</p><div class="row"><input data-flag="'+ch.id+'" placeholder="FLAG{...}" style="min-width:150px"><button data-submit="'+ch.id+'">Validar flag</button></div></div>').join("");
+ $("writeChallenge").innerHTML=c.challenges.map(ch=>'<option value="'+ch.id+'">'+ch.id+'. '+esc(ch.title)+'</option>').join("");
+ $("writeChallenge").value=selectedBefore;
+ if(draft){$("writeCommand").value=draft[0];$("writeReason").value=draft[1];$("writeEvidence").value=draft[2];}else fillWriteup();
+}
+$("challenges").onclick=async e=>{
+ const b=e.target.closest("button[data-submit]");if(!b)return;
+ const id=Number(b.dataset.submit),v=$("challenges").querySelector('[data-flag="'+id+'"]').value;
+ try{const r=await api("/api/flag","POST",{challenge:id,flag:v});notice(r.accepted?"Flag validada. Sem pontuação.":"Flag inválida.",!r.accepted);await refreshStudent();}catch(err){notice(err.message,true);}
+};
+function fillWriteup(){
+ if(!studentSession)return;
+ const w=studentSession.writeups[$("writeChallenge").value]||{};
+ $("writeCommand").value=w.command||"";$("writeReason").value=w.reason||"";$("writeEvidence").value=w.evidence||"";
+}
+$("writeChallenge").onchange=fillWriteup;
+let writeAutoTimer;
+["writeCommand","writeReason","writeEvidence"].forEach(id=>$(id).addEventListener("input",()=>{
+ clearTimeout(writeAutoTimer);
+ writeAutoTimer=setTimeout(async()=>{
+  if(!studentSession)return;
+  try{await api("/api/writeup","POST",{challenge:Number($("writeChallenge").value),command:$("writeCommand").value,reason:$("writeReason").value,evidence:$("writeEvidence").value});}
+  catch(e){notice("Rascunho não salvo: "+e.message,true);}
+ },1000);
+}));
+$("writeupForm").onsubmit=async e=>{
+ e.preventDefault();try{await api("/api/writeup","POST",{challenge:Number($("writeChallenge").value),command:$("writeCommand").value,reason:$("writeReason").value,evidence:$("writeEvidence").value});await refreshStudent();notice("Write-up salvo na sessão demonstrativa.");}catch(err){notice(err.message,true);}
+};
+$("exportWriteup").onclick=()=>{
+ if(!studentSession)return;
+ const lines=["# Write-up da "+studentSession.team,"","Revisão demonstrativa, sem pontuação.",""];
+ for(const ch of studentSession.ctf.challenges){const w=studentSession.writeups[ch.id]||{};lines.push("## "+ch.id+". "+ch.title,"","**Comando utilizado**",w.command||"Pendente","","**Raciocínio técnico**",w.reason||"Pendente","","**Evidência**",w.evidence||"Pendente","");}
+ download("writeup_dupla.md",lines.join("\n"),"text/markdown");
+};
+function download(name,value,type){const a=document.createElement("a"),url=URL.createObjectURL(new Blob([value],{type}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function newTerminal(element){
+ if(!TerminalClass)throw Error("xterm.js não carregou. Verifique a conexão com a internet.");
+ const t=new TerminalClass({cursorBlink:true,convertEol:true,theme:{background:"#0e141b",foreground:"#d5f8e1"},fontSize:14,scrollback:6000});
+ t.open($(element));if(FitClass){t.fitAddon=new FitClass();t.loadAddon(t.fitAddon);t.fitAddon.fit();}
+ return t;
+}
+$("connect").onclick=async()=>{
+ try{
+ if(!studentSession)throw Error("Entre com um código da dupla.");
+ if(socket)socket.close();
+ if(!terminal)terminal=newTerminal("terminal");
+ terminal.clear();terminal.write("Conectando ao contêiner Linux...\r\n");
+ const response=await api("/api/ticket","POST",{});
+ socket=new WebSocket("ws://127.0.0.1:4100",["ctf-v1","ticket."+response.ticket]);socket.binaryType="arraybuffer";
+ socket.onopen=()=>{$("connection").textContent="ONLINE";terminal.focus();notice("Terminal Linux real conectado.");};
+ socket.onmessage=event=>terminal.write(new Uint8Array(event.data));
+ socket.onerror=()=>{notice("Erro na conexão WebSocket.",true);};
+ socket.onclose=()=>{$("connection").textContent="OFFLINE";terminal.write("\r\n[terminal desconectado]\r\n");};
+ if(!terminal.inputBound){terminal.onData(data=>{if(socket&&socket.readyState===1)socket.send(data);});terminal.inputBound=true;}
+ }catch(err){notice(err.message,true);}
+};
+async function reloadAudit(){
+ const state=await api("/api/admin/state","GET",null,true);adminState=state;
+ $("auditSessions").innerHTML=state.sessions.map(s=>'<option value="'+s.id+'">'+esc(s.team)+" · "+esc(s.ctf.title)+" · "+s.solved.length+"/4</option>").join("");
+}
+$("loadAudit").onclick=async()=>{try{await reloadAudit();notice("Sessões atualizadas.");}catch(e){notice(e.message,true);}};
+$("getReport").onclick=async()=>{
+ try{report=await api("/api/admin/sessions/"+$("auditSessions").value,"GET",null,true);drawReport();notice("Auditoria carregada.");}
+ catch(err){notice(err.message,true);}
+};
+$("downloadReport").onclick=()=>{if(report)download("auditoria_ctf.json",JSON.stringify(report,null,2),"application/json");else notice("Abra um relatório primeiro.",true);};
+function drawReport(){
+ $("auditDetail").classList.remove("hidden");
+ const s=report.session;
+ $("reportTitle").textContent="Auditoria · "+s.team;
+ $("reportSummary").textContent=s.ctf.title+" · "+s.solved.length+"/4 desafios · "+report.events.length+" eventos · SEM PONTUAÇÃO";
+ $("eventList").textContent=report.events.slice(-250).map(e=>e.at+" | "+e.type+" | desafio "+(e.challenge||"—")+" | "+(e.result||"")).join("\n");
+ replayIndex=0;replayRunning=false;clearTimeout(replayTimer);
+ if(!replayTerm)replayTerm=newTerminal("replay");else replayTerm.clear();
+ $("replayPosition").textContent="0 / "+report.events.length;
+}
+function decode(b64){return Uint8Array.from(atob(b64),c=>c.charCodeAt(0));}
+function step(){
+ if(!report||replayIndex>=report.events.length){replayRunning=false;return;}
+ const e=report.events[replayIndex++];
+ if(e.type==="terminal_output"&&e.base64)replayTerm.write(decode(e.base64));
+ $("replayPosition").textContent=replayIndex+" / "+report.events.length;
+}
+function play(){
+ if(!report)return;replayRunning=true;
+ const loop=()=>{if(!replayRunning)return;if(replayIndex>=report.events.length){replayRunning=false;return;}
+ const current=report.events[replayIndex];step();
+ const next=report.events[replayIndex],delay=next?Math.min(700,Math.max(5,Date.parse(next.at)-Date.parse(current.at))):40;
+ replayTimer=setTimeout(loop,delay);};loop();
+}
+$("replayStart").onclick=play;
+$("replayPause").onclick=()=>{replayRunning=false;clearTimeout(replayTimer);};
+$("replayStep").onclick=()=>{replayRunning=false;clearTimeout(replayTimer);step();};
+$("replayReset").onclick=()=>{replayRunning=false;clearTimeout(replayTimer);replayIndex=0;if(replayTerm)replayTerm.clear();if(report)$("replayPosition").textContent="0 / "+report.events.length;};
+setInterval(()=>{if(studentSession){$("timer").textContent=studentSession.ctf.pausedAt?"PAUSADO":new Date(remaining(studentSession.ctf)).toISOString().slice(14,19);}},1000);
+setInterval(()=>{if(studentSession&&page==="dupla")refreshStudent().catch(()=>{});},10000);
+if(studentToken)refreshStudent().catch(()=>{studentToken="";sessionStorage.removeItem("hpde:ctf:token");});
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import Results from "./Results";
 import ClassManagement from "./ClassManagement";
 import AdminNavigation, { type AdminSection } from "./AdminNavigation";
+import { CtfReviewAdmin } from "./CtfReview";
 import TeamManagement from "./TeamManagement";
 import AdminAccessManagement from "./AdminAccessManagement";
 import AttendanceManagement from "./AttendanceManagement";
@@ -664,6 +665,7 @@ export default function Admin({
                     <a href="#admin/duplas"><strong>Consultar duplas</strong><span>Cadastro permanente, participantes e credenciais.</span></a>
                     <a href="#admin/notas"><strong>Conferir entregas</strong><span>Resultados privados, correções e exportação.</span></a>
                     <a href="#admin/chamada"><strong>Registrar presença</strong><span>Chamada por aluno, turma e data da aula.</span></a>
+                    <a href="#admin/revisao-ctf"><strong>Gerenciar Revisão Pré-CTF</strong><span>Terminal Linux real, quatro desafios e auditoria sem pontos.</span></a>
                     {role === "admin" && <a href="#admin/ctf"><strong>Registrar pontos CTF</strong><span>Classificação pública independente das notas.</span></a>}
                     {role === "admin" && <a href="#admin/usuarios"><strong>Gerenciar acessos</strong><span>Autorizar professores e administradores já cadastrados no Supabase Auth.</span></a>}
                   </div>
@@ -1538,6 +1540,7 @@ export default function Admin({
               {section === "usuarios" && role === "admin" && identity && (
                 <AdminAccessManagement currentUserId={identity} />
               )}
+              {section === "revisao-ctf" && <CtfReviewAdmin classes={classes} />}
               {section === "ctf" && role !== "admin" && (
                 <p role="alert" className="card">Somente administradores podem ajustar a pontuação do CTF.</p>
               )}

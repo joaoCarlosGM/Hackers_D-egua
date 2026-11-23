@@ -52,7 +52,7 @@ set local role anon;
 insert into test.state select 'attempt',public.join_activity((select value->>'token' from test.state where key='team'),(select (value#>>'{}')::uuid from test.state where key='session'));
 select public.submit_attempt((select value->>'token' from test.state where key='team'),(select (value->>'attempt_id')::uuid from test.state where key='attempt'),(select value from test.state where key='answers'));
 set local role authenticated;
-select public.adjust_ctf(gen_random_uuid(),(select (value->>'team_id')::uuid from test.state where key='team'),7,'Evento CTF independente');
+select public.record_module_ctf(gen_random_uuid(),(select (value->>'team_id')::uuid from test.state where key='team'),1::smallint,7,600,'Evento CTF independente');
 select public.set_class_status((select (value#>>'{}')::uuid from test.state where key='original'),'archived');
 select test.ok((select status='archived' from public.classes where slug='poraque'),'class can be archived with its existing data intact');
 select test.denied($q$select public.set_class_status((select (value#>>'{}')::uuid from test.state where key='original'),'deleted')$q$,'invalid class state rejected');

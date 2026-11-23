@@ -10,12 +10,13 @@ describe("administrative module navigation", () => {
     render(<AdminNavigation section="overview" role="admin"><p>Resumo pedagógico</p></AdminNavigation>);
     const navigation = screen.getByRole("navigation", { name: "Seções da administração" });
     const links = within(navigation).getAllByRole("link");
-    expect(links).toHaveLength(9);
+    expect(links).toHaveLength(10);
+    expect(within(navigation).getByRole("link", { name: /Revisão CTF/ }).getAttribute("href")).toBe("#admin/revisao-ctf");
     expect(within(navigation).getByRole("link", { name: /Calculadora/ }).getAttribute("href")).toBe("#admin/calculadora");
     expect(within(navigation).getByRole("link", { name: /Início/ }).getAttribute("aria-current")).toBe("page");
     expect(within(navigation).getByRole("link", { name: /Turmas/ }).getAttribute("href")).toBe("#admin/turmas");
     expect(within(navigation).getByRole("link", { name: /Duplas/ }).getAttribute("href")).toBe("#admin/duplas");
-    expect(within(navigation).getByRole("link", { name: /CTF/ }).getAttribute("href")).toBe("#admin/ctf");
+    expect(within(navigation).getAllByRole("link", { name: /CTF/ }).find(el => el.getAttribute("href") === "#admin/ctf")?.getAttribute("href")).toBe("#admin/ctf");
     expect(within(navigation).getByRole("link", { name: /Usuários/ }).getAttribute("href")).toBe("#admin/usuarios");
     expect(within(navigation).getByRole("link", { name: /Chamada/ }).getAttribute("href")).toBe("#admin/chamada");
     expect(screen.getByText("Resumo pedagógico")).toBeTruthy();
@@ -23,7 +24,8 @@ describe("administrative module navigation", () => {
   it("hides the points entry for teachers but keeps the public ranking shortcut", () => {
     render(<AdminNavigation section="notas" role="teacher"><p>Relatório privado</p></AdminNavigation>);
     const navigation = screen.getByRole("navigation", { name: "Seções da administração" });
-    expect(within(navigation).queryByRole("link", { name: /CTF/ })).toBeNull();
+    expect(within(navigation).queryByRole("link", { name: /^CTF$/ })).toBeNull();
+    expect(within(navigation).getByRole("link", { name: /Revisão CTF/ })).toBeTruthy();
     expect(within(navigation).queryByRole("link", { name: /Usuários/ })).toBeNull();
     expect(within(navigation).queryByRole("link", { name: /Calculadora/ })).toBeNull();
     expect(within(navigation).getByRole("link", { name: /Chamada/ })).toBeTruthy();
