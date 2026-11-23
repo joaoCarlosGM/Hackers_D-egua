@@ -15,6 +15,7 @@ import Admin from "./Admin";
 import Quiz from "./Quiz";
 import Brand, { brandAssets } from "./Brand";
 import { rankTeams } from "./ranking";
+import { CtfReviewStudent } from "./CtfReview";
 
 export default function App() {
   const [route, setRoute] = useState(location.hash.slice(1));
@@ -53,7 +54,7 @@ export default function App() {
           <a href="#ranking">Ranking CTF</a>
           <a href="#admin">Administração</a>
           {import.meta.env.DEV && (
-            <a href="http://127.0.0.1:4100/" target="_blank" rel="noopener noreferrer">Revisão Pré-CTF (local)</a>
+            <a href="#ctf-revisao">Revisão Pré-CTF</a>
           )}
         </nav>
       </header>
@@ -83,6 +84,8 @@ export default function App() {
             )}
             {route === "ranking" ? (
               <Leaderboard classes={classes} />
+            ) : route === "ctf-revisao" ? (
+              <CtfReviewStudent />
             ) : route.startsWith("admin") || route === "calculadora" ? (
               <Admin
                 classes={classes}
@@ -94,6 +97,7 @@ export default function App() {
                     : route === "admin/duplas" ? "duplas"
                     : route === "admin/notas" ? "notas"
                     : route === "admin/chamada" ? "chamada"
+                    : route === "admin/revisao-ctf" ? "revisao-ctf"
                     : route === "admin/ctf" ? "ctf"
                     : route === "admin/usuarios" ? "usuarios"
                     : "overview"
