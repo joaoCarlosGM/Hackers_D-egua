@@ -52,6 +52,9 @@ export default function App() {
           <a href="#">Minha dupla</a>
           <a href="#ranking">Ranking CTF</a>
           <a href="#admin">Administração</a>
+          {import.meta.env.DEV && (
+            <a href="http://127.0.0.1:4100/" target="_blank" rel="noopener noreferrer">Revisão Pré-CTF (local)</a>
+          )}
         </nav>
       </header>
       <main
