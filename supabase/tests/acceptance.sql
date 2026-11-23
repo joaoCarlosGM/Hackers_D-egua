@@ -115,9 +115,12 @@ reset role;
 select test.ok((select count(*)=3 from public.grades),'credential recovery preserves all grades and attempts');
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
-select public.adjust_ctf('00000000-0000-0000-0000-000000000099',(select (value->>'team_id')::uuid from test.state where key='team'),3,'Ajuste do administrador');
-select public.adjust_ctf('00000000-0000-0000-0000-000000000099',(select (value->>'team_id')::uuid from test.state where key='team'),3,'Reenvio idempotente');
-select test.ok((select points=3 from public.public_leaderboard where team_id=(select (value->>'team_id')::uuid from test.state where key='team')),'manual CTF adjustment is idempotent');
+-- A API legada adjust_ctf foi revogada pela migration de CTF por módulo.
+-- O registro oficial vigente exige módulo, tempo e apenas um resultado por dupla/módulo.
+select test.denied($q$select public.adjust_ctf('00000000-0000-0000-0000-000000000099',(select (value->>'team_id')::uuid from test.state where key='team'),3,'Ajuste legado')$q$,'deprecated CTF adjustment is denied');
+select public.record_module_ctf('00000000-0000-0000-0000-000000000099',(select (value->>'team_id')::uuid from test.state where key='team'),1,3,600,'CTF módulo 1');
+select test.denied($q$select public.record_module_ctf('00000000-0000-0000-0000-000000000099',(select (value->>'team_id')::uuid from test.state where key='team'),1,3,600,'CTF duplicado')$q$,'second CTF module result is rejected');
+select test.ok((select points=3 from public.public_leaderboard where team_id=(select (value->>'team_id')::uuid from test.state where key='team')),'official CTF module result is reflected in ranking');
 select test.ok((select points=12 from public.grades where attempt_id=(select (value->>'attempt_id')::uuid from test.state where key='attempt1')),'CTF adjustments do not alter private grades');
 -- Retiring publication must not unlock historical question content.
 select public.set_session_publication((select (value#>>'{}')::uuid from test.state where key='session1'),false);
