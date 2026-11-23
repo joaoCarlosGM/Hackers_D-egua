@@ -45,5 +45,5 @@ port=53
 txt-record=ctf.hackerspaidegua.local,$FLAG4
 EOF
 chmod 0600 /run/ctf/dnsmasq.conf
-dnsmasq --conf-file=/run/ctf/dnsmasq.conf --pid-file=/run/ctf/dnsmasq.pid
+dnsmasq --user=root --group=root --conf-file=/run/ctf/dnsmasq.conf --pid-file=/run/ctf/dnsmasq.pid
 echo 'Laboratorio inicializado'
