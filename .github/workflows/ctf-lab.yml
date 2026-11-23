@@ -1,0 +1,37 @@
+name: CTF Lab Local CI
+on:
+  pull_request:
+    paths:
+      - "ctf-lab/**"
+      - ".github/workflows/ctf-lab.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux-lab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install runner
+        run: npm install --prefix ctf-lab --no-audit --no-fund
+      - name: Check server syntax
+        run: node --check ctf-lab/server.mjs
+      - name: Build isolated Linux image
+        run: docker build -t hackers-ctf-revisao:local -f ctf-lab/Dockerfile ctf-lab
+      - name: Test real Linux terminal and four challenge validations
+        env:
+          CTF_ADMIN_KEY: 65d46a8eb259ec867bba58c8e1ccda114c09d96d8c1a49bc95d8f63a2f6a332a
+        run: |
+          cd ctf-lab
+          node server.mjs > /tmp/ctf-lab.log 2>&1 &
+          PID=$!
+          trap 'kill $PID 2>/dev/null || true; docker ps -q --filter name=hpde-lab- | xargs -r docker rm -f' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4100/health >/dev/null; then break; fi
+            sleep 1
+          done
+          node test-e2e.mjs
