@@ -9,7 +9,7 @@ type Review = {
   deadline_at?: string | null; deadline?: string | null; paused_at?: string | null; pausedAt?: string | null;
   class_ids?: string[]; challenges: Challenge[];
 };
-type Writeup = { command: string; reason: string; evidence: string; savedAt?: string; saved_at?: string };
+type Writeup = { command: string; reason: string; evidence: string; savedAt?: string; saved_at?: string; submittedAt?: string | null };
 type LabSession = {
   id: string; team: string; ctf: Review; solved: number[]; writeups: Record<string, Writeup>;
   joinedAt?: string; createdAt?: string; completedAt?: string | null; count?: number;
@@ -181,9 +181,12 @@ function LabWorkshop({ token, onExit }: { token: string; onExit?: () => void }) 
     return () => clearInterval(interval);
   }, []);
   const current = drafts[challenge] ?? session?.writeups[challenge] ?? { command: "", reason: "", evidence: "" };
-  async function saveWriteup(draft: Writeup, id = challenge) {
+  async function saveWriteup(draft: Writeup, id = challenge, submit = false) {
     if (!session) return;
-    await request("/api/writeup", token, { challenge: id, command: draft.command, reason: draft.reason, evidence: draft.evidence });
+    await request("/api/writeup", token, { challenge: id, command: draft.command, reason: draft.reason, evidence: draft.evidence, submit });
+    if (submit) setDrafts(v => {
+      const next = { ...v }; delete next[id]; return next;
+    });
     await refresh();
   }
   useEffect(() => {
@@ -246,11 +249,14 @@ function LabWorkshop({ token, onExit }: { token: string; onExit?: () => void }) 
     <section className="card">
       <h3>Write-up — desafio {challenge}</h3>
       <p>Explique o comando, o raciocínio técnico e a evidência obtida. Salvo automaticamente, sem nota.</p>
+      <p><strong>Estado:</strong> {current.submittedAt ? "Entregue em " + new Date(current.submittedAt).toLocaleString("pt-BR") : "Rascunho"}</p>
       <label>Comando utilizado<textarea value={current.command} onChange={e => setDrafts(v => ({ ...v, [challenge]: { ...current, command: e.target.value } }))} /></label>
       <label>Raciocínio técnico<textarea value={current.reason} onChange={e => setDrafts(v => ({ ...v, [challenge]: { ...current, reason: e.target.value } }))} /></label>
       <label>Evidências / resultado do terminal<textarea value={current.evidence} onChange={e => setDrafts(v => ({ ...v, [challenge]: { ...current, evidence: e.target.value } }))} /></label>
       <div className="ctf-inline">
         <button type="button" disabled={busy || status !== "running"} onClick={() => void saveWriteup(current).then(() => setMessage("Write-up salvo")).catch(e => setError((e as Error).message))}>Salvar agora</button>
+        <button type="button" disabled={busy || status !== "running" || !current.command.trim() || !current.reason.trim()}
+          onClick={() => void saveWriteup(current,challenge,true).then(() => setMessage("Write-up entregue e registrado na auditoria.")).catch(e => setError((e as Error).message))}>Entregar write-up</button>
         <button type="button" onClick={exportMarkdown}>Exportar writeup_dupla.md</button>
       </div>
     </section>
