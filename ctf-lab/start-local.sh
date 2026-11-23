@@ -29,4 +29,4 @@ echo "ABRA: http://127.0.0.1:4100"
 echo "CHAVE DO PROFESSOR: $CTF_ADMIN_KEY"
 echo "AMBIENTE LOCAL — SEM PONTUAÇÃO"
 echo
-node server.mjs
+exec node server.mjs
