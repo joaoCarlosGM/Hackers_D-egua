@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+umask 077
+mkdir -p ctf-lab/.data
+LOGFILE="ctf-lab/.data/start.log"
 
 for required in .env ctf-lab/.env.integration; do
   if [[ ! -f "$required" ]]; then
@@ -17,7 +20,7 @@ command -v curl >/dev/null || { echo "Instale curl no WSL2";exit 1; }
 echo "Verificando dependências da plataforma..."
 npm ci --no-audit --no-fund
 echo "Preparando o executor Linux e o xterm.js..."
-bash ctf-lab/start-local.sh > /tmp/hpde-ctf-lab-start.log 2>&1 &
+bash ctf-lab/start-local.sh > "$LOGFILE" 2>&1 &
 EXECUTOR_PID=$!
 cleanup() {
  kill "$EXECUTOR_PID" 2>/dev/null || true
@@ -30,13 +33,13 @@ for i in $(seq 1 180); do
  if curl -fsS http://127.0.0.1:4100/health >/dev/null 2>&1; then ready=1; break;fi
  if ! kill -0 "$EXECUTOR_PID" 2>/dev/null; then
   echo "Falha ao iniciar executor (linhas finais):"
-  tail -n 15 /tmp/hpde-ctf-lab-start.log | sed -E 's/(sb_secret_|service_role)[A-Za-z0-9_-]+/[SEGREDO]/g'
+  tail -n 15 "$LOGFILE" | sed -E 's/(sb_secret_|service_role)[A-Za-z0-9_-]+/[SEGREDO]/g'
   exit 1
  fi
  sleep 1
 done
 if [[ "$ready" != 1 ]]; then
- echo "Executor não ficou disponível; consulte /tmp/hpde-ctf-lab-start.log localmente."
+ echo "Executor não ficou disponível; consulte "$LOGFILE" localmente."
  exit 1
 fi
 if ! curl -fsS http://127.0.0.1:4100/api/platform/health >/dev/null 2>&1; then
