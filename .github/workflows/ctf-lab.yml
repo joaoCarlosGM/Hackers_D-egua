@@ -20,6 +20,8 @@ jobs:
         run: npm install --prefix ctf-lab --no-audit --no-fund
       - name: Check server syntax
         run: node --check ctf-lab/server.mjs
+      - name: Verify no-scoring review Supabase migration on disposable PostgreSQL
+        run: bash ctf-lab/test-schema.sh
       - name: Build isolated Linux image
         run: docker build -t hackers-ctf-revisao:local -f ctf-lab/Dockerfile ctf-lab
       - name: Test real Linux terminal and four challenge validations
