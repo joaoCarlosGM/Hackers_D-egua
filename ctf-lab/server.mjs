@@ -70,7 +70,7 @@ async function createLab(s){
     "--tmpfs","/tmp:rw,nosuid,nodev,size=16m","--tmpfs","/run:rw,nosuid,nodev,size=8m",
     "--tmpfs","/home/aluno:rw,nosuid,nodev,size=64m","--tmpfs","/var/tmp:rw,nosuid,nodev,size=32m",IMAGE]);
   try{
-    await command("docker",["exec","-i",name,"/usr/local/bin/ctf-bootstrap"],[flag(s,1),flag(s,2),attacker(s),flag(s,4)].join("\n")+"\n");
+    await command("docker",["exec","-i",name,"/usr/local/bin/ctf-bootstrap"],[flag(s,1),flag(s,2),attacker(s),flag(s,4),digest(s,3)].join("\n")+"\n");
     record(s,"lab_started");
   }catch(e){await command("docker",["rm","-f",name]).catch(()=>{});throw e;}
 }
@@ -171,7 +171,7 @@ const server=http.createServer(async(req,res)=>{
       if(s.platform)await platform.sessionAccess(s);
       const b=await body(req),id=Number(b.challenge);
       if(![1,2,3,4].includes(id))return send(res,400,{error:"Desafio inválido"});
-      const expected=id===3?"FLAG{"+attacker(s)+"}":flag(s,id);
+      const expected=id===3?"FLAG{IP_"+attacker(s)+"_"+digest(s,3)+"}":flag(s,id);
       const ok=eq(clean(b.flag,120),expected);
       record(s,"flag_submission",{challenge:id,result:ok?"accepted":"rejected"});
       if(ok&&!s.solved.includes(id)){s.solved.push(id);record(s,"solved",{challenge:id});if(s.solved.length===4)s.completedAt=iso();}
