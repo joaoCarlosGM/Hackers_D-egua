@@ -217,7 +217,12 @@ wss.on("connection",(ws,s)=>{
   activeSockets.set(s.id,ws);
   const proc=spawn("script",["-q","-f","-c","docker exec -it -u aluno "+box(s)+" /bin/bash -li","/dev/null"],{stdio:["pipe","pipe","pipe"]});
   record(s,"terminal_open");
-  proc.stdout.on("data",chunk=>{if(ws.readyState===1)ws.send(chunk);record(s,"terminal_output",{base64:chunk.toString("base64")});});
+  proc.stdout.on("data",chunk=>{
+    if(ws.readyState===1)ws.send(chunk);
+    // Limite cada frame para respeitar o tamanho máximo dos eventos JSONB no Supabase.
+    for(let offset=0;offset<chunk.length;offset+=8192)
+      record(s,"terminal_output",{base64:chunk.subarray(offset,offset+8192).toString("base64")});
+  });
   proc.stderr.on("data",chunk=>{if(ws.readyState===1)ws.send(chunk);});
   ws.on("message",buf=>{if(buf.length>4096){ws.close(1009,"Input grande");return;}proc.stdin.write(buf);record(s,"terminal_input",{base64:Buffer.from(buf).toString("base64")});});
   proc.on("error",e=>{record(s,"terminal_error",{message:e.message});ws.close();});
