@@ -47,7 +47,7 @@ try{
  await page.waitForFunction(()=>window.__result==="passed",undefined,{timeout:90000});
  await page.evaluate(() => {
   window.__serial="";
-  window.__vm.serial0_send("id; ls -ld /etc /var/tmp /home; mkdir -p /var/tmp/hpde-ctf-check; echo v86-ok > /var/tmp/hpde-ctf-check/flag; cat /var/tmp/hpde-ctf-check/flag; echo HPDE_FS_TEST_END\\n");
+  window.__vm.serial0_send("id; ls -ld /etc /var/tmp /home; mkdir -p /var/tmp/hpde-ctf-check; echo v86-ok > /var/tmp/hpde-ctf-check/flag; cat /var/tmp/hpde-ctf-check/flag; echo HPDE_FS_TEST_END"+String.fromCharCode(10));
  });
  await page.waitForFunction(()=>window.__serial.includes("HPDE_FS_TEST_END") && /(?:~% |# |\\$ )$/.test(window.__serial),undefined,{timeout:15000});
  const output=await page.evaluate(()=>window.__serial);
