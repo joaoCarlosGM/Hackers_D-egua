@@ -25,7 +25,7 @@ const html=[
  "</script>"
 ].join("\n");
 // Reproduce the strict GitHub Pages CSP including the narrowly-scoped WebAssembly permission.
-const bootstrap=html.match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
+const bootstrap=html.split("<script>")[1]?.split("</script>")[0];
 if(!bootstrap)throw Error("Missing test browser bootstrap script");
 const hash=createHash("sha256").update(bootstrap).digest("base64");
 const csp="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-"+hash+"'; connect-src 'self'; object-src 'none';";
