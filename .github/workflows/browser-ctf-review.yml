@@ -1,0 +1,40 @@
+name: Browser Linux CTF Review
+on:
+  pull_request:
+    paths:
+      - "src/CtfReviewBrowser.tsx"
+      - "src/ctf-review-browser.css"
+      - "src/AdminNavigation.tsx"
+      - "src/Admin.tsx"
+      - "src/App.tsx"
+      - "scripts/prepare-v86.mjs"
+      - "supabase/migrations/202611230002_ctf_teacher_browser_review.sql"
+      - "package.json"
+      - ".github/workflows/browser-ctf-review.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check React and TypeScript integration
+        run: npm run typecheck
+      - name: Fetch and verify Linux browser emulator assets
+        run: node scripts/prepare-v86.mjs
+      - name: Build GitHub Pages bundle
+        run: npx vite build
+      - name: Confirm generated browser Linux images
+        run: |
+          test -s dist/ctf-v86/libv86.js
+          test -s dist/ctf-v86/v86.wasm
+          test -s dist/ctf-v86/buildroot-bzimage68.bin
+          test -s dist/ctf-v86/seabios.bin
+          test -s dist/ctf-v86/vgabios.bin
