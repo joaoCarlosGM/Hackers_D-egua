@@ -109,7 +109,7 @@ export default function CtfReviewBrowser(){
      wasm_path:assets+"v86.wasm",bios:{url:assets+"seabios.bin"},vga_bios:{url:assets+"vgabios.bin"},
      bzimage:{url:assets+"buildroot-bzimage68.bin",async:false},filesystem:{},
      memory_size:96*1024*1024,vga_memory_size:2*1024*1024,
-     cmdline:"tsc=reliable mitigations=off random.trust_cpu=on",autostart:true,disable_keyboard:true
+     cmdline:"tsc=reliable mitigations=off random.trust_cpu=on",autostart:true,disable_keyboard:true,disable_speaker:true
    });machine.current=vm;setStatus("Linux inicializando...");
    vm.add_listener("serial0-output-byte",byte=>{const char=String.fromCharCode(byte);if(char==="\r")return;
      tail.current=(tail.current+char).slice(-350);
