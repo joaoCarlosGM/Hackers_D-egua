@@ -212,7 +212,7 @@ export default function CtfReviewBrowser(){
      cmdline:"tsc=reliable mitigations=off random.trust_cpu=on",autostart:true,disable_keyboard:true,disable_speaker:true
    });machine.current=vm;setStatus("Linux inicializando...");
    vm.add_listener("serial0-output-byte",byte=>{const char=String.fromCharCode(byte);
-     tail.current=(tail.current+char).slice(-350);
+     if(char!=="\r")tail.current=(tail.current+char).slice(-350);
      if(tail.current.includes("\nHPDE_LAB_PRONTO\n"))setupValid.current=true;
      // Oculta o boot inicial e os comandos de provisionamento, incluindo as flags.
      if(!readyRef.current){
