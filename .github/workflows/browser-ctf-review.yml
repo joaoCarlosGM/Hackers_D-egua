@@ -8,6 +8,7 @@ on:
       - "src/Admin.tsx"
       - "src/App.tsx"
       - "scripts/prepare-v86.mjs"
+      - "scripts/test-v86-boot.mjs"
       - "supabase/migrations/202611230002_ctf_teacher_browser_review.sql"
       - "package.json"
       - ".github/workflows/browser-ctf-review.yml"
@@ -42,3 +43,6 @@ jobs:
           test -s dist/ctf-v86/buildroot-bzimage68.bin
           test -s dist/ctf-v86/seabios.bin
           test -s dist/ctf-v86/vgabios.bin
+          test -s dist/ctf-v86/xterm.js
+          test -s dist/ctf-v86/xterm.css
+          test -s dist/ctf-v86/xterm-addon-fit.js
