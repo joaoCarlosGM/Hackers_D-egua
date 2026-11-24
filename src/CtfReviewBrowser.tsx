@@ -275,22 +275,38 @@ export default function CtfReviewBrowser(){
   <div className="ctf-browser-stats"><div>Progresso <strong>{solved.length}/4</strong></div>
     <div>Auditoria <strong>{saved} eventos</strong></div><div>Sincronização <strong>{pending} pendentes</strong></div></div>
   {run&&<><div className="ctf-browser-terminal">
-    <div className="ctf-terminal-toolbar">
-     <span><strong>Terminal Linux · v86</strong> <small>{ready?"● Pronto para comandos":"● "+status}</small></span>
-     <div className="ctf-terminal-controls">
-      <button type="button" onClick={()=>setFontSize(n=>Math.max(12,n-2))} aria-label="Diminuir fonte do terminal">A−</button>
-      <button type="button" onClick={()=>setFontSize(n=>Math.min(30,n+2))} aria-label="Aumentar fonte do terminal">A+</button>
-      <button type="button" aria-pressed={projector} onClick={()=>{setProjector(v=>!v);commandInput.current?.focus();}}>
-       {projector?"Sair da projeção (Esc)":"⛶ Ampliar para projeção"}
-      </button>
-     </div>
+    <div className="ctf-window-head">
+      <div className="ctf-window-lights" aria-hidden="true"><i/><i/><i/></div>
+      <span>ghost@lab-professor: ~ / xterm.js</span>
+      <button type="button" onClick={()=>terminal.current?.focus()} disabled={!ready}>⌨ Focar</button>
     </div>
-    <textarea ref={screen} readOnly style={{fontSize:fontSize+"px"}} aria-label="Saída serial da máquina Linux"/>
-    <form onSubmit={send}><label htmlFor="ctf-browser-command">aluno@hackers-ctf:~$</label>
-      <input ref={commandInput} id="ctf-browser-command" disabled={!ready} value={input} onChange={e=>setInput(e.target.value)} spellCheck={false}/>
-      <button disabled={!ready}>Executar</button></form>
-    <button disabled={!ready} onClick={()=>machine.current?.serial0_send("\x03")}>Ctrl+C</button>
-    <button onClick={()=>{if(screen.current)screen.current.value="";}}>Limpar tela</button>
+    <div className="ctf-terminal-toolbar">
+      <span><strong>Linux v86 · Terminal interativo</strong><small>{ready?"● Terminal ativo":"● "+status}</small></span>
+      <div className="ctf-terminal-controls">
+        <button type="button" onClick={()=>setFontSize(n=>Math.max(12,n-2))} aria-label="Diminuir fonte do terminal">A−</button>
+        <button type="button" onClick={()=>setFontSize(n=>Math.min(30,n+2))} aria-label="Aumentar fonte do terminal">A+</button>
+        <button type="button" aria-pressed={projector} onClick={()=>{
+          setProjector(v=>!v);
+          requestAnimationFrame(()=>{fitAddon.current?.fit();terminal.current?.focus();});
+        }}>{projector?"Sair da projeção (Esc)":"⛶ Ampliar para projeção"}</button>
+      </div>
+    </div>
+    <div className="ctf-terminal-display" ref={terminalHost} role="application" aria-label="Terminal Linux real, com cursor, cores ANSI e comandos digitados diretamente"/>
+    <div className="ctf-terminal-footer">
+      <span>{ready?"● LINUX ATIVO":"● PREPARANDO LINUX"}</span>
+      <span>↑↓ histórico · Ctrl+C interromper · Enter executar</span>
+    </div>
+    <div className="ctf-terminal-quick">
+      <span>Comandos para a aula:</span>
+      {["pwd","ls -la","cat missao.txt","find /var/tmp -name '.*'","cat /home/aluno/desafios/logs/auth.log",
+        "dig @127.0.0.1 ctf.hackerspaidegua.local TXT"].map(cmd=>
+        <button type="button" key={cmd} disabled={!ready} onClick={()=>sendQuickCommand(cmd)}
+          title={"Executar no Linux: "+cmd}>{cmd}</button>)}
+    </div>
+    <div className="ctf-terminal-utilities">
+      <button type="button" disabled={!ready} onClick={()=>{machine.current?.serial0_send("\x03");terminal.current?.focus();}}>Ctrl+C</button>
+      <button type="button" onClick={()=>{terminal.current?.clear();terminal.current?.focus();}}>Limpar tela</button>
+    </div>
    </div>
    <div className="ctf-browser-tabs">{steps.map(([title],i)=><button key={i} className={i===challenge?"selected":""}
     onClick={()=>{setChallenge(i);setFlag("");}}>{solved.includes(i)?"✓ ":""}{i+1}. {title}</button>)}</div>
