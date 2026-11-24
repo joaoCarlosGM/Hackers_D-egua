@@ -210,3 +210,9 @@
  .ctf-browser.ctf-projector .ctf-mission-guide {display:none;}
  .ctf-browser.ctf-projector .ctf-mission-brief {max-height:34dvh;}
 }
+
+
+.ctf-command-explanation {margin:14px 0 10px;border:1px solid #427c70;border-radius:9px;padding:12px;background:#193c3b;}
+.ctf-command-explanation>code {display:block;border:1px solid #295656;background:#0b242b;color:#9ef0c8;border-radius:5px;padding:7px;font:11px/1.5 Consolas,monospace;overflow-wrap:anywhere;}
+.ctf-command-explanation p {font-size:11px;line-height:1.65;margin:10px 0 4px;color:#d2e5df;}
+.ctf-command-explanation b {color:#a1f2c9;}
