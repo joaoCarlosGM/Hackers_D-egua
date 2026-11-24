@@ -91,6 +91,7 @@ export default function App() {
                     : route === "admin/duplas" ? "duplas"
                     : route === "admin/notas" ? "notas"
                     : route === "admin/chamada" ? "chamada"
+                    : route === "admin/revisao-ctf" ? "revisao-ctf"
                     : route === "admin/ctf" ? "ctf"
                     : route === "admin/usuarios" ? "usuarios"
                     : "overview"
