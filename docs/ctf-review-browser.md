@@ -38,3 +38,13 @@ Não aplicar automaticamente na produção durante testes de build. O professor 
 4. `dig @127.0.0.1 ctf.hackerspaidegua.local TXT`, via zona TXT didática pré-programada em um script Linux.
 
 **Atenção:** sem publicação de pontos, módulos oficiais ou alteração de `ctf_score_events`.
+
+## Nova experiência pedagógica — igual ao fluxo previsto para CTF oficial
+
+A revisão exclusiva do professor agora utiliza a sequência **ler situação-problema → compreender objetivo → investigar no terminal → registrar evidência/flag → explicar o raciocínio no write-up**. São quatro casos baseados nos cenários existentes: arquivos ocultos, permissões, logs SSH e DNS TXT.
+
+A tela da missão apresenta o incidente e o contexto de trabalho, o objetivo, o que entregar e uma explicação da relevância para redes/segurança. A coluna lateral apresenta etapas que dizem **o que se está fazendo e por que**. O professor pode revelar comandos ilustrativos apenas quando quiser, evitando entregar a solução antes de fazer perguntas à turma. Após o envio real do comando para o Linux emulado, aparece uma explicação contextual do propósito do comando.
+
+Na demonstração projetada, a missão e o guia de investigação permanecem visíveis ao lado do terminal. O professor mantém a possibilidade de aumentar a fonte, fechar com Esc, confirmar flags, preencher os três campos do relatório e acessar o histórico salvo no Supabase.
+
+**Separação obrigatória:** o modo demonstrativo não atribui notas, não cria sessões de duplas, não altera o ranking e não substitui a auditoria confiável que será exigida nos CTFs oficiais. O quarto cenário continua utilizando uma resposta TXT produzida por script, e o laboratório de permissões utiliza shell root; a interface explicita essas limitações.
