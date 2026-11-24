@@ -55,7 +55,7 @@ export default function CtfReviewBrowser(){
  const screen=useRef<HTMLTextAreaElement>(null),machine=useRef<VM|null>(null);
  const script=useRef<string[]>([]),stage=useRef(-1),tail=useRef(""),out=useRef("");
  const events=useRef<E[]>([]),locked=useRef(false),activeRun=useRef<string|null>(null);
- const readyRef=useRef(false),mounted=useRef(true);
+ const readyRef=useRef(false),mounted=useRef(true),labSeed=useRef("");
  const current=writeups[String(challenge)]||{command:"",reason:"",evidence:""};
  useEffect(()=>{mounted.current=true;void rpc<Run[]>("ctf_teacher_review_history").then(setHistory).catch(e=>setError((e as Error).message));
   return()=>{mounted.current=false;machine.current?.stop();machine.current?.destroy();machine.current=null;};},[]);
@@ -81,7 +81,8 @@ export default function CtfReviewBrowser(){
    record("vm_boot","Linux emulado v86 iniciado pelo professor");
    setStatus("Carregando imagem Linux...");await library();
    if(!window.V86)throw Error("v86 indisponível");
-   script.current=initCommands(Math.random().toString(16).slice(2,8).toUpperCase());
+   labSeed.current=Math.random().toString(16).slice(2,8).toUpperCase();
+   script.current=initCommands(labSeed.current);
    stage.current=-1;tail.current="";if(screen.current)screen.current.value="Inicializando v86 + Linux...\\n";
    const vm=new window.V86({
      wasm_path:assets+"v86.wasm",bios:{url:assets+"seabios.bin"},vga_bios:{url:assets+"vgabios.bin"},
@@ -110,8 +111,8 @@ export default function CtfReviewBrowser(){
  }
  const send=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();if(!readyRef.current||!machine.current||!input.trim())return;
    record("command",input.trim());machine.current.serial0_send(input+"\n");setInput("");};
- const validate=()=>{const keys=["FLAG{ARQUIVO_REVIS_","FLAG{GRUPO_REVIS_","FLAG{IP_198.51.100.44}","FLAG{DNS_REVIS_"];
-  if(flag.trim().startsWith(keys[challenge])&&flag.trim().endsWith("}")){
+ const validate=()=>{const keys=["FLAG{ARQUIVO_REVIS_"+labSeed.current+"}","FLAG{GRUPO_REVIS_"+labSeed.current+"}","FLAG{IP_198.51.100.44}","FLAG{DNS_REVIS_"+labSeed.current+"}"];
+  if(flag.trim()===keys[challenge]){
    if(!solved.includes(challenge)){setSolved(v=>[...v,challenge]);record("challenge","Objetivo "+(challenge+1)+" confirmado sem pontos");}
   }else setError("Flag inválida. Verifique o terminal.");setFlag("");};
  const edit=(field:keyof W,value:string)=>setWriteups(v=>({...v,[String(challenge)]:{...current,[field]:value}}));
