@@ -106,3 +106,107 @@
  .ctf-browser.ctf-projector .ctf-terminal-toolbar { align-items:flex-start; }
  .ctf-terminal-footer span:last-child { display:none; }
 }
+
+
+/* Narrative-first CTF review: same information hierarchy as a real CTF
+   (briefing -> investigation -> evidence -> technical report). */
+.ctf-review-intro {
+ background:linear-gradient(110deg,#173d3c 0%,#122d39 65%,#112332 100%);
+ border:1px solid #2e5952;border-radius:13px;padding:19px 22px;
+ margin:15px 0 18px;color:#dcefe9;
+}
+.ctf-guide-eyebrow {font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:#67deb5;margin-bottom:8px;}
+.ctf-review-intro h3 {font-size:19px;line-height:1.4;margin:0 0 8px;color:#f3fff9;}
+.ctf-review-intro>p {font-size:12px;line-height:1.7;color:#b6d3cf;max-width:950px;margin:0 0 16px;}
+.ctf-review-flow {display:flex;flex-wrap:wrap;gap:8px;}
+.ctf-review-flow span {font-size:10px;border:1px solid #44726c;border-radius:7px;padding:8px 10px;background:#244b48;color:#d4f4e9;font-weight:700;}
+.ctf-browser .ctf-browser-tabs {
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:15px 0 16px;
+}
+.ctf-browser-tabs button {display:grid;gap:6px;min-width:0;border:1px solid #304c60;border-radius:10px;padding:12px;background:#172a3a;}
+.ctf-browser-tabs button small {font-size:9px;letter-spacing:.08em;color:#8dabbd;font-weight:800;}
+.ctf-browser-tabs button strong {font-size:11px;color:#e0eff1;line-height:1.35;overflow-wrap:anywhere;}
+.ctf-browser-tabs button.selected {background:#1e4a42;border-color:#66c7a5;}
+.ctf-browser-tabs button.selected small {color:#8ff3c9;}
+.ctf-mission-workspace {display:grid;grid-template-columns:minmax(0,1.9fr) minmax(270px,.95fr);gap:16px;align-items:start;margin:0 0 16px;min-width:0;}
+.ctf-mission-main,.ctf-mission-guide {display:flex;flex-direction:column;gap:14px;min-width:0;}
+.ctf-mission-brief {
+ background:linear-gradient(110deg,#163d3b,#14313c 68%,#112739);
+ border:1px solid #32665c;border-radius:13px;padding:20px 22px;color:#d5e9e8;
+}
+.ctf-mission-meta {display:flex;gap:9px;flex-wrap:wrap;align-items:center;color:#8eb9be;font-size:10px;font-weight:650;}
+.ctf-mission-tag {border:1px solid #478870;border-radius:6px;background:#1d5545;padding:4px 8px;color:#a0f3cc;font-weight:800;letter-spacing:.04em;}
+.ctf-mission-brief h3 {font-size:clamp(18px,1.7vw,24px);line-height:1.25;color:#fff9f0;margin:13px 0 13px;}
+.ctf-mission-brief>p {font-size:12px;color:#c0d7d7;line-height:1.7;margin:9px 0;}
+.ctf-mission-brief>p strong {color:#d4faed;}
+.ctf-mission-brief .ctf-incident {font-size:13px;color:#eff5ed;}
+.ctf-mission-objectives {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid #35635d;}
+.ctf-mission-objectives>div {border:1px solid #37615e;border-radius:8px;padding:12px;background:#122e35;}
+.ctf-mission-objectives span {display:block;font-size:9px;letter-spacing:.1em;font-weight:800;color:#8ae5bf;}
+.ctf-mission-objectives p {font-size:11px;color:#c6dfdc;line-height:1.6;margin:7px 0 0;}
+
+.ctf-guide-panel {border:1px solid #294556;border-radius:12px;background:#122232;padding:17px 18px;color:#cadde2;}
+.ctf-guide-panel h3 {font-size:15px;color:#edf9f2;margin:0 0 10px;}
+.ctf-guide-panel h4 {font-size:12px;color:#a3e8d1;margin:15px 0 8px;}
+.ctf-guide-panel>p {font-size:11px;line-height:1.65;color:#b5ced5;margin:7px 0;}
+.ctf-investigation-steps {list-style:none;padding:0;margin:0;}
+.ctf-investigation-steps li {padding:13px 0;border-top:1px solid #2a3c4d;}
+.ctf-step-heading {display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+.ctf-step-heading>span {width:25px;height:25px;flex:none;display:grid;place-items:center;border:1px solid #457363;border-radius:50%;color:#b9f8dc;font-size:11px;font-weight:800;}
+.ctf-step-heading strong {font-size:11px;color:#edfbf3;}
+.ctf-investigation-steps p {font-size:11px;line-height:1.6;color:#a8c3cc;margin:5px 0;}
+.ctf-investigation-steps b {color:#c8eadb;}
+.ctf-step-example {padding:10px;background:#071a27;border:1px solid #30515b;border-radius:7px;display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.ctf-step-example code {font:11px/1.6 Consolas,monospace;color:#9ce8bd;overflow-wrap:anywhere;flex:1;}
+.ctf-step-example button {font-size:10px;background:#1e4e49;color:#dffaf0;border:1px solid #3d8673;border-radius:5px;padding:5px 8px;}
+.ctf-reveal-btn {margin-top:12px;background:#234a51;border:1px solid #51857e;color:#dffaf4;border-radius:7px;padding:9px 12px;font-size:11px;line-height:1.4;}
+.ctf-guide-reflection {background:#172d38;}
+.ctf-guide-reflection details {margin-top:15px;padding-top:12px;border-top:1px solid #315062;}
+.ctf-guide-reflection summary {cursor:pointer;font-size:11px;font-weight:750;color:#8de5bc;}
+.ctf-guide-reflection details p {font-size:11px;color:#c6d8de;line-height:1.7;}
+.ctf-pedagogical-warning {padding:10px 12px;border:1px solid #86683c;border-radius:7px;background:#3c3022;color:#fae0b4!important;font-size:11px;line-height:1.65;}
+.ctf-evidence-panel {background:#142634;padding:21px 23px;}
+.ctf-evidence-header {display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.ctf-evidence-header h3 {font-size:18px;margin:0 0 10px;}
+.ctf-evidence-status {font-size:10px;font-weight:800;background:#24473e;border:1px solid #41836c;border-radius:6px;color:#b6f1d6;padding:7px 9px;}
+.ctf-evidence-panel>p {font-size:12px;line-height:1.7;color:#bad1d8;}
+.ctf-evidence-panel>input {max-width:440px;display:inline-block;width:min(440px,100%);}
+.ctf-writeup-heading {border-top:1px solid #355363;margin:21px 0 12px;padding-top:16px;}
+.ctf-writeup-heading h4 {font-size:15px;margin:0 0 8px;color:#e0fff0;}
+.ctf-writeup-heading p {font-size:11px;color:#aec8d0;line-height:1.7;margin:0;}
+.ctf-evidence-panel label {font-size:12px;color:#cee7e2;}
+.ctf-evidence-panel textarea {min-height:80px;padding:11px;background:#0b1c2a;color:#e7f7ef;border:1px solid #36505f;border-radius:7px;resize:vertical;width:100%;}
+.ctf-evidence-actions {display:flex;gap:9px;flex-wrap:wrap;align-items:center;}
+.ctf-evidence-actions button {border-radius:7px;font-size:11px;padding:9px 12px;}
+.ctf-evidence-actions button:disabled {opacity:.45;cursor:not-allowed;}
+
+@media(max-width:1140px) {
+ .ctf-mission-workspace {grid-template-columns:minmax(0,1.4fr) minmax(260px,.95fr);}
+}
+@media(max-width:920px) {
+ .ctf-mission-workspace {grid-template-columns:1fr;}
+ .ctf-browser .ctf-browser-tabs {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:520px) {
+ .ctf-browser .ctf-browser-tabs {grid-template-columns:1fr;}
+ .ctf-mission-objectives {grid-template-columns:1fr;}
+ .ctf-mission-brief {padding:15px;}
+ .ctf-review-intro {padding:15px;}
+}
+
+/* In projection mode, keep the mission visible alongside the authentic xterm.
+   Hide only the long forms, history and introductory content. */
+.ctf-browser.ctf-projector>.ctf-review-intro,
+.ctf-browser.ctf-projector>.ctf-browser-tabs {display:none;}
+.ctf-browser.ctf-projector>.ctf-mission-workspace {flex:1;min-height:0;overflow:hidden;margin:0;grid-template-columns:minmax(0,1.75fr) minmax(280px,.8fr);}
+.ctf-browser.ctf-projector .ctf-mission-main {min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.ctf-browser.ctf-projector .ctf-mission-brief {flex-shrink:0;max-height:38dvh;overflow-y:auto;}
+.ctf-browser.ctf-projector .ctf-mission-brief h3 {font-size:clamp(19px,2vw,27px);}
+.ctf-browser.ctf-projector .ctf-browser-terminal {flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.ctf-browser.ctf-projector .ctf-terminal-display {flex:1;min-height:0;height:auto;}
+.ctf-browser.ctf-projector .ctf-mission-guide {min-height:0;overflow-y:auto;scrollbar-width:thin;}
+@media(max-width:800px) {
+ .ctf-browser.ctf-projector>.ctf-mission-workspace {grid-template-columns:1fr;}
+ .ctf-browser.ctf-projector .ctf-mission-guide {display:none;}
+ .ctf-browser.ctf-projector .ctf-mission-brief {max-height:34dvh;}
+}
