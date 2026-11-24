@@ -9,3 +9,6 @@ supabase/.temp/
 artifacts/
 test-results/
 playwright-report/
+
+# v86 assets downloaded during build; not source controlled
+public/ctf-v86/

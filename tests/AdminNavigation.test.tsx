@@ -10,12 +10,13 @@ describe("administrative module navigation", () => {
     render(<AdminNavigation section="overview" role="admin"><p>Resumo pedagógico</p></AdminNavigation>);
     const navigation = screen.getByRole("navigation", { name: "Seções da administração" });
     const links = within(navigation).getAllByRole("link");
-    expect(links).toHaveLength(9);
+    expect(links).toHaveLength(10);
+    expect(links.some(link => link.getAttribute("href") === "#admin/revisao-ctf")).toBe(true);
     expect(within(navigation).getByRole("link", { name: /Calculadora/ }).getAttribute("href")).toBe("#admin/calculadora");
     expect(within(navigation).getByRole("link", { name: /Início/ }).getAttribute("aria-current")).toBe("page");
     expect(within(navigation).getByRole("link", { name: /Turmas/ }).getAttribute("href")).toBe("#admin/turmas");
     expect(within(navigation).getByRole("link", { name: /Duplas/ }).getAttribute("href")).toBe("#admin/duplas");
-    expect(within(navigation).getByRole("link", { name: /CTF/ }).getAttribute("href")).toBe("#admin/ctf");
+    expect(links.some(link => link.getAttribute("href") === "#admin/ctf")).toBe(true);
     expect(within(navigation).getByRole("link", { name: /Usuários/ }).getAttribute("href")).toBe("#admin/usuarios");
     expect(within(navigation).getByRole("link", { name: /Chamada/ }).getAttribute("href")).toBe("#admin/chamada");
     expect(screen.getByText("Resumo pedagógico")).toBeTruthy();
@@ -23,7 +24,9 @@ describe("administrative module navigation", () => {
   it("hides the points entry for teachers but keeps the public ranking shortcut", () => {
     render(<AdminNavigation section="notas" role="teacher"><p>Relatório privado</p></AdminNavigation>);
     const navigation = screen.getByRole("navigation", { name: "Seções da administração" });
-    expect(within(navigation).queryByRole("link", { name: /CTF/ })).toBeNull();
+    const teacherLinks = within(navigation).getAllByRole("link");
+    expect(teacherLinks.some(link => link.getAttribute("href") === "#admin/ctf")).toBe(false);
+    expect(teacherLinks.some(link => link.getAttribute("href") === "#admin/revisao-ctf")).toBe(true);
     expect(within(navigation).queryByRole("link", { name: /Usuários/ })).toBeNull();
     expect(within(navigation).queryByRole("link", { name: /Calculadora/ })).toBeNull();
     expect(within(navigation).getByRole("link", { name: /Chamada/ })).toBeTruthy();

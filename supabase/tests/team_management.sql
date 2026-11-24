@@ -111,8 +111,8 @@ select test_team.ok(
  'reactivated team can log in with original credential');
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000011',true);
-select public.adjust_ctf(gen_random_uuid(),
- (select (value->>'team_id')::uuid from test_team.state where key='team1'),25,
+select public.record_module_ctf(gen_random_uuid(),
+ (select (value->>'team_id')::uuid from test_team.state where key='team1'),1::smallint,25,600,
  'Teste CTF local');
 select test_team.ok((select not can_transfer and not can_delete
  from public.list_teams_admin() where public_name='Dupla Corrigida'),

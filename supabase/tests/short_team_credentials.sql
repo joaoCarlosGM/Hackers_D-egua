@@ -57,9 +57,9 @@ select test_short.denied($q$select public.issue_short_team_credential(
  'ordinary Supabase user cannot issue credentials');
 
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000081',true);
-select public.adjust_ctf(gen_random_uuid(),
- (select (value->>'team_id')::uuid from test_short.state where key='team1'),
- 42,'Pontos anteriores às credenciais curtas');
+select public.record_module_ctf(gen_random_uuid(),
+ (select (value->>'team_id')::uuid from test_short.state where key='team1'),1::smallint,
+ 42,600,'Pontos anteriores às credenciais curtas');
 insert into test_short.state select 'new1',public.issue_short_team_credential(
  (select (value->>'team_id')::uuid from test_short.state where key='team1'));
 select test_short.ok(

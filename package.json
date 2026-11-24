@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/prepare-v86.mjs && tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -18,7 +18,8 @@
     "test:security": "node --test scripts/security/check-public.test.mjs",
     "check:public-env": "node scripts/security/check-public.mjs env",
     "check:public-dist": "node scripts/security/check-public.mjs dist",
-    "check:live-answers": "node scripts/security/check-live-answers.mjs"
+    "check:live-answers": "node scripts/security/check-live-answers.mjs",
+    "prepare:ctf-v86": "node scripts/prepare-v86.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.0",
