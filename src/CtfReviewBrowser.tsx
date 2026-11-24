@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { rpc } from "./api";
 import "./ctf-review-browser.css";
 type Kind="vm_boot"|"vm_ready"|"lab_setup"|"command"|"output"|"challenge"|"writeup"|"vm_stop"|"error";
@@ -8,7 +8,18 @@ type Run={id:string;title:string;started_at:string;closed_at:string|null;writeup
 type Event={id:number;at:string;kind:Kind;detail:string};
 type Report={run:Run;events:Event[];truncated:boolean};
 type VM={add_listener:(name:string,fn:(byte:number)=>void)=>void;serial0_send:(command:string)=>void;stop:()=>void;destroy:()=>void};
-declare global{interface Window{V86?:new(opts:Record<string,unknown>)=>VM}}
+type XtermFit={fit:()=>void;dispose?:()=>void};
+type XtermHandle={
+ open:(element:HTMLElement)=>void;write:(data:string)=>void;writeln:(text:string)=>void;
+ focus:()=>void;clear:()=>void;dispose:()=>void;
+ onData:(callback:(data:string)=>void)=>{dispose:()=>void};
+ loadAddon:(addon:XtermFit)=>void;options:{fontSize:number};
+};
+declare global{interface Window{
+ V86?:new(opts:Record<string,unknown>)=>VM;
+ Terminal?:new(opts:Record<string,unknown>)=>XtermHandle;
+ FitAddon?:{FitAddon:new()=>XtermFit};
+}}
 const steps=[
  ["Navegação e Arquivos Ocultos","Use pwd, ls -la, find /var/tmp e cat."],
  ["Permissões e Grupos Restritos","Verifique ~/desafios/permissoes/segredo.txt e utilize chmod g+r."],
@@ -32,6 +43,28 @@ const initCommands=(seed:string)=>[
  "test -f /var/tmp/relatorios/.auditoria/.relatorio.txt && test -f /home/aluno/desafios/permissoes/segredo.txt && test -f /home/aluno/desafios/logs/auth.log && test -x /tmp/ctf-bin/dig && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
 ];
 let scriptPromise:Promise<void>|undefined;
+let terminalPromise:Promise<void>|undefined;
+function loadScript(name:string){
+ return new Promise<void>((resolve,reject)=>{
+  const script=document.createElement("script");script.src=assets+name;script.async=true;
+  script.onload=()=>resolve();script.onerror=()=>reject(Error("Falha ao carregar "+name+" para o terminal."));
+  document.head.append(script);
+ });
+}
+function loadTerminal(){
+ if(window.Terminal&&window.FitAddon?.FitAddon)return Promise.resolve();
+ if(!terminalPromise)terminalPromise=(async()=>{
+  const css=document.createElement("link");css.rel="stylesheet";css.href=assets+"xterm.css";
+  const styleReady=new Promise<void>((resolve,reject)=>{
+   css.onload=()=>resolve();css.onerror=()=>reject(Error("O estilo do terminal xterm.js não carregou."));
+  });
+  document.head.append(css);
+  await Promise.all([styleReady,loadScript("xterm.js")]);
+  await loadScript("xterm-addon-fit.js");
+  if(!window.Terminal||!window.FitAddon?.FitAddon)throw Error("Bibliotecas xterm.js incompatíveis.");
+ })().catch(e=>{terminalPromise=undefined;throw e;});
+ return terminalPromise;
+}
 function library(){
  if(window.V86)return Promise.resolve();
  if(!scriptPromise)scriptPromise=new Promise<void>((resolve,reject)=>{
@@ -48,13 +81,15 @@ const date=(s:string)=>new Date(s).toLocaleString("pt-BR");
 export default function CtfReviewBrowser(){
  const [run,setRun]=useState<Run|null>(null),[history,setHistory]=useState<Run[]>([]);
  const [report,setReport]=useState<Report|null>(null),[status,setStatus]=useState("Pronto para iniciar");
- const [error,setError]=useState(""),[input,setInput]=useState(""),[ready,setReady]=useState(false);
+ const [error,setError]=useState(""),[ready,setReady]=useState(false);
  const [busy,setBusy]=useState(false),[challenge,setChallenge]=useState(0),[flag,setFlag]=useState("");
  const [solved,setSolved]=useState<number[]>([]),[writeups,setWriteups]=useState<Record<string,W>>({});
  const [saved,setSaved]=useState(0),[pending,setPending]=useState(0);
  const [projector,setProjector]=useState(false),[fontSize,setFontSize]=useState(17);
- const screen=useRef<HTMLTextAreaElement>(null),machine=useRef<VM|null>(null);
- const commandInput=useRef<HTMLInputElement>(null);
+ const machine=useRef<VM|null>(null),terminalHost=useRef<HTMLDivElement>(null);
+ const terminal=useRef<XtermHandle|null>(null),fitAddon=useRef<XtermFit|null>(null);
+ const termResize=useRef<ResizeObserver|null>(null);
+ const terminalInput=useRef(""),termSubscription=useRef<{dispose:()=>void}|null>(null);
  const bootTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const script=useRef<string[]>([]),stage=useRef(-1),tail=useRef(""),out=useRef("");
  const events=useRef<E[]>([]),locked=useRef(false),activeRun=useRef<string|null>(null);
@@ -63,14 +98,21 @@ export default function CtfReviewBrowser(){
  useEffect(()=>{mounted.current=true;void rpc<Run[]>("ctf_teacher_review_history").then(setHistory).catch(e=>setError((e as Error).message));
   return()=>{mounted.current=false;
    if(bootTimer.current)clearTimeout(bootTimer.current);
-   machine.current?.stop();machine.current?.destroy();machine.current=null;};},[]);
+   machine.current?.stop();machine.current?.destroy();machine.current=null;
+   termResize.current?.disconnect();termSubscription.current?.dispose();
+   terminal.current?.dispose();terminal.current=null;};},[]);
  useEffect(()=>{
   if(!projector)return;
   const onKey=(event:KeyboardEvent)=>{if(event.key==="Escape")setProjector(false);};
   window.addEventListener("keydown",onKey);
   return()=>window.removeEventListener("keydown",onKey);
  },[projector]);
- useEffect(()=>{if(ready)commandInput.current?.focus();},[ready]);
+ useEffect(()=>{if(ready)terminal.current?.focus();},[ready]);
+  useEffect(()=>{
+   if(!terminal.current)return;
+   terminal.current.options.fontSize=fontSize;
+   requestAnimationFrame(()=>fitAddon.current?.fit());
+  },[fontSize,projector]);
  const record=(kind:Kind,detail:string)=>{if(!activeRun.current)return;
   for(const part of detail.match(/[\s\S]{1,2400}/g)||[""])events.current.push({kind,detail:part});
   if(events.current.length>2000){events.current.splice(0,events.current.length-2000);setError("Buffer de auditoria cheio.");}
