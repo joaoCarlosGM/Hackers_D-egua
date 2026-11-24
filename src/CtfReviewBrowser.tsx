@@ -147,8 +147,8 @@ export default function CtfReviewBrowser(){
    }else if(key==="\u0003")terminalInput.current="";
    else if(key==="\u007f"||key==="\b")terminalInput.current=terminalInput.current.slice(0,-1);
    else if(key==="\u001b"){
-    const sequence=/^\u001b\[[0-9;]*[A-Za-z~]/.exec(data.slice(i));
-    if(sequence)i+=sequence[0].length-1;
+    const sequence=/^\[[0-9;]*[A-Za-z~]/.exec(data.slice(i+1));
+    if(sequence)i+=sequence[0].length;
    }else if(key>=" "&&key!=="\u007f")terminalInput.current=(terminalInput.current+key).slice(-512);
   }
  }
