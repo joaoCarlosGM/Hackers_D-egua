@@ -29,7 +29,7 @@ const initCommands=(seed:string)=>[
  "printf '%s\\n' '#!/bin/sh' 'echo \"ctf.hackerspaidegua.local. IN TXT \\\"FLAG{DNS_REVIS_"+seed+"}\\\"\"' > /tmp/ctf-bin/dig",
  "chmod +x /tmp/ctf-bin/dig; export PATH=/tmp/ctf-bin:$PATH",
  "printf '%s\\n' 'REVISAO PRE-CTF (sem pontos)' '1) find /var/tmp -name \".*\"' '2) chmod g+r /home/aluno/desafios/permissoes/segredo.txt' '3) cat /home/aluno/desafios/logs/auth.log' '4) dig @127.0.0.1 ctf.hackerspaidegua.local TXT' > /home/aluno/missao.txt",
- "cd /home/aluno; echo HPDE_LAB_PRONTO"
+ "test -f /var/tmp/relatorios/.auditoria/.relatorio.txt && test -f /home/aluno/desafios/permissoes/segredo.txt && test -f /home/aluno/desafios/logs/auth.log && test -x /tmp/ctf-bin/dig && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
 ];
 let scriptPromise:Promise<void>|undefined;
 function library(){
@@ -55,7 +55,7 @@ export default function CtfReviewBrowser(){
  const screen=useRef<HTMLTextAreaElement>(null),machine=useRef<VM|null>(null);
  const script=useRef<string[]>([]),stage=useRef(-1),tail=useRef(""),out=useRef("");
  const events=useRef<E[]>([]),locked=useRef(false),activeRun=useRef<string|null>(null);
- const readyRef=useRef(false),mounted=useRef(true),labSeed=useRef("");
+ const readyRef=useRef(false),mounted=useRef(true),labSeed=useRef(""),setupValid=useRef(false);
  const current=writeups[String(challenge)]||{command:"",reason:"",evidence:""};
  useEffect(()=>{mounted.current=true;void rpc<Run[]>("ctf_teacher_review_history").then(setHistory).catch(e=>setError((e as Error).message));
   return()=>{mounted.current=false;machine.current?.stop();machine.current?.destroy();machine.current=null;};},[]);
@@ -83,7 +83,7 @@ export default function CtfReviewBrowser(){
    if(!window.V86)throw Error("v86 indisponível");
    labSeed.current=Math.random().toString(16).slice(2,8).toUpperCase();
    script.current=initCommands(labSeed.current);
-   stage.current=-1;tail.current="";if(screen.current)screen.current.value="Inicializando v86 + Linux...\\n";
+   stage.current=-1;tail.current="";setupValid.current=false;if(screen.current)screen.current.value="Inicializando v86 + Linux...\\n";
    const vm=new window.V86({
      wasm_path:assets+"v86.wasm",bios:{url:assets+"seabios.bin"},vga_bios:{url:assets+"vgabios.bin"},
      bzimage:{url:assets+"buildroot-bzimage68.bin",async:false},filesystem:{},
@@ -92,6 +92,7 @@ export default function CtfReviewBrowser(){
    });machine.current=vm;setStatus("Linux inicializando...");
    vm.add_listener("serial0-output-byte",byte=>{const char=String.fromCharCode(byte);if(char==="\r")return;
      tail.current=(tail.current+char).slice(-350);
+     if(tail.current.includes("\nHPDE_LAB_PRONTO\n"))setupValid.current=true;
      if(!readyRef.current){
        if(stage.current===-1 && /(?:~% |# |\$ )$/.test(tail.current)){
          stage.current=0;setStatus("Preparando quatro desafios...");
@@ -99,7 +100,8 @@ export default function CtfReviewBrowser(){
        }else if(stage.current>=0&&tail.current.includes("\nHPDE_MARK_"+stage.current+"\n")){
          tail.current="";
          if(stage.current<script.current.length-1){stage.current++;vm.serial0_send(script.current[stage.current]+"; printf '\\nHPDE_MARK_"+stage.current+"\\n'\n");}
-         else{readyRef.current=true;setReady(true);record("vm_ready","Linux e quatro desafios preparados");setStatus("Pronto · digite cat missao.txt");print("\nLinux pronto. Use cat missao.txt\n");}
+         else if(setupValid.current){readyRef.current=true;setReady(true);record("vm_ready","Linux e quatro desafios preparados");setStatus("Pronto · digite cat missao.txt");print("\nLinux pronto. Use cat missao.txt\n");}
+         else{record("error","Falha ao preparar filesystem da VM");setError("A imagem Linux iniciou, mas não permitiu criar os arquivos dos desafios.");setStatus("Falha na preparação do laboratório");}
        }
        return;
      }
