@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "@playwright/test";
+import { createHash } from "node:crypto";
 
 const root=path.resolve("public/ctf-v86");
 const mime={".js":"application/javascript",".wasm":"application/wasm",".bin":"application/octet-stream"};
@@ -23,9 +24,15 @@ const html=[
  "});",
  "</script>"
 ].join("\n");
+// Reproduce the strict GitHub Pages CSP including the narrowly-scoped WebAssembly permission.
+const bootstrap=html.match(/<script>([\\s\\S]*?)<\\/script>/)?.[1];
+if(!bootstrap)throw Error("Missing test browser bootstrap script");
+const hash=createHash("sha256").update(bootstrap).digest("base64");
+const csp="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-"+hash+"'; connect-src 'self'; object-src 'none';";
+const securedHtml=html.replace("<script src=", '<meta http-equiv="Content-Security-Policy" content="'+csp+'"><script src=');
 const server=createServer(async(req,res)=>{
  try{
-  if(req.url==="/"){res.writeHead(200,{"content-type":"text/html"});return res.end(html);}
+  if(req.url==="/"){res.writeHead(200,{"content-type":"text/html"});return res.end(securedHtml);}
   const name=String(req.url).split("?")[0].slice(1);
   if(!["libv86.js","v86.wasm","seabios.bin","vgabios.bin","buildroot-bzimage68.bin"].includes(name)){
    res.writeHead(404);return res.end();
