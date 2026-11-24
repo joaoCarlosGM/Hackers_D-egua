@@ -53,6 +53,42 @@ try{
  const output=await page.evaluate(()=>window.__serial);
  console.log("Linux filesystem probe:",output.slice(-1400));
  if(!/(?:^|\n)v86-ok\r?\n/.test(output))throw Error("Browser Linux filesystem write failed");
+
+ // Exercise the commands needed by the teacher-only demonstration, not just the boot.
+ const stages=[
+  "mkdir -p /var/tmp/relatorios/.auditoria /home/aluno/desafios/permissoes /home/aluno/desafios/logs /tmp/ctf-bin",
+  "echo 'investigadores:x:1300:' >> /etc/group",
+  "printf '%s\n' 'FLAG{ARQUIVO_REVIS_TESTE}' > /var/tmp/relatorios/.auditoria/.relatorio.txt",
+  "printf '%s\n' 'FLAG{GRUPO_REVIS_TESTE}' > /home/aluno/desafios/permissoes/segredo.txt",
+  "chgrp investigadores /home/aluno/desafios/permissoes/segredo.txt; chmod 600 /home/aluno/desafios/permissoes/segredo.txt",
+  "printf '%s\n' '# auth.log (dados fictícios)' > /home/aluno/desafios/logs/auth.log",
+  "for i in 1 2 3 4 5 6 7 8 9; do echo 'Failed password from 198.51.100.44' >> /home/aluno/desafios/logs/auth.log; done",
+  "for i in 1 2 3 4; do echo 'Failed password from 203.0.113.7' >> /home/aluno/desafios/logs/auth.log; done",
+  "printf '%s\n' '#!/bin/sh' 'echo \"ctf.hackerspaidegua.local. IN TXT \\\"FLAG{DNS_REVIS_TESTE}\\\"\"' > /tmp/ctf-bin/dig",
+  "chmod +x /tmp/ctf-bin/dig; export PATH=/tmp/ctf-bin:$PATH",
+  "printf '%s\n' 'REVISAO PRE-CTF' > /home/aluno/missao.txt"
+ ];
+ const execute=async(cmd,marker)=>{
+  await page.evaluate(code=>{window.__serial="";window.__vm.serial0_send(code+String.fromCharCode(10));},
+    cmd+"; printf '\\n"+marker+"\\n'");
+  await page.waitForFunction(m=>window.__serial.includes("\n"+m+"\n") &&
+    /(?:~% |# |\$ )$/.test(window.__serial),marker,{timeout:15000});
+  return page.evaluate(()=>window.__serial);
+ };
+ for(let i=0;i<stages.length;i++){
+  const output=await execute(stages[i],"HPDE_SCENARIO_"+i);
+  if(/(?:chgrp:|chmod:|cannot create|not found|Permission denied|Read-only file system)/i.test(output))
+    throw Error("Scenario preparation stage "+i+" failed: "+output.slice(-700));
+ }
+ const check=await execute("ls -la /var/tmp/relatorios/.auditoria; cat /var/tmp/relatorios/.auditoria/.relatorio.txt; ls -l /home/aluno/desafios/permissoes/segredo.txt; grep 'Failed password' /home/aluno/desafios/logs/auth.log | wc -l; dig @127.0.0.1 ctf.hackerspaidegua.local TXT; cat /home/aluno/missao.txt","HPDE_SCENARIO_CHECK");
+ console.log("Scenario output:",check.slice(-2200));
+ if(!check.includes("FLAG{ARQUIVO_REVIS_TESTE}") ||
+    !check.includes("FLAG{DNS_REVIS_TESTE}") ||
+    !check.includes("REVISAO PRE-CTF") ||
+    !check.includes("13"))
+    throw Error("Four-scenario smoke test did not show expected flags, log count or mission.");
+ console.log("PASS: scenario files, group permissions, log commands and DNS teaching script executed in browser Linux.");
+
  console.log("PASS: v86 booted real Linux and executed a shell printf through the serial interface.");
  console.log("Terminal tail:",output.slice(-340));
  await page.close();
