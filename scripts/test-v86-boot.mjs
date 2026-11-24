@@ -50,8 +50,16 @@ try{
  browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
  const page=await browser.newPage();
  page.on("pageerror",error=>process.stderr.write("Browser error: "+error.message+"\n"));
+ page.on("console",m=>{if(m.type()==="error"||m.type()==="warning")process.stderr.write("Console "+m.type()+": "+m.text()+"\n");});
+ page.on("requestfailed",r=>process.stderr.write("Request failed: "+r.url()+" "+r.failure()?.errorText+"\n"));
  await page.goto("http://127.0.0.1:"+port,{waitUntil:"domcontentloaded"});
- await page.waitForFunction(()=>window.__result==="passed",undefined,{timeout:90000});
+ const state=await page.evaluate(()=>({
+   boot:window.__result??null,emulatorGlobal:typeof window.V86,instanceCreated:!!window.__vm,
+   csp:document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content??null
+ }));
+ console.log("CSP bootstrap state:",JSON.stringify(state));
+ if(!state.instanceCreated)throw Error("Browser VM bootstrap did not execute under CSP");
+ await page.waitForFunction(()=>window.__result==="passed",undefined,{timeout:35000});
  await page.evaluate(() => {
   window.__serial="";
   window.__vm.serial0_send("id; ls -ld /etc /var/tmp /home; mkdir -p /var/tmp/hpde-ctf-check; echo v86-ok > /var/tmp/hpde-ctf-check/flag; cat /var/tmp/hpde-ctf-check/flag; echo HPDE_FS_TEST_END"+String.fromCharCode(10));
