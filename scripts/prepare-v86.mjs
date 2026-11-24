@@ -5,11 +5,11 @@ import { mkdir, readFile, writeFile, rename, stat } from "node:fs/promises";
 import path from "node:path";
 const root=path.resolve("public/ctf-v86");
 const files=[
-  ["libv86.js","https://cdn.jsdelivr.net/npm/v86@0.5.473/build/libv86.js",100000],
-  ["v86.wasm","https://cdn.jsdelivr.net/npm/v86@0.5.473/build/v86.wasm",100000],
+  ["libv86.js","https://cdn.jsdelivr.net/npm/v86@0.5.476/build/libv86.js",100000],
+  ["v86.wasm","https://cdn.jsdelivr.net/npm/v86@0.5.476/build/v86.wasm",100000],
   ["seabios.bin","https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin",30000],
   ["vgabios.bin","https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin",10000],
-  ["buildroot-bzimage68.bin","https://static.simonwillison.net/static/cors-allow/2026/buildroot-bzimage68.bin",300000],
+  ["buildroot-bzimage68.bin","https://i.copy.sh/buildroot-bzimage68.bin",300000],
 ];
 function validate(name,bytes,minSize){
  if(bytes.byteLength<minSize)throw Error(name+": arquivo menor que o mínimo esperado");
