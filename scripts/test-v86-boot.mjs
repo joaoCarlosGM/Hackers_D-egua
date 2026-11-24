@@ -123,8 +123,17 @@ try{
    }
    return false;
  },undefined,{timeout:10000});
- const ansi=await page.locator("#xterm-test .xterm-fg-2").count();
- if(!ansi)throw Error("xterm.js did not interpret ANSI green foreground color");
+ const ansi=await page.evaluate(()=>{
+   const buffer=window.__xterm.buffer.active;
+   for(let row=0;row<buffer.length;row++){
+     const line=buffer.getLine(row);
+     const offset=line?.translateToString().indexOf("HPDE_COLOR_RENDER")??-1;
+     if(offset>=0)return {fg:line.getCell(offset)?.getFgColor(),mode:line.getCell(offset)?.getFgColorMode()};
+   }
+   return null;
+ });
+ console.log("xterm.js parsed ANSI cell color:",ansi);
+ if(ansi?.fg!==2)throw Error("xterm.js did not parse ANSI green (SGR 32)");
  await page.locator("#xterm-test .xterm-helper-textarea").focus();
  await page.keyboard.type("echo HPDE_XTERM_INPUT_OK");
  await page.keyboard.press("Enter");
