@@ -113,3 +113,33 @@ export const reviewMissions: ReviewMission[] = [
     caveat: "A saída de dig desta revisão é uma simulação didática produzida por um script dentro do Linux. Não existe um servidor DNS local real nesta VM; não apresente esta etapa como teste real de rede."
   }
 ];
+
+
+/** Contextual explanation shown to the instructor after a real shell command.
+ * This describes the tool's purpose, not whether the command actually succeeded.
+ */
+export function explainReviewCommand(raw: string): { what: string; why: string } {
+  const command = raw.trim().toLowerCase();
+  if (command.includes("|") && /grep|sort|uniq|cut|head/.test(command)) return {
+    what: "Executou um pipeline: a saída de um comando alimenta o próximo.",
+    why: "Combinar filtros, extração de campos e contagem transforma muitas linhas de log em um resultado verificável."
+  };
+  const executable = command.split(/\s+/)[0];
+  switch (executable) {
+    case "pwd": return { what: "Mostrou o diretório de trabalho atual.", why: "É importante conhecer o ponto de partida antes de navegar entre pastas e arquivos." };
+    case "ls": return { what: "Solicitou uma listagem de arquivos e diretórios.", why: "A opção -a inclui arquivos ocultos; -l mostra permissões, proprietário e grupo." };
+    case "cd": return { what: "Solicitou uma mudança de diretório.", why: "Navegar corretamente permite investigar uma pasta sem confundir caminhos relativos e absolutos." };
+    case "find": return { what: "Procurou arquivos ou diretórios segundo critérios.", why: "É mais completo que consultar apenas a pasta atual, pois pode investigar subdiretórios." };
+    case "cat": return { what: "Pediu o conteúdo de um arquivo.", why: "A leitura fornece a evidência necessária para confirmar ou descartar uma hipótese." };
+    case "chmod": return { what: "Tentou modificar permissões de acesso.", why: "É essencial conceder apenas as permissões necessárias e verificar o resultado com ls -l." };
+    case "groups": return { what: "Consultou os grupos associados ao usuário.", why: "O grupo do usuário pode determinar quais arquivos estão acessíveis em um Linux real." };
+    case "grep": return { what: "Filtrou linhas que correspondem a uma expressão.", why: "Ajuda a isolar eventos relevantes em logs extensos." };
+    case "cut": return { what: "Extraiu campos de cada linha de texto.", why: "Separar o campo do IP permite contar as origens sem repetir o restante do log." };
+    case "sort": return { what: "Ordenou os registros.", why: "A ordenação prepara os dados para contagem ou para destacar as maiores ocorrências." };
+    case "uniq": return { what: "Agrupou linhas iguais consecutivas.", why: "Com -c, conta as ocorrências; por isso é comum utilizá-lo depois de sort." };
+    case "head": return { what: "Mostrou as primeiras linhas do resultado.", why: "Ajuda a observar os registros mais relevantes após ordenar os dados." };
+    case "dig": return { what: "Solicitou uma consulta de registro DNS.", why: "O tipo TXT é usado para consultar dados textuais; nesta revisão a saída é reproduzida por um script." };
+    case "whoami": return { what: "Consultou o usuário atual.", why: "Identificar a identidade de execução ajuda a interpretar as permissões de acesso." };
+    default: return { what: "O comando foi enviado ao Linux emulado.", why: "Observe a saída e explique como ela ajuda, ou não, a investigar a situação-problema." };
+  }
+}
