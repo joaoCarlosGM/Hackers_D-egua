@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { rpc } from "./api";
+import { reviewMissions } from "./ctfReviewMissions";
 import "./ctf-review-browser.css";
 type Kind="vm_boot"|"vm_ready"|"lab_setup"|"command"|"output"|"challenge"|"writeup"|"vm_stop"|"error";
 type E={kind:Kind;detail:string};
@@ -20,12 +21,6 @@ declare global{interface Window{
  Terminal?:new(opts:Record<string,unknown>)=>XtermHandle;
  FitAddon?:{FitAddon:new()=>XtermFit};
 }}
-const steps=[
- ["Navegação e Arquivos Ocultos","Use pwd, ls -la, find /var/tmp e cat."],
- ["Permissões e Grupos Restritos","Verifique ~/desafios/permissoes/segredo.txt e utilize chmod g+r."],
- ["Mineração de Logs","Encontre o IP com mais falhas em ~/desafios/logs/auth.log com grep, sort, uniq."],
- ["Mensagem Secreta no DNS","Utilize dig @127.0.0.1 ctf.hackerspaidegua.local TXT (zona didática pré-programada)."]
-];
 const assets=import.meta.env.BASE_URL+"ctf-v86/";
 const quote=(v:string)=>"'"+v.replaceAll("'","'\\''")+"'";
 const initCommands=(seed:string)=>[
@@ -95,6 +90,8 @@ export default function CtfReviewBrowser(){
  const events=useRef<E[]>([]),locked=useRef(false),activeRun=useRef<string|null>(null);
  const readyRef=useRef(false),mounted=useRef(true),labSeed=useRef(""),setupValid=useRef(false);
  const current=writeups[String(challenge)]||{command:"",reason:"",evidence:""};
+ const mission=reviewMissions[challenge];
+ const [showExplanations,setShowExplanations]=useState(false);
  useEffect(()=>{mounted.current=true;void rpc<Run[]>("ctf_teacher_review_history").then(setHistory).catch(e=>setError((e as Error).message));
   return()=>{mounted.current=false;
    if(bootTimer.current)clearTimeout(bootTimer.current);
@@ -164,6 +161,7 @@ export default function CtfReviewBrowser(){
    const id=await rpc<string>("ctf_teacher_review_start");activeRun.current=id;
    setRun({id,title:"Revisão Pré-CTF",started_at:new Date().toISOString(),closed_at:null,writeup:{}});
    setSolved([]);setWriteups({});setSaved(0);setReport(null);setReady(false);readyRef.current=false;
+   setShowExplanations(false);
    if(bootTimer.current)clearTimeout(bootTimer.current);
    bootTimer.current=setTimeout(()=>{
     if(activeRun.current===id&&!readyRef.current&&mounted.current){
