@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { rpc } from "./api";
+import { explainReviewCommand, reviewMissions } from "./ctfReviewMissions";
 import "./ctf-review-browser.css";
 type Kind="vm_boot"|"vm_ready"|"lab_setup"|"command"|"output"|"challenge"|"writeup"|"vm_stop"|"error";
 type E={kind:Kind;detail:string};
@@ -20,12 +21,6 @@ declare global{interface Window{
  Terminal?:new(opts:Record<string,unknown>)=>XtermHandle;
  FitAddon?:{FitAddon:new()=>XtermFit};
 }}
-const steps=[
- ["Navegação e Arquivos Ocultos","Use pwd, ls -la, find /var/tmp e cat."],
- ["Permissões e Grupos Restritos","Verifique ~/desafios/permissoes/segredo.txt e utilize chmod g+r."],
- ["Mineração de Logs","Encontre o IP com mais falhas em ~/desafios/logs/auth.log com grep, sort, uniq."],
- ["Mensagem Secreta no DNS","Utilize dig @127.0.0.1 ctf.hackerspaidegua.local TXT (zona didática pré-programada)."]
-];
 const assets=import.meta.env.BASE_URL+"ctf-v86/";
 const quote=(v:string)=>"'"+v.replaceAll("'","'\\''")+"'";
 const initCommands=(seed:string)=>[
@@ -95,6 +90,9 @@ export default function CtfReviewBrowser(){
  const events=useRef<E[]>([]),locked=useRef(false),activeRun=useRef<string|null>(null);
  const readyRef=useRef(false),mounted=useRef(true),labSeed=useRef(""),setupValid=useRef(false);
  const current=writeups[String(challenge)]||{command:"",reason:"",evidence:""};
+ const mission=reviewMissions[challenge];
+ const [showExplanations,setShowExplanations]=useState(false);
+ const [lastAction,setLastAction]=useState<{command:string;what:string;why:string}|null>(null);
  useEffect(()=>{mounted.current=true;void rpc<Run[]>("ctf_teacher_review_history").then(setHistory).catch(e=>setError((e as Error).message));
   return()=>{mounted.current=false;
    if(bootTimer.current)clearTimeout(bootTimer.current);
@@ -133,7 +131,10 @@ export default function CtfReviewBrowser(){
   terminalInput.current="";
  }
  function recordCommand(text:string){
-  if(text.trim())record("command",text.trim().slice(0,512));
+  if(!text.trim())return;
+  const command=text.trim().slice(0,512);
+  record("command",command);
+  setLastAction({command,...explainReviewCommand(command)});
  }
  function ingestTerminalInput(data:string){
   if(!readyRef.current||!machine.current)return;
@@ -164,6 +165,7 @@ export default function CtfReviewBrowser(){
    const id=await rpc<string>("ctf_teacher_review_start");activeRun.current=id;
    setRun({id,title:"Revisão Pré-CTF",started_at:new Date().toISOString(),closed_at:null,writeup:{}});
    setSolved([]);setWriteups({});setSaved(0);setReport(null);setReady(false);readyRef.current=false;
+   setShowExplanations(false);setLastAction(null);
    if(bootTimer.current)clearTimeout(bootTimer.current);
    bootTimer.current=setTimeout(()=>{
     if(activeRun.current===id&&!readyRef.current&&mounted.current){
@@ -274,7 +276,41 @@ export default function CtfReviewBrowser(){
   <p role="status" className="ctf-browser-status">{status}</p>{error&&<p role="alert" className="error">{error}</p>}
   <div className="ctf-browser-stats"><div>Progresso <strong>{solved.length}/4</strong></div>
     <div>Auditoria <strong>{saved} eventos</strong></div><div>Sincronização <strong>{pending} pendentes</strong></div></div>
-  {run&&<><div className="ctf-browser-terminal">
+  <section className="ctf-review-intro">
+   <div className="ctf-guide-eyebrow">COMO FUNCIONA UM CTF</div>
+   <h3>Investigue um problema, execute comandos e explique sua descoberta.</h3>
+   <p>O CTF oficial apresentará uma missão com cenário, objetivos, terminal, evidências e entrega de um write-up. Nesta revisão, o professor demonstra esse mesmo fluxo com quatro situações do Linux, sem competição, notas ou ranking.</p>
+   <div className="ctf-review-flow" aria-label="Etapas da atividade">
+    <span>1. Ler o problema</span><span>2. Investigar no terminal</span>
+    <span>3. Encontrar a evidência</span><span>4. Explicar o raciocínio</span>
+   </div>
+  </section>
+  {run&&<>
+      <nav className="ctf-browser-tabs" aria-label="Escolher desafio da revisão">
+    {reviewMissions.map((item,i)=><button key={item.id} type="button" className={i===challenge?"selected":""}
+      aria-current={i===challenge?"step":undefined}
+      onClick={()=>{setChallenge(i);setFlag("");setShowExplanations(false);setLastAction(null);}}>
+      <small>DESAFIO {String(item.id).padStart(2,"0")}{solved.includes(i)?" · CONCLUÍDO":""}</small>
+      <strong>{solved.includes(i)?"✓ ":""}{item.subtitle}</strong>
+    </button>)}
+   </nav>
+   <div className="ctf-mission-workspace">
+    <div className="ctf-mission-main">
+     <section className="ctf-mission-brief" aria-labelledby="ctf-current-mission">
+      <div className="ctf-mission-meta">
+       <span className="ctf-mission-tag">CTF REVISÃO · {String(mission.id).padStart(2,"0")}/04</span>
+       <span>{mission.category}</span>
+       <span>{mission.difficulty}</span>
+      </div>
+      <h3 id="ctf-current-mission">{mission.subtitle}</h3>
+      <p className="ctf-incident"><strong>O problema:</strong> {mission.incident}</p>
+      <p><strong>Seu papel:</strong> {mission.context}</p>
+      <div className="ctf-mission-objectives">
+       <div><span>MISSÃO</span><p>{mission.objective}</p></div>
+       <div><span>O QUE ENTREGAR</span><p>{mission.deliverable}</p></div>
+      </div>
+     </section>
+     <div className="ctf-browser-terminal">
     <div className="ctf-window-head">
       <div className="ctf-window-lights" aria-hidden="true"><i/><i/><i/></div>
       <span>ghost@lab-professor: ~ / xterm.js</span>
@@ -297,29 +333,81 @@ export default function CtfReviewBrowser(){
       <span>↑↓ histórico · Ctrl+C interromper · Enter executar</span>
     </div>
     <div className="ctf-terminal-quick">
-      <span>Comandos para a aula:</span>
-      {["pwd","ls -la","cat missao.txt","find /var/tmp -name '.*'","cat /home/aluno/desafios/logs/auth.log",
-        "dig @127.0.0.1 ctf.hackerspaidegua.local TXT"].map(cmd=>
-        <button type="button" key={cmd} disabled={!ready} onClick={()=>sendQuickCommand(cmd)}
-          title={"Executar no Linux: "+cmd}>{cmd}</button>)}
+      <span>O enunciado fica acima do terminal. Leia a situação-problema antes de executar comandos.</span>
+      <button type="button" disabled={!ready} onClick={()=>sendQuickCommand("cat missao.txt")}>Ler instruções da VM</button>
     </div>
     <div className="ctf-terminal-utilities">
       <button type="button" disabled={!ready} onClick={()=>{machine.current?.serial0_send("\x03");terminal.current?.focus();}}>Ctrl+C</button>
       <button type="button" onClick={()=>{terminal.current?.clear();terminal.current?.focus();}}>Limpar tela</button>
     </div>
    </div>
-   <div className="ctf-browser-tabs">{steps.map(([title],i)=><button key={i} className={i===challenge?"selected":""}
-    onClick={()=>{setChallenge(i);setFlag("");}}>{solved.includes(i)?"✓ ":""}{i+1}. {title}</button>)}</div>
-   <div className="ctf-browser-card"><h3>{steps[challenge][0]}</h3><p>{steps[challenge][1]}</p>
-    {challenge===3&&<p><strong>Aviso:</strong> o DNS TXT é representado por um script da VM; não é consulta a um servidor DNS real.</p>}
+   </div>
+    <aside className="ctf-mission-guide" aria-label="Orientações para a investigação">
+     <section className="ctf-guide-panel">
+      <div className="ctf-guide-eyebrow">GUIA DE INVESTIGAÇÃO</div>
+      <h3>Por onde começar?</h3>
+      <p>{mission.startingPoint}</p>
+      {lastAction&&<div className="ctf-command-explanation" role="status">
+       <div className="ctf-guide-eyebrow">ÚLTIMO COMANDO EXECUTADO</div>
+       <code>{lastAction.command}</code>
+       <p><b>O que ele faz:</b> {lastAction.what}</p>
+       <p><b>Por que usar:</b> {lastAction.why}</p>
+      </div>}
+      <h4>O que fazer e por quê</h4>
+      <ol className="ctf-investigation-steps">
+       {mission.steps.map((item,i)=><li key={i}>
+        <div className="ctf-step-heading"><span>{i+1}</span><strong>{item.title}</strong></div>
+        <p><b>O que fazer:</b> {item.doing}</p>
+        <p><b>Por quê:</b> {item.why}</p>
+        {showExplanations&&<div className="ctf-step-example">
+         <code>{item.example}</code>
+         <button type="button" disabled={!ready}
+          onClick={()=>sendQuickCommand(item.example)}>Executar</button>
+        </div>}
+       </li>)}
+      </ol>
+      <button type="button" className="ctf-reveal-btn" aria-expanded={showExplanations}
+       onClick={()=>setShowExplanations(v=>!v)}>
+       {showExplanations?"Ocultar exemplos de comandos":"Professor: revelar exemplos de comandos"}
+      </button>
+     </section>
+     <section className="ctf-guide-panel ctf-guide-reflection">
+      <div className="ctf-guide-eyebrow">ENTENDENDO A MISSÃO</div>
+      <h3>Por que aprender isso?</h3>
+      <p>{mission.realWorld}</p>
+      <h4>Pergunta para a turma</h4>
+      <p>{mission.studentQuestion}</p>
+      <details>
+       <summary>Conclusão para o professor</summary>
+       <p>{mission.closing}</p>
+       {mission.caveat&&<p className="ctf-pedagogical-warning">{mission.caveat}</p>}
+      </details>
+     </section>
+    </aside>
+   </div>
+   <section className="ctf-browser-card ctf-evidence-panel">
+    <div className="ctf-evidence-header">
+     <div><div className="ctf-guide-eyebrow">ENTREGA DA MISSÃO {String(mission.id).padStart(2,"0")}</div>
+      <h3>Evidência e relatório de investigação</h3></div>
+     <span className="ctf-evidence-status">{solved.includes(challenge)?"Evidência encontrada":"Aguardando evidência"}</span>
+    </div>
+    <p>Ao concluir a investigação, registre a flag encontrada no terminal e documente como chegou ao resultado. A revisão não concede pontos.</p>
+    <p><strong>Formato esperado:</strong> <code>{mission.flagFormat}</code></p>
+    {mission.caveat&&<p className="ctf-pedagogical-warning">{mission.caveat}</p>}
     <input value={flag} onChange={e=>setFlag(e.target.value)} placeholder="FLAG{...}"/>
     <button onClick={validate} disabled={!ready}>Confirmar descoberta</button>
-    <h3>Write-up formativo</h3>
-    <label>Comando utilizado<textarea value={current.command} onChange={e=>edit("command",e.target.value)}/></label>
-    <label>Raciocínio técnico<textarea value={current.reason} onChange={e=>edit("reason",e.target.value)}/></label>
-    <label>Evidência<textarea value={current.evidence} onChange={e=>edit("evidence",e.target.value)}/></label>
-    <button disabled={busy} onClick={()=>void saveWriteup()}>Salvar write-up no Supabase</button>
-   </div></>}
+    <div className="ctf-writeup-heading">
+     <h4>Write-up: o que você fez e por quê?</h4>
+     <p>Explique o problema, o procedimento usado, o motivo da escolha dos comandos e a evidência obtida. É isso que o professor analisará nos CTFs oficiais.</p>
+    </div>
+    <label>1. O que você fez? (comando ou procedimento)<textarea value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
+    <label>2. Por que fez isso? (raciocínio)<textarea value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
+    <label>3. O que encontrou? (resultado e conclusão)<textarea value={current.evidence} placeholder="Registre o resultado e o que ele demonstra..." onChange={e=>edit("evidence",e.target.value)}/></label>
+    <div className="ctf-evidence-actions">
+     <button type="button" disabled={busy} onClick={()=>void saveWriteup()}>Salvar write-up no Supabase</button>
+     <button type="button" disabled={challenge>=reviewMissions.length-1} onClick={()=>{setChallenge(i=>i+1);setFlag("");setShowExplanations(false);setLastAction(null);}}>Próximo desafio →</button>
+    </div>
+   </section></>}
   <div className="ctf-browser-card"><h3>Histórico de demonstrações</h3>
    <button onClick={()=>void reload().catch(e=>setError((e as Error).message))}>Atualizar</button>
    {history.map(r=><div key={r.id} className="ctf-browser-history"><span>{date(r.started_at)} · {r.closed_at?"Encerrada":"Em andamento"}</span>
