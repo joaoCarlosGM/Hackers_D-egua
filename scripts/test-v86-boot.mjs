@@ -12,7 +12,7 @@ const html=[
  "const vm=new V86({wasm_path:'/v86.wasm',bios:{url:'/seabios.bin'},vga_bios:{url:'/vgabios.bin'},",
  "bzimage:{url:'/buildroot-bzimage68.bin',async:false},filesystem:{},memory_size:96*1024*1024,",
  "vga_memory_size:2*1024*1024,cmdline:'tsc=reliable mitigations=off random.trust_cpu=on',",
- "autostart:true,disable_keyboard:true});",
+ "autostart:true,disable_keyboard:true});window.__vm=vm;",
  "let sent=false;vm.add_listener('serial0-output-byte',byte=>{",
  "const c=String.fromCharCode(byte);if(c==='\\r')return;",
  "window.__serial=(window.__serial+c).slice(-4000);",
@@ -45,7 +45,14 @@ try{
  page.on("pageerror",error=>process.stderr.write("Browser error: "+error.message+"\n"));
  await page.goto("http://127.0.0.1:"+port,{waitUntil:"domcontentloaded"});
  await page.waitForFunction(()=>window.__result==="passed",undefined,{timeout:90000});
+ await page.evaluate(() => {
+  window.__serial="";
+  window.__vm.serial0_send("id; ls -ld /etc /var/tmp /home; mkdir -p /var/tmp/hpde-ctf-check; echo v86-ok > /var/tmp/hpde-ctf-check/flag; cat /var/tmp/hpde-ctf-check/flag; echo HPDE_FS_TEST_END\\n");
+ });
+ await page.waitForFunction(()=>window.__serial.includes("HPDE_FS_TEST_END") && /(?:~% |# |\\$ )$/.test(window.__serial),undefined,{timeout:15000});
  const output=await page.evaluate(()=>window.__serial);
+ console.log("Linux filesystem probe:",output.slice(-1400));
+ if(!output.includes("v86-ok"))throw Error("Browser Linux filesystem write failed");
  console.log("PASS: v86 booted real Linux and executed a shell printf through the serial interface.");
  console.log("Terminal tail:",output.slice(-340));
  await page.close();
