@@ -52,7 +52,7 @@ try{
  await page.waitForFunction(()=>window.__serial.includes("HPDE_FS_TEST_END") && /(?:~% |# |\\$ )$/.test(window.__serial),undefined,{timeout:15000});
  const output=await page.evaluate(()=>window.__serial);
  console.log("Linux filesystem probe:",output.slice(-1400));
- if(!output.includes("v86-ok"))throw Error("Browser Linux filesystem write failed");
+ if(!/(?:^|\n)v86-ok\r?\n/.test(output))throw Error("Browser Linux filesystem write failed");
  console.log("PASS: v86 booted real Linux and executed a shell printf through the serial interface.");
  console.log("Terminal tail:",output.slice(-340));
  await page.close();
