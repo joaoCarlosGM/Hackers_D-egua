@@ -13,7 +13,7 @@ const html=[
  "const vm=new V86({wasm_path:'/v86.wasm',bios:{url:'/seabios.bin'},vga_bios:{url:'/vgabios.bin'},",
  "bzimage:{url:'/buildroot-bzimage68.bin',async:false},filesystem:{},memory_size:96*1024*1024,",
  "vga_memory_size:2*1024*1024,cmdline:'tsc=reliable mitigations=off random.trust_cpu=on',",
- "autostart:true,disable_keyboard:true});window.__vm=vm;",
+ "autostart:true,disable_keyboard:true,disable_speaker:true});window.__vm=vm;",
  "let sent=false;vm.add_listener('serial0-output-byte',byte=>{",
  "const c=String.fromCharCode(byte);if(c==='\\r')return;",
  "window.__serial=(window.__serial+c).slice(-4000);",
