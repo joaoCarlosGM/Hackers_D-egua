@@ -10,6 +10,11 @@ const files=[
   ["seabios.bin","https://cdn.jsdelivr.net/gh/copy/v86@master/bios/seabios.bin",30000],
   ["vgabios.bin","https://cdn.jsdelivr.net/gh/copy/v86@master/bios/vgabios.bin",10000],
   ["buildroot-bzimage68.bin","https://i.copy.sh/buildroot-bzimage68.bin",300000],
+  // The teacher HTML reference uses xterm.js 6 and FitAddon 0.11.
+  // Vendor these same versions at build time to keep production CSP self-only.
+  ["xterm.js","https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.js",50000],
+  ["xterm.css","https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.css",3000],
+  ["xterm-addon-fit.js","https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.11.0/lib/addon-fit.js",2000],
 ];
 function validate(name,bytes,minSize){
  if(bytes.byteLength<minSize)throw Error(name+": arquivo menor que o mínimo esperado");
