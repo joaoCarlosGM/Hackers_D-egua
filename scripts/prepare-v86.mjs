@@ -14,7 +14,7 @@ const files=[
   // Vendor these same versions at build time to keep production CSP self-only.
   ["xterm.js","https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.js",50000],
   ["xterm.css","https://cdnjs.cloudflare.com/ajax/libs/xterm/6.0.0/xterm.css",3000],
-  ["xterm-addon-fit.js","https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.11.0/lib/addon-fit.js",2000],
+  ["xterm-addon-fit.js","https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.11.0/lib/addon-fit.js",700],
 ];
 function validate(name,bytes,minSize){
  if(bytes.byteLength<minSize)throw Error(name+": arquivo menor que o mínimo esperado");
@@ -22,6 +22,8 @@ function validate(name,bytes,minSize){
    throw Error("WASM inválido");
  if(name==="libv86.js"&&!Buffer.from(bytes).toString("utf8").includes("V86"))
    throw Error("Script v86 inválido");
+ if(name==="xterm-addon-fit.js"&&!Buffer.from(bytes).toString("utf8").includes("FitAddon"))
+   throw Error("FitAddon.js inválido");
 }
 async function fetchAsset(name,url,min){
  const target=path.join(root,name);
