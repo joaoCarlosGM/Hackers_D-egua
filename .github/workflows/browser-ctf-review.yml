@@ -30,7 +30,7 @@ jobs:
       - name: Fetch and verify Linux browser emulator assets
         run: node scripts/prepare-v86.mjs
       - name: Install Chromium for real Linux boot test
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
       - name: Verify real v86 Linux shell boot in headless browser
         run: node scripts/test-v86-boot.mjs
       - name: Build GitHub Pages bundle
