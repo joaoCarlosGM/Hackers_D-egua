@@ -329,11 +329,8 @@ export default function CtfReviewBrowser(){
       <span>↑↓ histórico · Ctrl+C interromper · Enter executar</span>
     </div>
     <div className="ctf-terminal-quick">
-      <span>Comandos para a aula:</span>
-      {["pwd","ls -la","cat missao.txt","find /var/tmp -name '.*'","cat /home/aluno/desafios/logs/auth.log",
-        "dig @127.0.0.1 ctf.hackerspaidegua.local TXT"].map(cmd=>
-        <button type="button" key={cmd} disabled={!ready} onClick={()=>sendQuickCommand(cmd)}
-          title={"Executar no Linux: "+cmd}>{cmd}</button>)}
+      <span>O enunciado fica acima do terminal. Leia a situação-problema antes de executar comandos.</span>
+      <button type="button" disabled={!ready} onClick={()=>sendQuickCommand("cat missao.txt")}>Ler instruções da VM</button>
     </div>
     <div className="ctf-terminal-utilities">
       <button type="button" disabled={!ready} onClick={()=>{machine.current?.serial0_send("\x03");terminal.current?.focus();}}>Ctrl+C</button>
