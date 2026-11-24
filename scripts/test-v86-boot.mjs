@@ -28,7 +28,7 @@ const html=[
 const bootstrap=html.split("<script>")[1]?.split("</script>")[0];
 if(!bootstrap)throw Error("Missing test browser bootstrap script");
 const hash=createHash("sha256").update(bootstrap).digest("base64");
-const csp="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-"+hash+"'; connect-src 'self'; object-src 'none';";
+const csp="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-"+hash+"'; worker-src 'self' blob:; connect-src 'self'; object-src 'none';";
 const securedHtml=html.replace("<script src=", '<meta http-equiv="Content-Security-Policy" content="'+csp+'"><script src=');
 const server=createServer(async(req,res)=>{
  try{
