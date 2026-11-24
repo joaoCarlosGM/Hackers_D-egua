@@ -52,13 +52,25 @@ export default function CtfReviewBrowser(){
  const [busy,setBusy]=useState(false),[challenge,setChallenge]=useState(0),[flag,setFlag]=useState("");
  const [solved,setSolved]=useState<number[]>([]),[writeups,setWriteups]=useState<Record<string,W>>({});
  const [saved,setSaved]=useState(0),[pending,setPending]=useState(0);
+ const [projector,setProjector]=useState(false),[fontSize,setFontSize]=useState(17);
  const screen=useRef<HTMLTextAreaElement>(null),machine=useRef<VM|null>(null);
+ const commandInput=useRef<HTMLInputElement>(null);
+ const bootTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const script=useRef<string[]>([]),stage=useRef(-1),tail=useRef(""),out=useRef("");
  const events=useRef<E[]>([]),locked=useRef(false),activeRun=useRef<string|null>(null);
  const readyRef=useRef(false),mounted=useRef(true),labSeed=useRef(""),setupValid=useRef(false);
  const current=writeups[String(challenge)]||{command:"",reason:"",evidence:""};
  useEffect(()=>{mounted.current=true;void rpc<Run[]>("ctf_teacher_review_history").then(setHistory).catch(e=>setError((e as Error).message));
-  return()=>{mounted.current=false;machine.current?.stop();machine.current?.destroy();machine.current=null;};},[]);
+  return()=>{mounted.current=false;
+   if(bootTimer.current)clearTimeout(bootTimer.current);
+   machine.current?.stop();machine.current?.destroy();machine.current=null;};},[]);
+ useEffect(()=>{
+  if(!projector)return;
+  const onKey=(event:KeyboardEvent)=>{if(event.key==="Escape")setProjector(false);};
+  window.addEventListener("keydown",onKey);
+  return()=>window.removeEventListener("keydown",onKey);
+ },[projector]);
+ useEffect(()=>{if(ready)commandInput.current?.focus();},[ready]);
  const record=(kind:Kind,detail:string)=>{if(!activeRun.current)return;
   for(const part of detail.match(/[\s\S]{1,2400}/g)||[""])events.current.push({kind,detail:part});
   if(events.current.length>2000){events.current.splice(0,events.current.length-2000);setError("Buffer de auditoria cheio.");}
@@ -78,30 +90,55 @@ export default function CtfReviewBrowser(){
    const id=await rpc<string>("ctf_teacher_review_start");activeRun.current=id;
    setRun({id,title:"Revisão Pré-CTF",started_at:new Date().toISOString(),closed_at:null,writeup:{}});
    setSolved([]);setWriteups({});setSaved(0);setReport(null);setReady(false);readyRef.current=false;
+   if(bootTimer.current)clearTimeout(bootTimer.current);
+   bootTimer.current=setTimeout(()=>{
+    if(activeRun.current===id&&!readyRef.current&&mounted.current){
+     const reason="O Linux não concluiu a inicialização. Atualize a página (Ctrl+Shift+R), encerre a sessão e inicie novamente. Se persistir, verifique o console do navegador.";
+     setStatus("Tempo limite de inicialização");
+     setError(reason);record("error",reason);
+     print("\n"+reason+"\n");
+    }
+   },90000);
    record("vm_boot","Linux emulado v86 iniciado pelo professor");
    setStatus("Carregando imagem Linux...");await library();
    if(!window.V86)throw Error("v86 indisponível");
    labSeed.current=Math.random().toString(16).slice(2,8).toUpperCase();
    script.current=initCommands(labSeed.current);
-   stage.current=-1;tail.current="";setupValid.current=false;if(screen.current)screen.current.value="Inicializando v86 + Linux...\\n";
+   stage.current=-1;tail.current="";setupValid.current=false;if(screen.current)screen.current.value="Inicializando v86 + Linux...\n";
    const vm=new window.V86({
      wasm_path:assets+"v86.wasm",bios:{url:assets+"seabios.bin"},vga_bios:{url:assets+"vgabios.bin"},
      bzimage:{url:assets+"buildroot-bzimage68.bin",async:false},filesystem:{},
      memory_size:96*1024*1024,vga_memory_size:2*1024*1024,
-     cmdline:"tsc=reliable mitigations=off random.trust_cpu=on",autostart:true,disable_keyboard:true
+     cmdline:"tsc=reliable mitigations=off random.trust_cpu=on",autostart:true,disable_keyboard:true,disable_speaker:true
    });machine.current=vm;setStatus("Linux inicializando...");
    vm.add_listener("serial0-output-byte",byte=>{const char=String.fromCharCode(byte);if(char==="\r")return;
      tail.current=(tail.current+char).slice(-350);
      if(tail.current.includes("\nHPDE_LAB_PRONTO\n"))setupValid.current=true;
+     // Mostra o boot Linux ao professor. Oculta comandos de provisionamento e flags.
+     if(!readyRef.current&&stage.current===-1)print(char);
      if(!readyRef.current){
        if(stage.current===-1 && /(?:~% |# |\$ )$/.test(tail.current)){
          stage.current=0;setStatus("Preparando quatro desafios...");
+         print("\nLinux iniciado. Preparando os arquivos e ferramentas da missão...\n");
          vm.serial0_send(script.current[0]+"; printf '\\nHPDE_MARK_0\\n'\n");
        }else if(stage.current>=0&&tail.current.includes("\nHPDE_MARK_"+stage.current+"\n")){
          tail.current="";
          if(stage.current<script.current.length-1){stage.current++;vm.serial0_send(script.current[stage.current]+"; printf '\\nHPDE_MARK_"+stage.current+"\\n'\n");}
-         else if(setupValid.current){readyRef.current=true;setReady(true);record("vm_ready","Linux e quatro desafios preparados");setStatus("Pronto · digite cat missao.txt");print("\nLinux pronto. Use cat missao.txt\n");}
-         else{record("error","Falha ao preparar filesystem da VM");setError("A imagem Linux iniciou, mas não permitiu criar os arquivos dos desafios.");setStatus("Falha na preparação do laboratório");}
+         else if(setupValid.current){
+           if(bootTimer.current)clearTimeout(bootTimer.current);
+           readyRef.current=true;setReady(true);
+           record("vm_ready","Linux e quatro desafios preparados");
+           setStatus("Linux pronto · digite cat missao.txt");
+           print("\n✓ Linux pronto. Use cat missao.txt\n\n");
+           commandInput.current?.focus();
+         }
+         else{
+           if(bootTimer.current)clearTimeout(bootTimer.current);
+           record("error","Falha ao preparar filesystem da VM");
+           setError("O Linux iniciou, mas não conseguiu preparar os quatro desafios. Encerre e inicie novamente.");
+           setStatus("Falha na preparação do laboratório");
+           print("\nFalha ao preparar o laboratório.\n");
+         }
        }
        return;
      }
@@ -112,7 +149,8 @@ export default function CtfReviewBrowser(){
   finally{setBusy(false);}
  }
  const send=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();if(!readyRef.current||!machine.current||!input.trim())return;
-   record("command",input.trim());machine.current.serial0_send(input+"\n");setInput("");};
+   record("command",input.trim());machine.current.serial0_send(input+"\n");setInput("");
+   commandInput.current?.focus();};
  const validate=()=>{const keys=["FLAG{ARQUIVO_REVIS_"+labSeed.current+"}","FLAG{GRUPO_REVIS_"+labSeed.current+"}","FLAG{IP_198.51.100.44}","FLAG{DNS_REVIS_"+labSeed.current+"}"];
   if(flag.trim()===keys[challenge]){
    if(!solved.includes(challenge)){setSolved(v=>[...v,challenge]);record("challenge","Objetivo "+(challenge+1)+" confirmado sem pontos");}
@@ -122,6 +160,7 @@ export default function CtfReviewBrowser(){
   try{await rpc("ctf_teacher_review_writeup",{p_run:activeRun.current,p_writeup:writeups});record("writeup","Write-up salvo");await sync();setStatus("Write-up salvo no Supabase");}
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function close(){if(!activeRun.current)return;setBusy(true);
+  if(bootTimer.current)clearTimeout(bootTimer.current);
   try{record("vm_stop","Revisão demonstrativa encerrada");if(out.current){record("output",out.current);out.current="";}
    await sync();await rpc("ctf_teacher_review_close",{p_run:activeRun.current});
    machine.current?.stop();machine.current?.destroy();machine.current=null;activeRun.current=null;
@@ -129,7 +168,7 @@ export default function CtfReviewBrowser(){
   }catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function audit(id:string){setBusy(true);try{setReport(await rpc<Report>("ctf_teacher_review_report",{p_run:id}));}
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- return <section className="ctf-browser">
+ return <section className={"ctf-browser"+(projector?" ctf-projector":"")}>
   <div className="ctf-browser-head"><div><p>HACKERS PAI D'ÉGUA / REVISÃO PRÉ-CTF</p>
    <h2>Laboratório Linux do professor</h2><small>v86 + Buildroot · 4 desafios · sem notas nem pontos</small></div>
    {run?<button onClick={()=>void close()} disabled={busy}>Encerrar demonstração</button>:
@@ -137,10 +176,20 @@ export default function CtfReviewBrowser(){
   <p role="status" className="ctf-browser-status">{status}</p>{error&&<p role="alert" className="error">{error}</p>}
   <div className="ctf-browser-stats"><div>Progresso <strong>{solved.length}/4</strong></div>
     <div>Auditoria <strong>{saved} eventos</strong></div><div>Sincronização <strong>{pending} pendentes</strong></div></div>
-  {run&&<><div className="ctf-browser-terminal"><p>Linux real emulado localmente no navegador, sem executor Docker.</p>
-    <textarea ref={screen} readOnly aria-label="Saída serial da máquina Linux"/>
+  {run&&<><div className="ctf-browser-terminal">
+    <div className="ctf-terminal-toolbar">
+     <span><strong>Terminal Linux · v86</strong> <small>{ready?"● Pronto para comandos":"● "+status}</small></span>
+     <div className="ctf-terminal-controls">
+      <button type="button" onClick={()=>setFontSize(n=>Math.max(12,n-2))} aria-label="Diminuir fonte do terminal">A−</button>
+      <button type="button" onClick={()=>setFontSize(n=>Math.min(30,n+2))} aria-label="Aumentar fonte do terminal">A+</button>
+      <button type="button" aria-pressed={projector} onClick={()=>{setProjector(v=>!v);commandInput.current?.focus();}}>
+       {projector?"Sair da projeção (Esc)":"⛶ Ampliar para projeção"}
+      </button>
+     </div>
+    </div>
+    <textarea ref={screen} readOnly style={{fontSize:fontSize+"px"}} aria-label="Saída serial da máquina Linux"/>
     <form onSubmit={send}><label htmlFor="ctf-browser-command">aluno@hackers-ctf:~$</label>
-      <input id="ctf-browser-command" disabled={!ready} value={input} onChange={e=>setInput(e.target.value)} spellCheck={false}/>
+      <input ref={commandInput} id="ctf-browser-command" disabled={!ready} value={input} onChange={e=>setInput(e.target.value)} spellCheck={false}/>
       <button disabled={!ready}>Executar</button></form>
     <button disabled={!ready} onClick={()=>machine.current?.serial0_send("\x03")}>Ctrl+C</button>
     <button onClick={()=>{if(screen.current)screen.current.value="";}}>Limpar tela</button>

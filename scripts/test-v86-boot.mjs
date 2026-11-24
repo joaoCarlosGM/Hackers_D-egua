@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "@playwright/test";
+import { createHash } from "node:crypto";
 
 const root=path.resolve("public/ctf-v86");
 const mime={".js":"application/javascript",".wasm":"application/wasm",".bin":"application/octet-stream"};
@@ -12,7 +13,7 @@ const html=[
  "const vm=new V86({wasm_path:'/v86.wasm',bios:{url:'/seabios.bin'},vga_bios:{url:'/vgabios.bin'},",
  "bzimage:{url:'/buildroot-bzimage68.bin',async:false},filesystem:{},memory_size:96*1024*1024,",
  "vga_memory_size:2*1024*1024,cmdline:'tsc=reliable mitigations=off random.trust_cpu=on',",
- "autostart:true,disable_keyboard:true});window.__vm=vm;",
+ "autostart:true,disable_keyboard:true,disable_speaker:true});window.__vm=vm;",
  "let sent=false;vm.add_listener('serial0-output-byte',byte=>{",
  "const c=String.fromCharCode(byte);if(c==='\\r')return;",
  "window.__serial=(window.__serial+c).slice(-4000);",
@@ -23,9 +24,15 @@ const html=[
  "});",
  "</script>"
 ].join("\n");
+// Reproduce the strict GitHub Pages CSP including the narrowly-scoped WebAssembly permission.
+const bootstrap=html.split("<script>")[1]?.split("</script>")[0];
+if(!bootstrap)throw Error("Missing test browser bootstrap script");
+const hash=createHash("sha256").update(bootstrap).digest("base64");
+const csp="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-"+hash+"'; worker-src 'self' blob:; connect-src 'self'; object-src 'none';";
+const securedHtml=html.replace("<script src=", '<meta http-equiv="Content-Security-Policy" content="'+csp+'"><script src=');
 const server=createServer(async(req,res)=>{
  try{
-  if(req.url==="/"){res.writeHead(200,{"content-type":"text/html"});return res.end(html);}
+  if(req.url==="/"){res.writeHead(200,{"content-type":"text/html"});return res.end(securedHtml);}
   const name=String(req.url).split("?")[0].slice(1);
   if(!["libv86.js","v86.wasm","seabios.bin","vgabios.bin","buildroot-bzimage68.bin"].includes(name)){
    res.writeHead(404);return res.end();
@@ -43,8 +50,16 @@ try{
  browser=await chromium.launch({headless:true,args:["--no-sandbox"]});
  const page=await browser.newPage();
  page.on("pageerror",error=>process.stderr.write("Browser error: "+error.message+"\n"));
+ page.on("console",m=>{if(m.type()==="error"||m.type()==="warning")process.stderr.write("Console "+m.type()+": "+m.text()+"\n");});
+ page.on("requestfailed",r=>process.stderr.write("Request failed: "+r.url()+" "+r.failure()?.errorText+"\n"));
  await page.goto("http://127.0.0.1:"+port,{waitUntil:"domcontentloaded"});
- await page.waitForFunction(()=>window.__result==="passed",undefined,{timeout:90000});
+ const state=await page.evaluate(()=>({
+   boot:window.__result??null,emulatorGlobal:typeof window.V86,instanceCreated:!!window.__vm,
+   csp:document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content??null
+ }));
+ console.log("CSP bootstrap state:",JSON.stringify(state));
+ if(!state.instanceCreated)throw Error("Browser VM bootstrap did not execute under CSP");
+ await page.waitForFunction(()=>window.__result==="passed",undefined,{timeout:35000});
  await page.evaluate(() => {
   window.__serial="";
   window.__vm.serial0_send("id; ls -ld /etc /var/tmp /home; mkdir -p /var/tmp/hpde-ctf-check; echo v86-ok > /var/tmp/hpde-ctf-check/flag; cat /var/tmp/hpde-ctf-check/flag; echo HPDE_FS_TEST_END"+String.fromCharCode(10));
