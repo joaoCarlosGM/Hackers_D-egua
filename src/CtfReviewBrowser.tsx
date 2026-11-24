@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { rpc } from "./api";
-import { reviewMissions } from "./ctfReviewMissions";
+import { explainReviewCommand, reviewMissions } from "./ctfReviewMissions";
 import "./ctf-review-browser.css";
 type Kind="vm_boot"|"vm_ready"|"lab_setup"|"command"|"output"|"challenge"|"writeup"|"vm_stop"|"error";
 type E={kind:Kind;detail:string};
@@ -92,6 +92,7 @@ export default function CtfReviewBrowser(){
  const current=writeups[String(challenge)]||{command:"",reason:"",evidence:""};
  const mission=reviewMissions[challenge];
  const [showExplanations,setShowExplanations]=useState(false);
+ const [lastAction,setLastAction]=useState<{command:string;what:string;why:string}|null>(null);
  useEffect(()=>{mounted.current=true;void rpc<Run[]>("ctf_teacher_review_history").then(setHistory).catch(e=>setError((e as Error).message));
   return()=>{mounted.current=false;
    if(bootTimer.current)clearTimeout(bootTimer.current);
@@ -130,7 +131,10 @@ export default function CtfReviewBrowser(){
   terminalInput.current="";
  }
  function recordCommand(text:string){
-  if(text.trim())record("command",text.trim().slice(0,512));
+  if(!text.trim())return;
+  const command=text.trim().slice(0,512);
+  record("command",command);
+  setLastAction({command,...explainReviewCommand(command)});
  }
  function ingestTerminalInput(data:string){
   if(!readyRef.current||!machine.current)return;
@@ -161,7 +165,7 @@ export default function CtfReviewBrowser(){
    const id=await rpc<string>("ctf_teacher_review_start");activeRun.current=id;
    setRun({id,title:"Revisão Pré-CTF",started_at:new Date().toISOString(),closed_at:null,writeup:{}});
    setSolved([]);setWriteups({});setSaved(0);setReport(null);setReady(false);readyRef.current=false;
-   setShowExplanations(false);
+   setShowExplanations(false);setLastAction(null);
    if(bootTimer.current)clearTimeout(bootTimer.current);
    bootTimer.current=setTimeout(()=>{
     if(activeRun.current===id&&!readyRef.current&&mounted.current){
@@ -285,7 +289,7 @@ export default function CtfReviewBrowser(){
       <nav className="ctf-browser-tabs" aria-label="Escolher desafio da revisão">
     {reviewMissions.map((item,i)=><button key={item.id} type="button" className={i===challenge?"selected":""}
       aria-current={i===challenge?"step":undefined}
-      onClick={()=>{setChallenge(i);setFlag("");setShowExplanations(false);}}>
+      onClick={()=>{setChallenge(i);setFlag("");setShowExplanations(false);setLastAction(null);}}>
       <small>DESAFIO {String(item.id).padStart(2,"0")}{solved.includes(i)?" · CONCLUÍDO":""}</small>
       <strong>{solved.includes(i)?"✓ ":""}{item.subtitle}</strong>
     </button>)}
@@ -343,6 +347,12 @@ export default function CtfReviewBrowser(){
       <div className="ctf-guide-eyebrow">GUIA DE INVESTIGAÇÃO</div>
       <h3>Por onde começar?</h3>
       <p>{mission.startingPoint}</p>
+      {lastAction&&<div className="ctf-command-explanation" role="status">
+       <div className="ctf-guide-eyebrow">ÚLTIMO COMANDO EXECUTADO</div>
+       <code>{lastAction.command}</code>
+       <p><b>O que ele faz:</b> {lastAction.what}</p>
+       <p><b>Por que usar:</b> {lastAction.why}</p>
+      </div>}
       <h4>O que fazer e por quê</h4>
       <ol className="ctf-investigation-steps">
        {mission.steps.map((item,i)=><li key={i}>
@@ -395,7 +405,7 @@ export default function CtfReviewBrowser(){
     <label>3. O que encontrou? (resultado e conclusão)<textarea value={current.evidence} placeholder="Registre o resultado e o que ele demonstra..." onChange={e=>edit("evidence",e.target.value)}/></label>
     <div className="ctf-evidence-actions">
      <button type="button" disabled={busy} onClick={()=>void saveWriteup()}>Salvar write-up no Supabase</button>
-     <button type="button" disabled={challenge>=reviewMissions.length-1} onClick={()=>{setChallenge(i=>i+1);setFlag("");setShowExplanations(false);}}>Próximo desafio →</button>
+     <button type="button" disabled={challenge>=reviewMissions.length-1} onClick={()=>{setChallenge(i=>i+1);setFlag("");setShowExplanations(false);setLastAction(null);}}>Próximo desafio →</button>
     </div>
    </section></>}
   <div className="ctf-browser-card"><h3>Histórico de demonstrações</h3>
