@@ -114,17 +114,21 @@ try{
  // and deliver actual keystrokes to the Linux serial port.
  await page.evaluate(()=>{
    window.__serial="";
-   window.__xterm.write("\\x1b[1;32mHPDE_COLOR_RENDER\\x1b[0m\\r\\n");
+   window.__xterm.write("\x1b[1;32mHPDE_COLOR_RENDER\x1b[0m\r\n");
  });
- await page.waitForFunction(()=>window.__xterm.buffer.active.getLine(
-     window.__xterm.buffer.active.length-2)?.translateToString().includes("HPDE_COLOR_RENDER"),
-     undefined,{timeout:10000});
+ await page.waitForFunction(()=>{
+   const buf=window.__xterm.buffer.active;
+   for(let row=0;row<buf.length;row++){
+    if(buf.getLine(row)?.translateToString().includes("HPDE_COLOR_RENDER"))return true;
+   }
+   return false;
+ },undefined,{timeout:10000});
  const ansi=await page.locator("#xterm-test .xterm-fg-2").count();
  if(!ansi)throw Error("xterm.js did not interpret ANSI green foreground color");
  await page.locator("#xterm-test .xterm-helper-textarea").focus();
  await page.keyboard.type("echo HPDE_XTERM_INPUT_OK");
  await page.keyboard.press("Enter");
- await page.waitForFunction(()=>window.__serial.includes("\\nHPDE_XTERM_INPUT_OK\\n"),undefined,{timeout:15000});
+ await page.waitForFunction(()=>window.__serial.includes("\nHPDE_XTERM_INPUT_OK\n"),undefined,{timeout:15000});
  console.log("PASS: xterm.js renders ANSI colors and Enter sends real commands to the v86 Linux shell.");
 
  console.log("PASS: v86 booted real Linux and executed a shell printf through the serial interface.");
