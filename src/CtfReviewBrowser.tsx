@@ -125,7 +125,39 @@ export default function CtfReviewBrowser(){
   }}finally{locked.current=false;}}
  useEffect(()=>{const id=setInterval(()=>{if(out.current){record("output",out.current);out.current="";}void sync();},1250);
   return()=>clearInterval(id);});
- const print=(text:string)=>{if(!screen.current)return;const el=screen.current;el.value=(el.value+text).slice(-90000);el.scrollTop=el.scrollHeight;};
+ const print=(text:string)=>terminal.current?.write(text.replace(/\r?\n/g,"\r\n"));
+ function destroyTerminal(){
+  termResize.current?.disconnect();termResize.current=null;
+  termSubscription.current?.dispose();termSubscription.current=null;
+  terminal.current?.dispose();terminal.current=null;fitAddon.current=null;
+  terminalInput.current="";
+ }
+ function recordCommand(text:string){
+  if(text.trim())record("command",text.trim().slice(0,512));
+ }
+ function ingestTerminalInput(data:string){
+  if(!readyRef.current||!machine.current)return;
+  // xterm.js renders the cursor and edits; BusyBox/Linux handles command execution.
+  machine.current.serial0_send(data.replace(/\r/g,"\n"));
+  for(let i=0;i<data.length;i++){
+   const key=data[i];
+   if(key==="\r"||key==="\n"){
+    recordCommand(terminalInput.current);
+    terminalInput.current="";
+   }else if(key==="\u0003")terminalInput.current="";
+   else if(key==="\u007f"||key==="\b")terminalInput.current=terminalInput.current.slice(0,-1);
+   else if(key==="\u001b"){
+    const sequence=/^\u001b\[[0-9;]*[A-Za-z~]/.exec(data.slice(i));
+    if(sequence)i+=sequence[0].length-1;
+   }else if(key>=" "&&key!=="\u007f")terminalInput.current=(terminalInput.current+key).slice(-512);
+  }
+ }
+ function sendQuickCommand(value:string){
+  if(!readyRef.current||!machine.current)return;
+  recordCommand(value);
+  machine.current.serial0_send(value+"\n");
+  terminal.current?.focus();
+ }
  const reload=async()=>setHistory(await rpc<Run[]>("ctf_teacher_review_history"));
  async function start(){if(busy)return;setBusy(true);setError("");setStatus("Criando sessão...");
   try{
@@ -142,26 +174,51 @@ export default function CtfReviewBrowser(){
     }
    },90000);
    record("vm_boot","Linux emulado v86 iniciado pelo professor");
-   setStatus("Carregando imagem Linux...");await library();
+   setStatus("Carregando o terminal xterm.js e a imagem Linux...");
+   await Promise.all([library(),loadTerminal()]);
    if(!window.V86)throw Error("v86 indisponível");
    labSeed.current=Math.random().toString(16).slice(2,8).toUpperCase();
    script.current=initCommands(labSeed.current);
-   stage.current=-1;tail.current="";setupValid.current=false;if(screen.current)screen.current.value="Inicializando v86 + Linux...\n";
+   stage.current=-1;tail.current="";setupValid.current=false;
+   destroyTerminal();
+   if(!terminalHost.current||!window.Terminal||!window.FitAddon?.FitAddon)
+    throw Error("Não foi possível montar o terminal xterm.js no painel.");
+   const xterm=new window.Terminal({
+     cursorBlink:true,convertEol:true,fontFamily:'"Cascadia Code", "JetBrains Mono", Consolas, monospace',
+     fontSize,lineHeight:1.45,scrollback:2000,allowTransparency:false,
+     theme:{
+       background:"#091321",foreground:"#dbe8e8",cursor:"#55e0b8",
+       selectionBackground:"#255f66",black:"#0e1624",red:"#fb807d",
+       green:"#72e2ad",yellow:"#f8c579",blue:"#8ab7f5",magenta:"#d7a3ef",
+       cyan:"#6bdad3",white:"#eefaf6"
+     }
+   });
+   const fit=new window.FitAddon.FitAddon();
+   xterm.loadAddon(fit);
+   xterm.open(terminalHost.current);terminal.current=xterm;fitAddon.current=fit;
+   termSubscription.current=xterm.onData(ingestTerminalInput);
+   termResize.current=new ResizeObserver(()=>{try{fit.fit();}catch{/* unmounted */}});
+   termResize.current.observe(terminalHost.current);
+   requestAnimationFrame(()=>{fit.fit();xterm.focus();});
+   xterm.writeln("\x1b[1;36mHACKERS PAI D'ÉGUA  /  LABORATÓRIO LINUX · xterm.js\x1b[0m");
+   xterm.writeln("\x1b[90m────────────────────────────────────────────────────────────\x1b[0m");
+   xterm.writeln("\x1b[33m[PROFESSOR]\x1b[0m Iniciando Linux real emulado no navegador...");
+   xterm.writeln("\x1b[90mAguarde a preparação dos quatro desafios.\x1b[0m");
+   xterm.writeln("");
    const vm=new window.V86({
      wasm_path:assets+"v86.wasm",bios:{url:assets+"seabios.bin"},vga_bios:{url:assets+"vgabios.bin"},
      bzimage:{url:assets+"buildroot-bzimage68.bin",async:false},filesystem:{},
      memory_size:96*1024*1024,vga_memory_size:2*1024*1024,
      cmdline:"tsc=reliable mitigations=off random.trust_cpu=on",autostart:true,disable_keyboard:true,disable_speaker:true
    });machine.current=vm;setStatus("Linux inicializando...");
-   vm.add_listener("serial0-output-byte",byte=>{const char=String.fromCharCode(byte);if(char==="\r")return;
+   vm.add_listener("serial0-output-byte",byte=>{const char=String.fromCharCode(byte);
      tail.current=(tail.current+char).slice(-350);
      if(tail.current.includes("\nHPDE_LAB_PRONTO\n"))setupValid.current=true;
-     // Mostra o boot Linux ao professor. Oculta comandos de provisionamento e flags.
-     if(!readyRef.current&&stage.current===-1)print(char);
+     // Oculta o boot inicial e os comandos de provisionamento, incluindo as flags.
      if(!readyRef.current){
        if(stage.current===-1 && /(?:~% |# |\$ )$/.test(tail.current)){
          stage.current=0;setStatus("Preparando quatro desafios...");
-         print("\nLinux iniciado. Preparando os arquivos e ferramentas da missão...\n");
+         print("\x1b[36mLinux iniciado. Preparando arquivos e ferramentas da missão...\x1b[0m\n");
          vm.serial0_send(script.current[0]+"; printf '\\nHPDE_MARK_0\\n'\n");
        }else if(stage.current>=0&&tail.current.includes("\nHPDE_MARK_"+stage.current+"\n")){
          tail.current="";
@@ -171,8 +228,8 @@ export default function CtfReviewBrowser(){
            readyRef.current=true;setReady(true);
            record("vm_ready","Linux e quatro desafios preparados");
            setStatus("Linux pronto · digite cat missao.txt");
-           print("\n✓ Linux pronto. Use cat missao.txt\n\n");
-           commandInput.current?.focus();
+           print("\x1b[1;32m✓ Linux pronto.\x1b[0m Use \x1b[1mcat missao.txt\x1b[0m para começar.\n\n");
+           terminal.current?.focus();
          }
          else{
            if(bootTimer.current)clearTimeout(bootTimer.current);
@@ -184,15 +241,13 @@ export default function CtfReviewBrowser(){
        }
        return;
      }
-     print(char);out.current+=char;if(out.current.length>2000){record("output",out.current);out.current="";}
+     terminal.current?.write(char);out.current+=char;if(out.current.length>2000){record("output",out.current);out.current="";}
    });
    await reload();
   }catch(e){setError((e as Error).message);record("error",(e as Error).message);setStatus("Falha ao iniciar");}
   finally{setBusy(false);}
  }
- const send=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();if(!readyRef.current||!machine.current||!input.trim())return;
-   record("command",input.trim());machine.current.serial0_send(input+"\n");setInput("");
-   commandInput.current?.focus();};
+ 
  const validate=()=>{const keys=["FLAG{ARQUIVO_REVIS_"+labSeed.current+"}","FLAG{GRUPO_REVIS_"+labSeed.current+"}","FLAG{IP_198.51.100.44}","FLAG{DNS_REVIS_"+labSeed.current+"}"];
   if(flag.trim()===keys[challenge]){
    if(!solved.includes(challenge)){setSolved(v=>[...v,challenge]);record("challenge","Objetivo "+(challenge+1)+" confirmado sem pontos");}
@@ -206,6 +261,7 @@ export default function CtfReviewBrowser(){
   try{record("vm_stop","Revisão demonstrativa encerrada");if(out.current){record("output",out.current);out.current="";}
    await sync();await rpc("ctf_teacher_review_close",{p_run:activeRun.current});
    machine.current?.stop();machine.current?.destroy();machine.current=null;activeRun.current=null;
+   destroyTerminal();
    readyRef.current=false;setReady(false);setRun(null);setStatus("Encerrada; histórico salvo no Supabase");await reload();
   }catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function audit(id:string){setBusy(true);try{setReport(await rpc<Report>("ctf_teacher_review_report",{p_run:id}));}
