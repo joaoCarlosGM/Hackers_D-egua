@@ -94,10 +94,10 @@ export default function CtfReviewBrowser(){
      if(!readyRef.current){
        if(stage.current===-1 && /(?:~% |# |\$ )$/.test(tail.current)){
          stage.current=0;setStatus("Preparando quatro desafios...");
-         vm.serial0_send(script.current[0]+"; echo HPDE_STEP_0\n");
-       }else if(stage.current>=0&&tail.current.includes("HPDE_STEP_"+stage.current)){
+         vm.serial0_send(script.current[0]+"; printf '\\nHPDE_MARK_0\\n'\n");
+       }else if(stage.current>=0&&tail.current.includes("\nHPDE_MARK_"+stage.current+"\n")){
          tail.current="";
-         if(stage.current<script.current.length-1){stage.current++;vm.serial0_send(script.current[stage.current]+"; echo HPDE_STEP_"+stage.current+"\n");}
+         if(stage.current<script.current.length-1){stage.current++;vm.serial0_send(script.current[stage.current]+"; printf '\\nHPDE_MARK_"+stage.current+"\\n'\n");}
          else{readyRef.current=true;setReady(true);record("vm_ready","Linux e quatro desafios preparados");setStatus("Pronto · digite cat missao.txt");print("\nLinux pronto. Use cat missao.txt\n");}
        }
        return;
