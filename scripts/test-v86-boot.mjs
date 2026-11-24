@@ -44,7 +44,7 @@ try{
  const page=await browser.newPage();
  page.on("pageerror",error=>process.stderr.write("Browser error: "+error.message+"\n"));
  await page.goto("http://127.0.0.1:"+port,{waitUntil:"domcontentloaded"});
- await page.waitForFunction(()=>window.__result==="passed",{timeout:90000});
+ await page.waitForFunction(()=>window.__result==="passed",undefined,{timeout:90000});
  const output=await page.evaluate(()=>window.__serial);
  console.log("PASS: v86 booted real Linux and executed a shell printf through the serial interface.");
  console.log("Terminal tail:",output.slice(-340));
