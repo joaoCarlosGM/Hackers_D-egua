@@ -5,17 +5,23 @@ import { chromium } from "@playwright/test";
 import { createHash } from "node:crypto";
 
 const root=path.resolve("public/ctf-v86");
-const mime={".js":"application/javascript",".wasm":"application/wasm",".bin":"application/octet-stream"};
+const mime={".js":"application/javascript",".css":"text/css",".wasm":"application/wasm",".bin":"application/octet-stream"};
 const html=[
- "<!doctype html><meta charset='utf-8'><script src='/libv86.js'></script>",
+ "<!doctype html><meta charset='utf-8'><link rel='stylesheet' href='/xterm.css'>",
+ "<script src='/libv86.js'></script><script src='/xterm.js'></script><script src='/xterm-addon-fit.js'></script>",
+ "<div id='xterm-test' style='width:760px;height:340px'></div>",
  "<script>",
  "window.__result='booting';window.__serial='';",
  "const vm=new V86({wasm_path:'/v86.wasm',bios:{url:'/seabios.bin'},vga_bios:{url:'/vgabios.bin'},",
  "bzimage:{url:'/buildroot-bzimage68.bin',async:false},filesystem:{},memory_size:96*1024*1024,",
  "vga_memory_size:2*1024*1024,cmdline:'tsc=reliable mitigations=off random.trust_cpu=on',",
  "autostart:true,disable_keyboard:true,disable_speaker:true});window.__vm=vm;",
+ "const xterm=new Terminal({convertEol:true,cursorBlink:true,fontSize:14});",
+ "xterm.open(document.getElementById('xterm-test'));window.__xterm=xterm;",
+ "const fit=new FitAddon.FitAddon();xterm.loadAddon(fit);fit.fit();",
+ "xterm.onData(data=>vm.serial0_send(data.replace(/\\r/g,'\\n')));",
  "let sent=false;vm.add_listener('serial0-output-byte',byte=>{",
- "const c=String.fromCharCode(byte);if(c==='\\r')return;",
+ "const c=String.fromCharCode(byte);xterm.write(c);if(c==='\\r')return;",
  "window.__serial=(window.__serial+c).slice(-4000);",
  "if(!sent && /(?:~% |# |\\$ )$/.test(window.__serial)){",
  "sent=true;vm.serial0_send('printf \"\\\\nHPDE_V86_LINUX_OK\\\\n\"\\n');",
@@ -28,13 +34,13 @@ const html=[
 const bootstrap=html.split("<script>")[1]?.split("</script>")[0];
 if(!bootstrap)throw Error("Missing test browser bootstrap script");
 const hash=createHash("sha256").update(bootstrap).digest("base64");
-const csp="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-"+hash+"'; worker-src 'self' blob:; connect-src 'self'; object-src 'none';";
+const csp="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-"+hash+"'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none';";
 const securedHtml=html.replace("<script src=", '<meta http-equiv="Content-Security-Policy" content="'+csp+'"><script src=');
 const server=createServer(async(req,res)=>{
  try{
   if(req.url==="/"){res.writeHead(200,{"content-type":"text/html"});return res.end(securedHtml);}
   const name=String(req.url).split("?")[0].slice(1);
-  if(!["libv86.js","v86.wasm","seabios.bin","vgabios.bin","buildroot-bzimage68.bin"].includes(name)){
+  if(!["libv86.js","v86.wasm","seabios.bin","vgabios.bin","buildroot-bzimage68.bin","xterm.js","xterm.css","xterm-addon-fit.js"].includes(name)){
    res.writeHead(404);return res.end();
   }
   const filename=path.join(root,name);
@@ -103,6 +109,23 @@ try{
     !check.includes("13"))
     throw Error("Four-scenario smoke test did not show expected flags, log count or mission.");
  console.log("PASS: scenario files, group permissions, log commands and DNS teaching script executed in browser Linux.");
+
+ // The same xterm.js version used in the teacher prototype must render ANSI
+ // and deliver actual keystrokes to the Linux serial port.
+ await page.evaluate(()=>{
+   window.__serial="";
+   window.__xterm.write("\\x1b[1;32mHPDE_COLOR_RENDER\\x1b[0m\\r\\n");
+ });
+ await page.waitForFunction(()=>window.__xterm.buffer.active.getLine(
+     window.__xterm.buffer.active.length-2)?.translateToString().includes("HPDE_COLOR_RENDER"),
+     undefined,{timeout:10000});
+ const ansi=await page.locator("#xterm-test .xterm-fg-2").count();
+ if(!ansi)throw Error("xterm.js did not interpret ANSI green foreground color");
+ await page.locator("#xterm-test .xterm-helper-textarea").focus();
+ await page.keyboard.type("echo HPDE_XTERM_INPUT_OK");
+ await page.keyboard.press("Enter");
+ await page.waitForFunction(()=>window.__serial.includes("\\nHPDE_XTERM_INPUT_OK\\n"),undefined,{timeout:15000});
+ console.log("PASS: xterm.js renders ANSI colors and Enter sends real commands to the v86 Linux shell.");
 
  console.log("PASS: v86 booted real Linux and executed a shell printf through the serial interface.");
  console.log("Terminal tail:",output.slice(-340));
