@@ -1,59 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { createHash } from "node:crypto";
-import { reviewHashFixture } from "../src/ctfReviewHashFixture";
-import { explainReviewCommand, reviewMissions } from "../src/ctfReviewMissions";
+import { createHash, createCipheriv, pbkdf2Sync } from "node:crypto";
+import { reviewMissions, explainReviewCommand } from "../src/ctfReviewMissions";
 
-describe("revisão pré-CTF no formato do CTF oficial", () => {
-  it("apresenta os cinco casos do roteiro sem pontuação", () => {
-    expect(reviewMissions.map(m => m.id)).toEqual([1, 2, 3, 4, 5]);
-    for (const mission of reviewMissions) {
-      expect(mission.incident.length).toBeGreaterThan(60);
-      expect(mission.context.length).toBeGreaterThan(60);
-      expect(mission.objective.length).toBeGreaterThan(45);
-      expect(mission.deliverable.length).toBeGreaterThan(25);
-      expect(mission.realWorld.length).toBeGreaterThan(45);
-      expect(mission.steps).toHaveLength(3);
-      for (const step of mission.steps) {
-        expect(step.doing.length).toBeGreaterThan(20);
-        expect(step.why.length).toBeGreaterThan(35);
-        expect(step.example.trim()).not.toBe("");
-      }
-      expect(mission.studentQuestion.includes("?")).toBe(true);
-      expect(mission.closing.length).toBeGreaterThan(60);
-      expect(JSON.stringify(mission).toLowerCase()).not.toContain("pontuação:");
-    }
-  });
-
-  it("identifica limitações pedagógicas de permissões e DNS", () => {
-    expect(reviewMissions[1].caveat).toContain("root");
-    expect(reviewMissions[3].caveat).toContain("script");
-    expect(reviewMissions[3].caveat).toContain("Não existe um servidor DNS local real");
-  });
-
-  it("usa os diretórios do roteiro UFPA e demonstra MD5 mais SHA-256 com hashes consistentes", () => {
-    expect(reviewMissions[0].context).toContain("/var/tmp");
-    expect(reviewMissions[1].context).toContain("/opt/desafio_dac/flag.txt");
-    expect(reviewMissions[1].context).toContain("alunos");
-    expect(reviewMissions[2].context).toContain("/var/log/auth_simulado.log");
-    expect(reviewMissions[3].context).toContain("192.168.56.1");
-    expect(reviewMissions[4].context).toContain("/opt/evidencias");
-    expect(reviewMissions[4].objective).toContain("MD5");
-    expect(reviewMissions[4].objective).toContain("SHA-256");
-    const content=reviewHashFixture.fileHeader+"\n"+reviewHashFixture.flag+"\n";
-    expect(createHash("sha256").update(content).digest("hex")).toBe(reviewHashFixture.sha256File);
-    expect(reviewHashFixture.sha256File.endsWith(reviewHashFixture.sha256Suffix)).toBe(true);
-    expect(createHash("md5").update(reviewHashFixture.flag).digest("hex")).toBe(reviewHashFixture.md5Flag);
-  });
-
-  it("explica comandos reais e pipelines sem afirmar êxito da execução", () => {
-    const chmod = explainReviewCommand("chmod g+r /home/aluno/desafios/permissoes/segredo.txt");
-    expect(chmod.what).toContain("permissões");
-    expect(chmod.why).toContain("permissões necessárias");
-    const pipeline = explainReviewCommand("grep 'Failed password' auth.log | cut -d' ' -f6 | sort | uniq -c");
-    expect(pipeline.what).toContain("pipeline");
-    expect(pipeline.why).toContain("contagem");
-    expect(explainReviewCommand("dig @192.168.56.1 ctf.hackerspaidegua.local TXT").why).toContain("script");
-    expect(explainReviewCommand("sha256sum /opt/evidencias/*").what).toContain("SHA-256");
-    expect(explainReviewCommand("md5sum /opt/evidencias/registro_27.txt").why).toContain("não é criptografia");
-  });
+describe("Aula 7 — revisão CTF 1 sem pontuação",()=>{
+ it("mantém exatamente três desafios do roteiro",()=>{
+  expect(reviewMissions.map(m=>m.title)).toEqual([
+   "O Rastro Trancado","O Invasor Insistente","A Impressão Digital, Quebra de MD5 e o Cofre"
+  ]);
+  for(const m of reviewMissions){
+   expect(m.steps).toHaveLength(3);
+   expect(m.incident.length).toBeGreaterThan(35);
+   expect(m.objective.length).toBeGreaterThan(35);
+   expect(m.deliverable.length).toBeGreaterThan(20);
+   expect(m.studentQuestion).toContain("?");
+   expect(JSON.stringify(m)).not.toMatch(/\\b(150|200) pontos\\b/i);
+  }
+ });
+ it("preserva arquivos, wordlist e semântica do PDF",()=>{
+  expect(reviewMissions[0].incident).toContain("/var/tmp");
+  expect(reviewMissions[1].context).toContain("/var/log/auth_simulado.log");
+  expect(reviewMissions[2].context).toContain("50 arquivos .enc");
+  expect(reviewMissions[2].startingPoint).toContain("dicionario_paraense.txt");
+  expect(reviewMissions[2].steps[1].example).toContain("--format=raw-md5");
+  expect(reviewMissions[2].steps[2].example).toContain("openssl");
+ });
+ it("replica o arquivo AES do script do instrutor e confirma SHA-256 ...e4b2",()=>{
+  const salt=Buffer.from("HackPaiD");
+  const keyiv=pbkdf2Sync("paidegua2026",salt,10000,48,"sha256");
+  const cipher=createCipheriv("aes-256-cbc",keyiv.subarray(0,32),keyiv.subarray(32,48));
+  const ciphertext=Buffer.concat([cipher.update("FLAG{cr1pt0_sh4256_p41_d3gu4_m0d1} #92968\\n"),cipher.final()]);
+  const data=Buffer.concat([Buffer.from("Salted__"),salt,ciphertext]);
+  expect(createHash("sha256").update(data).digest("hex")).toBe("3d3f540b1656b4f48c5db9e1fad13883c1b59ef7266c43879673ac4d332fe4b2");
+ });
+ it("explica comandos e pipes",()=>{
+  expect(explainReviewCommand("chmod u+r file").what).toContain("permissões");
+  expect(explainReviewCommand("grep Failed x | sort | uniq -c").what).toContain("pipeline");
+  expect(explainReviewCommand("sha256sum /opt/evidencias/*.enc").what).toContain("SHA-256");
+ });
 });
