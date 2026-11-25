@@ -33,7 +33,7 @@ describe("revisão CTF com enunciado e raciocínio pedagógico", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /O Invasor Insistente/i }));
     expect(screen.getByRole("heading", { name: "O Invasor Insistente" })).toBeTruthy();
-    expect(screen.getByText(/Analise /var/log/auth_simulado.log/i)).toBeTruthy();
+    expect(screen.getByText(/Analise \\/var\\/log\\/auth_simulado\\.log/i)).toBeTruthy();
     expect(screen.queryByText("grep 'Failed password' /var/log/auth_simulado.log | head")).toBeNull();
   });
 
