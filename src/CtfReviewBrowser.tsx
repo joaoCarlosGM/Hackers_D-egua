@@ -505,7 +505,7 @@ export default function CtfReviewBrowser(){
      </section>
     </aside>
    </div>
-   {writeupOpen&&<div className="ctf-writeup-backdrop" onClick={closeWriteup} aria-hidden="true"/>}
+   {writeupOpen&&<button type="button" className="ctf-writeup-backdrop" onClick={closeWriteup} aria-label="Fechar editor de write-up"/>}
    <section className={"ctf-browser-card ctf-evidence-panel"+(writeupOpen?" ctf-writeup-open":"")}
     role={writeupOpen?"dialog":undefined} aria-modal={writeupOpen?true:undefined}
     aria-labelledby="ctf-writeup-title">
