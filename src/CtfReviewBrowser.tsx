@@ -150,7 +150,7 @@ export default function CtfReviewBrowser(){
   document.addEventListener("keydown",protectEditorKeys,true);
   const onEscape=(event:KeyboardEvent)=>{
    if(event.key==="Escape"&&writeupOpen){
-    setWriteupOpen(false);
+    closeWriteup();
     event.stopPropagation();
     return;
    }
