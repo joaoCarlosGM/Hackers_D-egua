@@ -75,7 +75,7 @@ function library(){
   const timeout=setTimeout(()=>{
    s.remove();reject(Error("O Linux v86 demorou demais para carregar. Verifique a conexão e tente uma nova demonstração."));
   },20000);
-  s.onload=()=>{clearTimeout(timeout);window.V86?resolve():reject(Error("v86 não carregou corretamente"));};
+  s.onload=()=>{clearTimeout(timeout);if(window.V86)resolve();else reject(Error("v86 não carregou corretamente"));};
   s.onerror=()=>{clearTimeout(timeout);reject(Error("Assets do v86 indisponíveis. Atualize a página e tente novamente."));};
   document.head.append(s);
  }).catch(e=>{scriptPromise=undefined;throw e;});
