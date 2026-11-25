@@ -128,7 +128,7 @@ export const reviewMissions: ReviewMission[] = [
     steps: [
       { title: "Calcular a impressão digital", doing: "Executar sha256sum sobre todos os arquivos de evidência.", why: "Um hash identifica o conteúdo binário de cada arquivo, independentemente do nome escolhido.", example: "sha256sum /opt/evidencias/*" },
       { title: "Localizar a evidência", doing: "Filtrar o resultado para encontrar o hash terminado em c4e1 e ler a flag do arquivo correspondente.", why: "A condição c4e1 seleciona uma evidência específica entre os 50 candidatos; a flag precisa vir do conteúdo do arquivo.", example: "sha256sum /opt/evidencias/* | grep -E 'c4e1[[:space:]]'" },
-      { title: "Confirmar a flag com MD5", doing: "Aplicar md5sum à flag como texto sem quebra de linha e comparar com a referência publicada.", why: "A comparação demonstra uma verificação de integridade. MD5 é hash, não criptografia reversível, e é inseguro contra colisões.", example: "printf '%s' 'FLAG{MD5_SHA256_INTEGRIDADE_096836}' | md5sum" }
+      { title: "Confirmar a flag com MD5", doing: "Aplicar md5sum à flag como texto sem quebra de linha e comparar com a referência publicada.", why: "A comparação demonstra uma verificação de integridade. MD5 é hash, não criptografia reversível, e é inseguro contra colisões.", example: "printf '%s' 'COLE_AQUI_A_FLAG_ENCONTRADA' | md5sum" }
     ],
     studentQuestion: "Por que calcular hashes é diferente de criptografar, e por que hoje preferimos SHA-256 ao MD5 quando segurança importa?",
     closing: "Explique a descoberta por SHA-256, registre o MD5 correspondente à flag e destaque que MD5 é uma função hash antiga, vulnerável a colisões, não um mecanismo de criptografia."
