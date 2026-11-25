@@ -216,3 +216,25 @@
 .ctf-command-explanation>code {display:block;border:1px solid #295656;background:#0b242b;color:#9ef0c8;border-radius:5px;padding:7px;font:11px/1.5 Consolas,monospace;overflow-wrap:anywhere;}
 .ctf-command-explanation p {font-size:11px;line-height:1.65;margin:10px 0 4px;color:#d2e5df;}
 .ctf-command-explanation b {color:#a1f2c9;}
+
+
+/* Browser fullscreen puts the complete mission in the top layer, avoiding
+   clipping by the administration layout's overflow/positioned ancestors. */
+.ctf-browser:fullscreen,
+.ctf-browser:-webkit-full-screen {
+ width:100vw; height:100dvh; max-width:none;
+ box-sizing:border-box; overflow:hidden; padding:12px;
+ background:#091321; color:#d9efea;
+}
+.ctf-browser:fullscreen::backdrop { background:#091321; }
+.ctf-browser-terminal:focus-within {
+ border-color:#67e0b2;
+ box-shadow:0 0 0 2px #4dd9a838, 0 18px 45px #040d1b4d;
+}
+.ctf-window-head>button:focus-visible,
+.ctf-terminal-controls button:focus-visible {
+ outline:2px solid #7fefc6; outline-offset:2px;
+}
+@media (max-width:880px) {
+ .ctf-browser:fullscreen {padding:4px;}
+}
