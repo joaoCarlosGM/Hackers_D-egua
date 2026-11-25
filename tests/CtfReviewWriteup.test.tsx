@@ -18,6 +18,11 @@ async function startDemo(){
  const result=render(<CtfReviewBrowser/>);
  fireEvent.click(screen.getByRole("button",{name:/Iniciar demonstração/i}));
  await screen.findByRole("heading",{name:/O relatório que desapareceu/i});
+ // Simulate a failed emulator asset fetch: it settles the asynchronous
+ // session bootstrap and enables the form without needing to boot Linux in jsdom.
+ await waitFor(()=>expect(document.querySelector('script[src*="libv86.js"]')).toBeTruthy());
+ fireEvent.error(document.querySelector('script[src*="libv86.js"]') as HTMLScriptElement);
+ await waitFor(()=>expect((screen.getByRole("button",{name:/Salvar write-up no Supabase/i}) as HTMLButtonElement).disabled).toBe(false));
  return result;
 }
 describe("write-up editing and scrolling for teacher-only CTF review",()=>{
