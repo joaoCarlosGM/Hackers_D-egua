@@ -19,7 +19,7 @@ describe("Aula 7 — revisão CTF 1 sem pontuação",()=>{
  it("preserva arquivos, wordlist e semântica do PDF",()=>{
   expect(reviewMissions[0].incident).toContain("/var/tmp");
   expect(reviewMissions[1].context).toContain("/var/log/auth_simulado.log");
-  expect(reviewMissions[2].context).toContain("50 arquivos .enc");
+  expect(reviewMissions[2].incident).toContain("50 arquivos .enc");
   expect(reviewMissions[2].startingPoint).toContain("dicionario_paraense.txt");
   expect(reviewMissions[2].steps[1].example).toContain("--format=raw-md5");
   expect(reviewMissions[2].steps[2].example).toContain("openssl");
