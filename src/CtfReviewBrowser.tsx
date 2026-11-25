@@ -85,6 +85,7 @@ export default function CtfReviewBrowser(){
  const [saved,setSaved]=useState(0),[pending,setPending]=useState(0);
  const [projector,setProjector]=useState(false),[fontSize,setFontSize]=useState(17);
  const machine=useRef<VM|null>(null),terminalHost=useRef<HTMLDivElement>(null);
+ const fullscreenHost=useRef<HTMLElement|null>(null);
  const terminal=useRef<XtermHandle|null>(null),fitAddon=useRef<XtermFit|null>(null);
  const termResize=useRef<ResizeObserver|null>(null);
  const terminalInput=useRef(""),termSubscription=useRef<{dispose:()=>void}|null>(null);
@@ -103,12 +104,23 @@ export default function CtfReviewBrowser(){
    termResize.current?.disconnect();termSubscription.current?.dispose();
    terminal.current?.dispose();terminal.current=null;};},[]);
  useEffect(()=>{
-  if(!projector)return;
-  const onKey=(event:KeyboardEvent)=>{if(event.key==="Escape")setProjector(false);};
-  window.addEventListener("keydown",onKey);
-  return()=>window.removeEventListener("keydown",onKey);
+  const syncFullscreen=()=>{
+    const active=document.fullscreenElement===fullscreenHost.current;
+    setProjector(active);
+    requestAnimationFrame(()=>requestAnimationFrame(refitTerminal));
+  };
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&projector&&document.fullscreenElement!==fullscreenHost.current)
+    setProjector(false);
+  };
+  document.addEventListener("fullscreenchange",syncFullscreen);
+  window.addEventListener("keydown",onEscape);
+  return()=>{
+   document.removeEventListener("fullscreenchange",syncFullscreen);
+   window.removeEventListener("keydown",onEscape);
+  };
  },[projector]);
- useEffect(()=>{if(ready)terminal.current?.focus();},[ready]);
+ useEffect(()=>{if(ready)focusTerminal();},[ready]);
   useEffect(()=>{
    if(!terminal.current)return;
    terminal.current.options.fontSize=fontSize;
@@ -132,6 +144,39 @@ export default function CtfReviewBrowser(){
   termSubscription.current?.dispose();termSubscription.current=null;
   terminal.current?.dispose();terminal.current=null;fitAddon.current=null;
   terminalInput.current="";
+ }
+ function refitTerminal(){
+  try{fitAddon.current?.fit();}catch{/* terminal unmounted */}
+ }
+ function focusTerminal(){
+  if(!terminal.current||!terminalHost.current)return;
+  refitTerminal();
+  terminal.current.focus();
+  const input=terminalHost.current.querySelector<HTMLTextAreaElement>(".xterm-helper-textarea");
+  input?.focus({preventScroll:true});
+  requestAnimationFrame(()=>{
+   terminal.current?.focus();
+   input?.focus({preventScroll:true});
+  });
+ }
+ function toggleProjection(){
+  const target=fullscreenHost.current;
+  if(!target)return;
+  if(document.fullscreenElement===target){
+   void document.exitFullscreen().catch(e=>setError("Não foi possível sair da projeção: "+String(e)));
+  }else if(target.requestFullscreen){
+   // Acione diretamente a partir do clique: Fullscreen API exige gesto do usuário.
+   void target.requestFullscreen().then(()=>{
+    setProjector(true);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+     refitTerminal();focusTerminal();
+    }));
+   }).catch(e=>{
+    setError("O navegador impediu a projeção em tela cheia. Abra o site em uma aba normal e pressione F11. Detalhe: "+String(e));
+   });
+  }else{
+   setError("Este navegador não oferece a API de tela cheia. Use F11 para projetar.");
+  }
  }
  function recordCommand(text:string){
   if(!text.trim())return;
@@ -271,7 +316,7 @@ export default function CtfReviewBrowser(){
   }catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function audit(id:string){setBusy(true);try{setReport(await rpc<Report>("ctf_teacher_review_report",{p_run:id}));}
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- return <section className={"ctf-browser"+(projector?" ctf-projector":"")}>
+ return <section ref={fullscreenHost} className={"ctf-browser"+(projector?" ctf-projector":"")}>
   <div className="ctf-browser-head"><div><p>HACKERS PAI D'ÉGUA / REVISÃO PRÉ-CTF</p>
    <h2>Laboratório Linux do professor</h2><small>v86 + Buildroot · 4 desafios · sem notas nem pontos</small></div>
    {run?<button onClick={()=>void close()} disabled={busy}>Encerrar demonstração</button>:
@@ -317,17 +362,18 @@ export default function CtfReviewBrowser(){
     <div className="ctf-window-head">
       <div className="ctf-window-lights" aria-hidden="true"><i/><i/><i/></div>
       <span>ghost@lab-professor: ~ / xterm.js</span>
-      <button type="button" onClick={()=>terminal.current?.focus()} disabled={!ready}>⌨ Focar</button>
+      <button type="button" onMouseDown={event=>event.preventDefault()} onClick={focusTerminal} disabled={!ready}
+        title="Posicionar o cursor dentro do terminal Linux">⌨ Focar</button>
     </div>
     <div className="ctf-terminal-toolbar">
       <span><strong>Linux v86 · Terminal interativo</strong><small>{ready?"● Terminal ativo":"● "+status}</small></span>
       <div className="ctf-terminal-controls">
         <button type="button" onClick={()=>setFontSize(n=>Math.max(12,n-2))} aria-label="Diminuir fonte do terminal">A−</button>
         <button type="button" onClick={()=>setFontSize(n=>Math.min(30,n+2))} aria-label="Aumentar fonte do terminal">A+</button>
-        <button type="button" aria-pressed={projector} onClick={()=>{
-          setProjector(v=>!v);
-          requestAnimationFrame(()=>{fitAddon.current?.fit();terminal.current?.focus();});
-        }}>{projector?"Sair da projeção (Esc)":"⛶ Ampliar para projeção"}</button>
+        <button type="button" aria-pressed={projector} onClick={toggleProjection}
+          title="Abrir o roteiro e o terminal em tela cheia do navegador">
+          {projector?"Sair da projeção (Esc)":"⛶ Ampliar para projeção"}
+        </button>
       </div>
     </div>
     <div className="ctf-terminal-display" ref={terminalHost} role="application" aria-label="Terminal Linux real, com cursor, cores ANSI e comandos digitados diretamente"/>
