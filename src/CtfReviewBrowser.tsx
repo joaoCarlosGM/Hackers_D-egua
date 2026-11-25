@@ -590,6 +590,7 @@ export default function CtfReviewBrowser(){
     <div className="ctf-terminal-toolbar">
       <span><strong>Linux v86 · Terminal interativo</strong><small>{ready?"● Terminal ativo":"● "+status}</small></span>
       <div className="ctf-terminal-controls">
+        <a className="ctf-aula07-download" href={assets+"aula07-evidencias.tar"} download="aula07-evidencias.tar" title="Wordlist e arquivos cifrados para Kali com OpenSSL real">↓ Pacote Kali</a>
         <button type="button" className="ctf-writeup-shortcut" onClick={openWriteup}
           title="Preencher o relatório da missão sem interromper o Linux">✎ Preencher write-up</button>
         <button type="button" onClick={()=>setFontSize(n=>Math.max(12,n-2))} aria-label="Diminuir fonte do terminal">A−</button>
