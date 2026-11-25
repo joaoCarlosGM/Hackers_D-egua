@@ -497,9 +497,9 @@ export default function CtfReviewBrowser(){
      <h4>Write-up: o que você fez e por quê?</h4>
      <p>Explique o problema, o procedimento usado, o motivo da escolha dos comandos e a evidência obtida. É isso que o professor analisará nos CTFs oficiais.</p>
     </div>
-    <label>1. Comando utilizado (o que você fez?)<textarea ref={writeupFirstInput} onKeyDown={event=>event.stopPropagation()} value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
-    <label>2. Raciocínio técnico (por que fez isso?)<textarea onKeyDown={event=>event.stopPropagation()} value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
-    <label>3. Flag obtida e evidência (o que encontrou?)<textarea onKeyDown={event=>event.stopPropagation()} value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 5 registre SHA-256 e MD5." onChange={e=>edit("evidence",e.target.value)}/></label>
+    <label>1. Comando utilizado (o que você fez?)<textarea ref={writeupFirstInput} value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
+    <label>2. Raciocínio técnico (por que fez isso?)<textarea value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
+    <label>3. Flag obtida e evidência (o que encontrou?)<textarea value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 5 registre SHA-256 e MD5." onChange={e=>edit("evidence",e.target.value)}/></label>
     {writeupDirty&&<p className="ctf-writeup-unsaved" role="status">
       Há alterações no write-up que ainda não foram salvas no Supabase.
      </p>}
