@@ -73,9 +73,25 @@ function library(){
  }).catch(e=>{scriptPromise=undefined;throw e;});
  return scriptPromise;
 }
-function download(name:string,data:string){const url=URL.createObjectURL(new Blob([data],{type:"application/json"}));
+function download(name:string,data:string,type="application/json"){const url=URL.createObjectURL(new Blob([data],{type}));
  const a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 const date=(s:string)=>new Date(s).toLocaleString("pt-BR");
+function formatReviewWriteup(entries:Record<string,W>) {
+ return [
+  "# Write-up CTF 1 — Hackers Pai D'Égua",
+  "**Tipo:** Revisão demonstrativa do professor — sem pontuação",
+  ...reviewMissions.map((m,i)=>{
+   const v=entries[String(i)]??{command:"",reason:"",evidence:""};
+   return [
+    "## Desafio "+m.id+": "+m.title,
+    "**Comando utilizado:**\n"+(v.command||"(não preenchido)"),
+    "**Raciocínio técnico:**\n"+(v.reason||"(não preenchido)"),
+    "**Flag obtida / evidência:**\n"+(v.evidence||"(não preenchido)")
+   ].join("\n\n");
+  })
+ ].join("\n\n");
+}
+
 export default function CtfReviewBrowser(){
  const [run,setRun]=useState<Run|null>(null),[history,setHistory]=useState<Run[]>([]);
  const [report,setReport]=useState<Report|null>(null),[status,setStatus]=useState("Pronto para iniciar");
@@ -253,7 +269,7 @@ export default function CtfReviewBrowser(){
    xterm.writeln("\x1b[1;36mHACKERS PAI D'ÉGUA  /  LABORATÓRIO LINUX · xterm.js\x1b[0m");
    xterm.writeln("\x1b[90m────────────────────────────────────────────────────────────\x1b[0m");
    xterm.writeln("\x1b[33m[PROFESSOR]\x1b[0m Iniciando Linux real emulado no navegador...");
-   xterm.writeln("\x1b[90mAguarde a preparação dos quatro desafios.\x1b[0m");
+   xterm.writeln("\x1b[90mAguarde a preparação dos cinco desafios.\x1b[0m");
    xterm.writeln("");
    const vm=new window.V86({
      wasm_path:assets+"v86.wasm",bios:{url:assets+"seabios.bin"},vga_bios:{url:assets+"vgabios.bin"},
@@ -267,7 +283,7 @@ export default function CtfReviewBrowser(){
      // Oculta o boot inicial e os comandos de provisionamento, incluindo as flags.
      if(!readyRef.current){
        if(stage.current===-1 && /(?:~% |# |\$ )$/.test(tail.current)){
-         stage.current=0;setStatus("Preparando quatro desafios...");
+         stage.current=0;setStatus("Preparando cinco desafios...");
          print("\x1b[36mLinux iniciado. Preparando arquivos e ferramentas da missão...\x1b[0m\n");
          vm.serial0_send(script.current[0]+"; printf '\\nHPDE_MARK_0\\n'\n");
        }else if(stage.current>=0&&tail.current.includes("\nHPDE_MARK_"+stage.current+"\n")){
@@ -276,7 +292,7 @@ export default function CtfReviewBrowser(){
          else if(setupValid.current){
            if(bootTimer.current)clearTimeout(bootTimer.current);
            readyRef.current=true;setReady(true);
-           record("vm_ready","Linux e quatro desafios preparados");
+           record("vm_ready","Linux e cinco desafios preparados, incluindo SHA-256 e MD5");
            setStatus("Linux pronto · digite cat missao.txt");
            print("\x1b[1;32m✓ Linux pronto.\x1b[0m Use \x1b[1mcat missao.txt\x1b[0m para começar.\n\n");
            terminal.current?.focus();
@@ -298,15 +314,29 @@ export default function CtfReviewBrowser(){
   finally{setBusy(false);}
  }
  
- const validate=()=>{const keys=["FLAG{ARQUIVO_REVIS_"+labSeed.current+"}","FLAG{GRUPO_REVIS_"+labSeed.current+"}","FLAG{IP_198.51.100.44}","FLAG{DNS_REVIS_"+labSeed.current+"}"];
+ const validate=()=>{const keys=["FLAG{ARQUIVO_REVIS_"+labSeed.current+"}","FLAG{GRUPO_REVIS_"+labSeed.current+"}","FLAG{IP_198.51.100.44}","FLAG{DNS_REVIS_"+labSeed.current+"}",reviewHashFixture.flag];
   if(flag.trim()===keys[challenge]){
-   if(!solved.includes(challenge)){setSolved(v=>[...v,challenge]);record("challenge","Objetivo "+(challenge+1)+" confirmado sem pontos");}
+   if(!solved.includes(challenge)){
+    setSolved(v=>[...v,challenge]);
+    record("challenge","Objetivo "+(challenge+1)+" confirmado sem pontos");
+   }
+   setWriteups(prev=>{
+    const currentValue=prev[String(challenge)]??{command:"",reason:"",evidence:""};
+    const submitted=flag.trim();
+    if(currentValue.evidence.includes(submitted))return prev;
+    return {...prev,[String(challenge)]:{...currentValue,evidence:
+      [currentValue.evidence,"Flag obtida: "+submitted].filter(Boolean).join("\n")}};
+   });
   }else setError("Flag inválida. Verifique o terminal.");setFlag("");};
  const edit=(field:keyof W,value:string)=>setWriteups(v=>({...v,[String(challenge)]:{...current,[field]:value}}));
  async function saveWriteup(){if(!activeRun.current)return;setBusy(true);
   try{await rpc("ctf_teacher_review_writeup",{p_run:activeRun.current,p_writeup:writeups});record("writeup","Write-up salvo");await sync();setStatus("Write-up salvo no Supabase");}
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function close(){if(!activeRun.current)return;setBusy(true);
+  if(document.fullscreenElement===fullscreenHost.current){
+   try{await document.exitFullscreen();}catch{/* browser fullscreen already closed */}
+  }
+  setProjector(false);
   if(bootTimer.current)clearTimeout(bootTimer.current);
   try{record("vm_stop","Revisão demonstrativa encerrada");if(out.current){record("output",out.current);out.current="";}
    await sync();await rpc("ctf_teacher_review_close",{p_run:activeRun.current});
@@ -318,16 +348,16 @@ export default function CtfReviewBrowser(){
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  return <section ref={fullscreenHost} className={"ctf-browser"+(projector?" ctf-projector":"")}>
   <div className="ctf-browser-head"><div><p>HACKERS PAI D'ÉGUA / REVISÃO PRÉ-CTF</p>
-   <h2>Laboratório Linux do professor</h2><small>v86 + Buildroot · 4 desafios · sem notas nem pontos</small></div>
+   <h2>Laboratório Linux do professor</h2><small>v86 + Buildroot · {reviewMissions.length} desafios · sem notas nem pontos</small></div>
    {run?<button onClick={()=>void close()} disabled={busy}>Encerrar demonstração</button>:
     <button onClick={()=>void start()} disabled={busy}>Iniciar demonstração</button>}</div>
   <p role="status" className="ctf-browser-status">{status}</p>{error&&<p role="alert" className="error">{error}</p>}
-  <div className="ctf-browser-stats"><div>Progresso <strong>{solved.length}/4</strong></div>
+  <div className="ctf-browser-stats"><div>Progresso <strong>{solved.length}/{reviewMissions.length}</strong></div>
     <div>Auditoria <strong>{saved} eventos</strong></div><div>Sincronização <strong>{pending} pendentes</strong></div></div>
   <section className="ctf-review-intro">
    <div className="ctf-guide-eyebrow">COMO FUNCIONA UM CTF</div>
    <h3>Investigue um problema, execute comandos e explique sua descoberta.</h3>
-   <p>O CTF oficial apresentará uma missão com cenário, objetivos, terminal, evidências e entrega de um write-up. Nesta revisão, o professor demonstra esse mesmo fluxo com quatro situações do Linux, sem competição, notas ou ranking.</p>
+   <p>O CTF oficial apresentará uma missão com cenário, objetivos, terminal, evidências e entrega de um write-up. Nesta revisão, o professor demonstra esse mesmo fluxo com cinco situações: Linux, permissões, logs, DNS e hashes MD5/SHA-256, sem competição, notas ou ranking.</p>
    <div className="ctf-review-flow" aria-label="Etapas da atividade">
     <span>1. Ler o problema</span><span>2. Investigar no terminal</span>
     <span>3. Encontrar a evidência</span><span>4. Explicar o raciocínio</span>
@@ -346,7 +376,7 @@ export default function CtfReviewBrowser(){
     <div className="ctf-mission-main">
      <section className="ctf-mission-brief" aria-labelledby="ctf-current-mission">
       <div className="ctf-mission-meta">
-       <span className="ctf-mission-tag">CTF REVISÃO · {String(mission.id).padStart(2,"0")}/04</span>
+       <span className="ctf-mission-tag">CTF REVISÃO · {String(mission.id).padStart(2,"0")}/{String(reviewMissions.length).padStart(2,"0")}</span>
        <span>{mission.category}</span>
        <span>{mission.difficulty}</span>
       </div>
@@ -449,11 +479,12 @@ export default function CtfReviewBrowser(){
      <h4>Write-up: o que você fez e por quê?</h4>
      <p>Explique o problema, o procedimento usado, o motivo da escolha dos comandos e a evidência obtida. É isso que o professor analisará nos CTFs oficiais.</p>
     </div>
-    <label>1. O que você fez? (comando ou procedimento)<textarea value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
-    <label>2. Por que fez isso? (raciocínio)<textarea value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
-    <label>3. O que encontrou? (resultado e conclusão)<textarea value={current.evidence} placeholder="Registre o resultado e o que ele demonstra..." onChange={e=>edit("evidence",e.target.value)}/></label>
+    <label>1. Comando utilizado (o que você fez?)<textarea value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
+    <label>2. Raciocínio técnico (por que fez isso?)<textarea value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
+    <label>3. Flag obtida e evidência (o que encontrou?)<textarea value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 5 registre SHA-256 e MD5." onChange={e=>edit("evidence",e.target.value)}/></label>
     <div className="ctf-evidence-actions">
      <button type="button" disabled={busy} onClick={()=>void saveWriteup()}>Salvar write-up no Supabase</button>
+     <button type="button" onClick={()=>download("writeup_revisao_professor.md",formatReviewWriteup(writeups),"text/markdown;charset=utf-8")}>Exportar .md</button>
      <button type="button" disabled={challenge>=reviewMissions.length-1} onClick={()=>{setChallenge(i=>i+1);setFlag("");setShowExplanations(false);setLastAction(null);}}>Próximo desafio →</button>
     </div>
    </section></>}
