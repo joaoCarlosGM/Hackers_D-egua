@@ -68,8 +68,8 @@ for(let i=1;i<=50;i++){
  const n=String(i).padStart(2,"0");
  const salt=Buffer.from(i===37?"HackPaiD":"Fake00"+n);
  const plain=i===37
-  ?"FLAG{cr1pt0_sh4256_p41_d3gu4_m0d1} #92968\\n"
-  :"Arquivo falso #"+n+" - Pista incorreta!\\n";
+  ?"FLAG{cr1pt0_sh4256_p41_d3gu4_m0d1} #92968\n"
+  :"Arquivo falso #"+n+" - Pista incorreta!\n";
  const data=encryptAula07(plain,salt);
  encrypted.push({name:"evidencia_"+n+".enc",base64:data.toString("base64")});
 }
