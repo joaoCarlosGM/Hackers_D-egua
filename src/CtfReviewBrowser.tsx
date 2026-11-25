@@ -163,11 +163,24 @@ export default function CtfReviewBrowser(){
   for(const part of detail.match(/[\s\S]{1,2400}/g)||[""])events.current.push({kind,detail:part});
   if(events.current.length>2000){events.current.splice(0,events.current.length-2000);setError("Buffer de auditoria cheio.");}
   setPending(events.current.length);};
- async function sync(){if(locked.current||!activeRun.current)return;locked.current=true;
-  try{while(events.current.length&&activeRun.current){const batch=events.current.splice(0,20);
-   try{const n=await rpc<number>("ctf_teacher_review_append",{p_run:activeRun.current,p_events:batch});
-    if(mounted.current){setSaved(x=>x+n);setPending(events.current.length);}
-   }catch(e){events.current.unshift(...batch);setError("Auditoria pendente: "+(e as Error).message);break;}
+ async function sync(){if(locked.current||!activeRun.current)return;
+  const session=activeRun.current;
+  locked.current=true;
+  try{while(events.current.length&&activeRun.current===session){
+   const batch=events.current.splice(0,20);
+   try{
+    const n=await rpc<number>("ctf_teacher_review_append",{p_run:session,p_events:batch});
+    if(activeRun.current===session&&mounted.current){
+     setSaved(x=>x+n);setPending(events.current.length);
+    }
+   }catch(e){
+    // Do not resurrect events for a discarded session in a new demonstration.
+    if(activeRun.current===session){
+     events.current.unshift(...batch);
+     setError("Auditoria pendente: "+(e as Error).message);
+    }
+    break;
+   }
   }}finally{locked.current=false;}}
  useEffect(()=>{const id=setInterval(()=>{if(out.current){record("output",out.current);out.current="";}void sync();},1250);
   return()=>clearInterval(id);});
