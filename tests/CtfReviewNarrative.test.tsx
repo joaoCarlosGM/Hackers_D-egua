@@ -52,6 +52,7 @@ describe("revisão CTF com enunciado e raciocínio pedagógico", () => {
   it("aciona o fullscreen nativo em gesto do usuário, sem desmontar o terminal", async () => {
     const { container } = render(<CtfReviewBrowser />);
     fireEvent.click(screen.getByRole("button", { name: /Iniciar demonstração/i }));
+    await screen.findByRole("button", { name: /Ampliar para projeção/i });
     const root = container.querySelector("section.ctf-browser") as HTMLElement;
     const focusButton=screen.getByRole("button", {name:/Focar/i});
     fireEvent.click(focusButton);
