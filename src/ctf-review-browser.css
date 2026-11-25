@@ -238,3 +238,19 @@
 @media (max-width:880px) {
  .ctf-browser:fullscreen {padding:4px;}
 }
+
+
+/* Focar is an instructor-visible distraction-free view; Projeção uses native
+   fullscreen for the complete mission instead. Neither remounts xterm/VM. */
+.ctf-browser.ctf-focus-mode>.ctf-review-intro,
+.ctf-browser.ctf-focus-mode>.ctf-browser-tabs,
+.ctf-browser.ctf-focus-mode>.ctf-browser-card,
+.ctf-browser.ctf-focus-mode .ctf-mission-brief,
+.ctf-browser.ctf-focus-mode .ctf-mission-guide { display:none; }
+.ctf-browser.ctf-focus-mode .ctf-mission-workspace {grid-template-columns:minmax(0,1fr);}
+.ctf-browser.ctf-focus-mode .ctf-browser-terminal {width:100%;}
+.ctf-browser.ctf-focus-mode .ctf-terminal-display {height:min(75dvh,820px);min-height:380px;}
+.ctf-browser.ctf-focus-mode .ctf-window-head>button {color:#90f3c6;font-weight:800;}
+@media(max-width:650px){
+ .ctf-browser.ctf-focus-mode .ctf-terminal-display {height:65dvh;min-height:300px;}
+}
