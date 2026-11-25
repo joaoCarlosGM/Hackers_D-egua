@@ -81,7 +81,7 @@ try{
 
  // Exercise the commands needed by the teacher-only demonstration, not just the boot.
  const stages=[
-  "mkdir -p /var/tmp/relatorios/.auditoria /opt/desafio_dac /var/log /opt/evidencias /tmp/ctf-bin",
+  "mkdir -p /var/tmp/relatorios/.auditoria /opt/desafio_dac /var/log /opt/evidencias /home/aluno /tmp/ctf-bin",
   "echo 'alunos:x:1300:' >> /etc/group",
   "printf '%s\\n' 'FLAG{ARQUIVO_REVIS_TESTE}' > /var/tmp/relatorios/.auditoria/.relatorio.txt",
   "printf '%s\\n' 'FLAG{GRUPO_REVIS_TESTE}' > /opt/desafio_dac/flag.txt",
