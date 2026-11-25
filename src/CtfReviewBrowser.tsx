@@ -22,6 +22,8 @@ declare global{interface Window{
  FitAddon?:{FitAddon:new()=>XtermFit};
 }}
 const assets=import.meta.env.BASE_URL+"ctf-v86/";
+const reviewWordlist=["123456","admin2026","ufpa_itec","veropeso123","tacaca_quente","acai_com_peixe","mangal_das_garcas","ilha_do_marajo","boto_cor_de_rosa","maniwa_2026","castanha_do_para","paidegua2026","cirio_de_nazare","estacao_docas","guama_ufpa"];
+const reviewJohnScript="#!/bin/sh\n# Modo didatico, NAO John the Ripper original\nwordlist=/opt/evidencias/dicionario_paraense.txt\ntarget=/opt/evidencias/senha_cofre.md5\nfor arg in \"$@\"; do\n case \"$arg\" in\n --wordlist=*) wordlist=\"${arg#--wordlist=}\" ;;\n --format=raw-md5|--show) ;;\n --*) echo \"Opcao nao suportada: $arg\"; exit 2 ;;\n *) target=\"$arg\" ;;\n esac\ndone\nif [ ! -r \"$wordlist\" ] || [ ! -r \"$target\" ]; then echo \"Wordlist ou hash nao encontrado\"; exit 1; fi\nhash=$(head -n 1 \"$target\" | cut -d ' ' -f 1)\necho \"[Revisao didatica] Dicionario MD5 em Linux (nao e John original)\"\nwhile IFS= read -r candidate || [ -n \"$candidate\" ]; do\n digest=$(printf '%s' \"$candidate\" | md5sum | cut -d ' ' -f 1)\n if [ \"$digest\" = \"$hash\" ]; then echo \"$candidate (raw-md5)\"; exit 0; fi\ndone < \"$wordlist\"\necho \"Nenhuma correspondencia\"; exit 1";
 const quote=(v:string)=>"'"+v.replaceAll("'","'\\''")+"'";
 const initCommands=(seed:string)=>[
  "mkdir -p /var/tmp/relatorios/.auditoria /opt/desafio_dac /var/log /opt/evidencias /home/aluno /tmp/ctf-bin",
@@ -34,6 +36,9 @@ const initCommands=(seed:string)=>[
  "for i in 1 2 3 4; do echo 'Failed password for guest from 203.0.113.7 port 2222 ssh2' >> /var/log/auth_simulado.log; done",
  "printf '%s\\n' '#!/bin/sh' 'echo \"ctf.hackerspaidegua.local. IN TXT \\\"FLAG{DNS_REVIS_"+seed+"}\\\"\"' > /tmp/ctf-bin/dig",
  "chmod +x /tmp/ctf-bin/dig; export PATH=/tmp/ctf-bin:$PATH",
+ "printf '%s\\n' "+reviewWordlist.map(quote).join(" ")+" > /opt/evidencias/dicionario_paraense.txt",
+ "printf '%s\\n' "+reviewJohnScript.split("\n").map(quote).join(" ")+" > /tmp/ctf-bin/john; chmod +x /tmp/ctf-bin/john",
+ "printf '%s' 'paidegua2026' | md5sum | cut -d ' ' -f 1 > /opt/evidencias/senha_cofre.md5",
  "i=1; while [ \"$i\" -le 50 ]; do n=$(printf '%02d' \"$i\"); printf 'Registro tecnico %s\\nDado sintetico %s\\n' \"$n\" \"$n\" > /opt/evidencias/registro_$n.txt; i=$((i+1)); done",
  "printf '%s\\n' "+quote(reviewHashFixture.fileHeader)+" "+quote(reviewHashFixture.flag)+" > "+reviewHashFixture.evidenceFile,
  "printf '%s\\n' 'REVISAO PRE-CTF (sem pontos)' '1) find /var/tmp -name \".*\"' '2) ls -l /opt/desafio_dac/flag.txt e chmod g+r' '3) cat /var/log/auth_simulado.log' '4) dig @192.168.56.1 ctf.hackerspaidegua.local TXT (script didatico)' '5) sha256sum /opt/evidencias/* e MD5 da flag' > /home/aluno/missao.txt",
@@ -111,6 +116,8 @@ export default function CtfReviewBrowser(){
  const fullscreenHost=useRef<HTMLElement|null>(null);
  const writeupFirstInput=useRef<HTMLTextAreaElement|null>(null);
  const writeupDialog=useRef<HTMLElement|null>(null);
+ const flagInput=useRef<HTMLInputElement|null>(null);
+ const writeupOpenRef=useRef(false);
  const writeupEditing=useRef(false);
  const terminal=useRef<XtermHandle|null>(null),fitAddon=useRef<XtermFit|null>(null);
  const termResize=useRef<ResizeObserver|null>(null);
@@ -135,6 +142,12 @@ export default function CtfReviewBrowser(){
     setProjector(active);
     requestAnimationFrame(()=>requestAnimationFrame(refitTerminal));
   };
+  const protectEditorKeys=(event:KeyboardEvent)=>{
+   if(!writeupOpenRef.current||!writeupDialog.current?.contains(event.target as Node))return;
+   if(event.key==="Escape"){event.preventDefault();closeWriteup();}
+   event.stopImmediatePropagation();
+  };
+  document.addEventListener("keydown",protectEditorKeys,true);
   const onEscape=(event:KeyboardEvent)=>{
    if(event.key==="Escape"&&writeupOpen){
     setWriteupOpen(false);
@@ -149,6 +162,7 @@ export default function CtfReviewBrowser(){
   window.addEventListener("keydown",onEscape);
   return()=>{
    document.removeEventListener("fullscreenchange",syncFullscreen);
+   document.removeEventListener("keydown",protectEditorKeys,true);
    window.removeEventListener("keydown",onEscape);
   };
  },[projector,terminalFocusMode,writeupOpen]);
@@ -163,7 +177,7 @@ export default function CtfReviewBrowser(){
   if(!writeupOpen)return;
   const frame=requestAnimationFrame(()=>{
    if(writeupDialog.current)writeupDialog.current.scrollTop=0;
-   writeupFirstInput.current?.focus({preventScroll:true});
+   (flagInput.current??writeupFirstInput.current)?.focus({preventScroll:true});
   });
   return()=>cancelAnimationFrame(frame);
  },[writeupOpen,challenge]);
@@ -216,23 +230,25 @@ export default function CtfReviewBrowser(){
      active.matches("input,textarea,select,[contenteditable='true']") &&
      !terminalHost.current?.contains(active));
   };
-  if(!force&&userEditing())return;
+  if(writeupOpenRef.current||(!force&&userEditing()))return;
   refitTerminal();
   const input=terminalHost.current.querySelector<HTMLTextAreaElement>(".xterm-helper-textarea");
-  if(!force&&userEditing())return;
+  if(writeupOpenRef.current||(!force&&userEditing()))return;
   terminal.current.focus();
   input?.focus({preventScroll:true});
   requestAnimationFrame(()=>{
-   if(!terminal.current||!terminalHost.current||(!force&&userEditing()))return;
+   if(!terminal.current||!terminalHost.current||writeupOpenRef.current||(!force&&userEditing()))return;
    terminal.current.focus();
    input?.focus({preventScroll:true});
   });
  }
  function openWriteup(){
+  writeupOpenRef.current=true;
   writeupEditing.current=true;
   setWriteupOpen(true);
  }
  function closeWriteup(){
+  writeupOpenRef.current=false;
   setWriteupOpen(false);
   writeupEditing.current=false;
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
@@ -299,7 +315,7 @@ export default function CtfReviewBrowser(){
    const id=await rpc<string>("ctf_teacher_review_start");activeRun.current=id;
    setRun({id,title:"Revisão Pré-CTF",started_at:new Date().toISOString(),closed_at:null,writeup:{}});
    setSolved([]);setWriteups({});setSaved(0);setPending(0);setReady(false);readyRef.current=false;
-   setShowExplanations(false);setLastAction(null);setTerminalFocusMode(false);setWriteupOpen(false);setWriteupDirty(false);
+   setShowExplanations(false);setLastAction(null);setTerminalFocusMode(false);writeupOpenRef.current=false;setWriteupOpen(false);setWriteupDirty(false);
    if(bootTimer.current)clearTimeout(bootTimer.current);
    bootTimer.current=setTimeout(()=>{
     if(activeRun.current===id&&!readyRef.current&&mounted.current){
@@ -491,7 +507,7 @@ export default function CtfReviewBrowser(){
     <p>Ao concluir a investigação, registre a flag encontrada no terminal e documente como chegou ao resultado. A revisão não concede pontos.</p>
     <p><strong>Formato esperado:</strong> <code>{mission.flagFormat}</code></p>
     {mission.caveat&&<p className="ctf-pedagogical-warning">{mission.caveat}</p>}
-    <input value={flag} onKeyDown={event=>event.stopPropagation()} onChange={e=>setFlag(e.target.value)} placeholder="FLAG{...}"/>
+    <input ref={flagInput} aria-label="Flag encontrada" value={flag} onKeyDown={event=>event.stopPropagation()} onChange={e=>setFlag(e.target.value)} placeholder="FLAG{...}"/>
     <button onClick={validate} disabled={!ready}>Confirmar descoberta</button>
     <div className="ctf-writeup-heading">
      <h4>Write-up: o que você fez e por quê?</h4>
@@ -506,7 +522,7 @@ export default function CtfReviewBrowser(){
     <div className="ctf-evidence-actions">
      <button type="button" disabled={busy} onClick={()=>void saveWriteup()}>Salvar write-up no Supabase</button>
      <button type="button" onClick={()=>download("writeup_revisao_professor.md",formatReviewWriteup(writeups),"text/markdown;charset=utf-8")}>Exportar .md</button>
-     <button type="button" disabled={challenge>=reviewMissions.length-1} onClick={()=>{setChallenge(i=>i+1);setFlag("");setShowExplanations(false);setLastAction(null);setWriteupOpen(false);}}>Próximo desafio →</button>
+     <button type="button" disabled={challenge>=reviewMissions.length-1} onClick={()=>{setChallenge(i=>i+1);setFlag("");setShowExplanations(false);setLastAction(null);closeWriteup();}}>Próximo desafio →</button>
     </div>
    </section>
  );
@@ -587,7 +603,7 @@ export default function CtfReviewBrowser(){
     </div>,
     document.fullscreenElement===fullscreenHost.current&&fullscreenHost.current
       ? fullscreenHost.current : document.body
-   ):writeupPanel}
+   ):null}
    </div>
     <aside className="ctf-mission-guide" aria-label="Orientações para a investigação">
      <section className="ctf-guide-panel">
