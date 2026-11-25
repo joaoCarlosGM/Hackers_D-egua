@@ -110,6 +110,7 @@ export default function CtfReviewBrowser(){
  const machine=useRef<VM|null>(null),terminalHost=useRef<HTMLDivElement>(null);
  const fullscreenHost=useRef<HTMLElement|null>(null);
  const writeupFirstInput=useRef<HTMLTextAreaElement|null>(null);
+ const writeupDialog=useRef<HTMLElement|null>(null);
  const writeupEditing=useRef(false);
  const terminal=useRef<XtermHandle|null>(null),fitAddon=useRef<XtermFit|null>(null);
  const termResize=useRef<ResizeObserver|null>(null);
@@ -151,7 +152,7 @@ export default function CtfReviewBrowser(){
    window.removeEventListener("keydown",onEscape);
   };
  },[projector,terminalFocusMode,writeupOpen]);
- useEffect(()=>{if(ready)focusTerminal();},[ready]);
+ useEffect(()=>{if(ready&&!writeupOpen)focusTerminal();},[ready,writeupOpen]);
  useEffect(()=>{
   if(!writeupOpen)return;
   const previousOverflow=document.body.style.overflow;
@@ -160,7 +161,10 @@ export default function CtfReviewBrowser(){
  },[writeupOpen]);
  useEffect(()=>{
   if(!writeupOpen)return;
-  const frame=requestAnimationFrame(()=>writeupFirstInput.current?.focus({preventScroll:true}));
+  const frame=requestAnimationFrame(()=>{
+   writeupDialog.current?.scrollTo({top:0});
+   writeupFirstInput.current?.focus({preventScroll:true});
+  });
   return()=>cancelAnimationFrame(frame);
  },[writeupOpen,challenge]);
   useEffect(()=>{
@@ -205,13 +209,22 @@ export default function CtfReviewBrowser(){
  }
  function focusTerminal(force=false){
   if(!terminal.current||!terminalHost.current)return;
-  if(!force&&(writeupEditing.current||document.activeElement===writeupFirstInput.current))return;
+  const userEditing=()=>{
+   const active=document.activeElement;
+   return writeupOpen||writeupEditing.current||
+    (active instanceof HTMLElement &&
+     active.matches("input,textarea,select,[contenteditable='true']") &&
+     !terminalHost.current?.contains(active));
+  };
+  if(!force&&userEditing())return;
   refitTerminal();
-  terminal.current.focus();
   const input=terminalHost.current.querySelector<HTMLTextAreaElement>(".xterm-helper-textarea");
+  if(!force&&userEditing())return;
+  terminal.current.focus();
   input?.focus({preventScroll:true});
   requestAnimationFrame(()=>{
-   terminal.current?.focus();
+   if(!terminal.current||!terminalHost.current||(!force&&userEditing()))return;
+   terminal.current.focus();
    input?.focus({preventScroll:true});
   });
  }
@@ -452,13 +465,15 @@ export default function CtfReviewBrowser(){
   }finally{setBusy(false);}
  }
  const writeupPanel=(
-   <section className={"ctf-browser-card ctf-evidence-panel"+(writeupOpen?" ctf-writeup-open":"")}
+   <section ref={writeupOpen?writeupDialog:undefined} className={"ctf-browser-card ctf-evidence-panel"+(writeupOpen?" ctf-writeup-open":"")}
     role={writeupOpen?"dialog":undefined} aria-modal={writeupOpen?true:undefined}
     aria-labelledby="ctf-writeup-title" onKeyDown={event=>{
      event.stopPropagation();
      if(event.key==="Escape"){event.preventDefault();closeWriteup();}
     }}
     onFocusCapture={()=>{writeupEditing.current=true;}}
+     onWheel={event=>{if(writeupOpen)event.stopPropagation();}}
+     onTouchMove={event=>{if(writeupOpen)event.stopPropagation();}}
     onBlurCapture={event=>{
      if(!event.currentTarget.contains(event.relatedTarget as Node | null)){
       writeupEditing.current=writeupOpen;
@@ -476,15 +491,15 @@ export default function CtfReviewBrowser(){
     <p>Ao concluir a investigação, registre a flag encontrada no terminal e documente como chegou ao resultado. A revisão não concede pontos.</p>
     <p><strong>Formato esperado:</strong> <code>{mission.flagFormat}</code></p>
     {mission.caveat&&<p className="ctf-pedagogical-warning">{mission.caveat}</p>}
-    <input value={flag} onChange={e=>setFlag(e.target.value)} placeholder="FLAG{...}"/>
+    <input value={flag} onKeyDown={event=>event.stopPropagation()} onChange={e=>setFlag(e.target.value)} placeholder="FLAG{...}"/>
     <button onClick={validate} disabled={!ready}>Confirmar descoberta</button>
     <div className="ctf-writeup-heading">
      <h4>Write-up: o que você fez e por quê?</h4>
      <p>Explique o problema, o procedimento usado, o motivo da escolha dos comandos e a evidência obtida. É isso que o professor analisará nos CTFs oficiais.</p>
     </div>
-    <label>1. Comando utilizado (o que você fez?)<textarea ref={writeupFirstInput} value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
-    <label>2. Raciocínio técnico (por que fez isso?)<textarea value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
-    <label>3. Flag obtida e evidência (o que encontrou?)<textarea value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 5 registre SHA-256 e MD5." onChange={e=>edit("evidence",e.target.value)}/></label>
+    <label>1. Comando utilizado (o que você fez?)<textarea ref={writeupFirstInput} onKeyDown={event=>event.stopPropagation()} value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
+    <label>2. Raciocínio técnico (por que fez isso?)<textarea onKeyDown={event=>event.stopPropagation()} value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
+    <label>3. Flag obtida e evidência (o que encontrou?)<textarea onKeyDown={event=>event.stopPropagation()} value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 5 registre SHA-256 e MD5." onChange={e=>edit("evidence",e.target.value)}/></label>
     {writeupDirty&&<p className="ctf-writeup-unsaved" role="status">
       Há alterações no write-up que ainda não foram salvas no Supabase.
      </p>}
