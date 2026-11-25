@@ -71,4 +71,4 @@ A formatação de write-up permanece em três campos: **Comando utilizado**, **R
 
 ## Foco e projeção
 
-O botão **Focar** reposiciona o teclado na entrada interna do xterm.js, sem abrir um campo externo. O botão **Ampliar para projeção** usa a Fullscreen API do navegador sobre todo o laboratório (problema + terminal + orientação); use Esc para sair, ou o botão correspondente. Se o navegador bloquear fullscreen (ex.: iframe sem permissão), abra o site em uma aba independente e utilize F11. A alteração de fonte é feita por A+/A−.
+O botão **Focar** alterna para um modo sem distrações, com o terminal maior e os demais painéis ocultos; posiciona também o teclado na entrada interna do xterm.js. Use Esc ou **Sair do foco** para restaurar. O botão **Ampliar para projeção** usa a Fullscreen API do navegador sobre todo o laboratório (problema + terminal + orientação); use Esc para sair, ou o botão correspondente. Se o navegador bloquear fullscreen (ex.: iframe sem permissão), abra o site em uma aba independente e utilize F11. A alteração de fonte é feita por A+/A−.
