@@ -53,6 +53,11 @@ describe("revisão CTF com enunciado e raciocínio pedagógico", () => {
     const { container } = render(<CtfReviewBrowser />);
     fireEvent.click(screen.getByRole("button", { name: /Iniciar demonstração/i }));
     const root = container.querySelector("section.ctf-browser") as HTMLElement;
+    const focusButton=screen.getByRole("button", {name:/Focar/i});
+    fireEvent.click(focusButton);
+    expect(root.classList.contains("ctf-focus-mode")).toBe(true);
+    fireEvent.keyDown(window,{key:"Escape"});
+    expect(root.classList.contains("ctf-focus-mode")).toBe(false);
     expect(root).toBeTruthy();
     const full = vi.fn(async () => {});
     Object.defineProperty(root, "requestFullscreen", { configurable: true, value: full });
