@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import CtfReviewBrowser from "../src/CtfReviewBrowser";
 
@@ -33,6 +33,35 @@ describe("revisão CTF com enunciado e raciocínio pedagógico", () => {
     fireEvent.click(screen.getByRole("button", { name: /A evidência bloqueada/i }));
     expect(screen.getByRole("heading", { name: "A evidência bloqueada" })).toBeTruthy();
     expect(screen.getByText(/O objetivo é compreender a configuração/i)).toBeTruthy();
-    expect(screen.queryByText("chmod g+r /home/aluno/desafios/permissoes/segredo.txt")).toBeNull();
+    expect(screen.queryByText("chmod g+r /opt/desafio_dac/flag.txt")).toBeNull();
+  });
+
+  it("inclui a missão de SHA-256/MD5 sem interferir na pontuação ou alterar o write-up", async () => {
+    render(<CtfReviewBrowser />);
+    fireEvent.click(screen.getByRole("button", { name: /Iniciar demonstração/i }));
+    expect(await screen.findByRole("heading", { name: "O relatório que desapareceu" })).toBeTruthy();
+    expect(screen.getByText(/Progresso/i).textContent).toContain("0/5");
+    fireEvent.click(screen.getByRole("button", { name: /Qual arquivo é a evidência legítima/i }));
+    expect(screen.getByRole("heading", { name: "Qual arquivo é a evidência legítima?" })).toBeTruthy();
+    expect(screen.getByText(/a67ac8c054f704be2673a9a7c72cffa8/)).toBeTruthy();
+    expect(screen.getByText(/MD5 é hash, não criptografia reversível/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Exportar \.md/i })).toBeTruthy();
+    expect(screen.getByText(/Raciocínio técnico/i)).toBeTruthy();
+  });
+
+  it("aciona o fullscreen nativo em gesto do usuário, sem desmontar o terminal", async () => {
+    const { container } = render(<CtfReviewBrowser />);
+    fireEvent.click(screen.getByRole("button", { name: /Iniciar demonstração/i }));
+    const root = container.querySelector("section.ctf-browser") as HTMLElement;
+    expect(root).toBeTruthy();
+    const full = vi.fn(async () => {});
+    Object.defineProperty(root, "requestFullscreen", { configurable: true, value: full });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Ampliar para projeção/i }));
+    });
+    expect(full).toHaveBeenCalledOnce();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Sair da projeção/i }).getAttribute("aria-pressed")).toBe("true")
+    );
   });
 });
