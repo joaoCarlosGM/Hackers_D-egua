@@ -38,7 +38,7 @@ describe("terminal do professor, histórico separado e descarte",()=>{
   fireEvent.click(screen.getByRole("button",{name:"Ver auditoria"}));
   expect(await screen.findByRole("heading",{name:/Demonstração de/})).toBeTruthy();
   expect(screen.getAllByText("pwd").length).toBeGreaterThan(0);
-  expect(screen.getAllByText(/Terminal do professor/).length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/terminal do professor/i).length).toBeGreaterThan(0);
  });
  it("não oferece link administrativo de pontuação oficial a professores",async()=>{
   render(<CtfReviewAudit canAccessOfficialCtf={false}/>);
