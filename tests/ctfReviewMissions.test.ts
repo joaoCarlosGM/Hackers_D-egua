@@ -39,7 +39,7 @@ describe("revisão pré-CTF no formato do CTF oficial", () => {
     expect(reviewMissions[4].context).toContain("/opt/evidencias");
     expect(reviewMissions[4].objective).toContain("MD5");
     expect(reviewMissions[4].objective).toContain("SHA-256");
-    const content=reviewHashFixture.fileHeader+"\\n"+reviewHashFixture.flag+"\\n";
+    const content=reviewHashFixture.fileHeader+"\n"+reviewHashFixture.flag+"\n";
     expect(createHash("sha256").update(content).digest("hex")).toBe(reviewHashFixture.sha256File);
     expect(reviewHashFixture.sha256File.endsWith(reviewHashFixture.sha256Suffix)).toBe(true);
     expect(createHash("md5").update(reviewHashFixture.flag).digest("hex")).toBe(reviewHashFixture.md5Flag);
