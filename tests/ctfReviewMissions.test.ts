@@ -28,7 +28,7 @@ describe("Aula 7 — revisão CTF 1 sem pontuação",()=>{
   const salt=Buffer.from("HackPaiD");
   const keyiv=pbkdf2Sync("paidegua2026",salt,10000,48,"sha256");
   const cipher=createCipheriv("aes-256-cbc",keyiv.subarray(0,32),keyiv.subarray(32,48));
-  const ciphertext=Buffer.concat([cipher.update("FLAG{cr1pt0_sh4256_p41_d3gu4_m0d1} #92968\\n"),cipher.final()]);
+  const ciphertext=Buffer.concat([cipher.update("FLAG{cr1pt0_sh4256_p41_d3gu4_m0d1} #92968\n"),cipher.final()]);
   const data=Buffer.concat([Buffer.from("Salted__"),salt,ciphertext]);
   expect(createHash("sha256").update(data).digest("hex")).toBe("3d3f540b1656b4f48c5db9e1fad13883c1b59ef7266c43879673ac4d332fe4b2");
  });
