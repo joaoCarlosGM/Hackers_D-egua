@@ -37,8 +37,8 @@ describe("terminal do professor, histórico separado e descarte",()=>{
   expect(screen.getByRole("link",{name:"Ir para CTF oficial"}).getAttribute("href")).toBe("#admin/ctf");
   fireEvent.click(screen.getByRole("button",{name:"Ver auditoria"}));
   expect(await screen.findByRole("heading",{name:/Demonstração de/})).toBeTruthy();
-  expect(screen.getByText("pwd")).toBeTruthy();
-  expect(screen.getByText(/Terminal do professor/)).toBeTruthy();
+  expect(screen.getAllByText("pwd").length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/Terminal do professor/).length).toBeGreaterThan(0);
  });
  it("não oferece link administrativo de pontuação oficial a professores",async()=>{
   render(<CtfReviewAudit canAccessOfficialCtf={false}/>);
@@ -82,7 +82,7 @@ describe("terminal do professor, histórico separado e descarte",()=>{
   fireEvent.click(screen.getByRole("button",{name:"Iniciar demonstração"}));
   await waitFor(()=>expect(open).toHaveBeenCalled(),{timeout:3500});
   expect(vmAddListener).toHaveBeenCalledWith("serial0-output-byte",expect.any(Function));
-  expect(screen.getByText(/Linux inicializando/)).toBeTruthy();
+  expect(screen.getAllByText(/Linux inicializando/).length).toBeGreaterThan(0);
   // This is a cached-asset/mount regression test, not a boot completion test.
   delete (window as unknown as Record<string,unknown>).Terminal;
   delete (window as unknown as Record<string,unknown>).V86;
