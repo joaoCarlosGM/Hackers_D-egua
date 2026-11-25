@@ -9,7 +9,9 @@ const mime={".js":"application/javascript",".css":"text/css",".wasm":"applicatio
 const html=[
  "<!doctype html><meta charset='utf-8'><link rel='stylesheet' href='/xterm.css'>",
  "<script src='/libv86.js'></script><script src='/xterm.js'></script><script src='/xterm-addon-fit.js'></script>",
- "<div id='xterm-test' style='width:760px;height:340px'></div>",
+ "<div id='ctf-fullscreen' style='background:#091321;padding:15px'>",
+ "<button id='focus-xterm'>Focar</button><button id='project-xterm'>Projeção</button>",
+ "<div id='xterm-test' style='width:760px;height:340px'></div></div>",
  "<script>",
  "window.__result='booting';window.__serial='';",
  "const vm=new V86({wasm_path:'/v86.wasm',bios:{url:'/seabios.bin'},vga_bios:{url:'/vgabios.bin'},",
@@ -18,6 +20,8 @@ const html=[
  "autostart:true,disable_keyboard:true,disable_speaker:true});window.__vm=vm;",
  "const xterm=new Terminal({convertEol:true,cursorBlink:true,fontSize:14});",
  "xterm.open(document.getElementById('xterm-test'));window.__xterm=xterm;",
+ "document.getElementById('focus-xterm').addEventListener('click',()=>xterm.focus());",
+ "document.getElementById('project-xterm').addEventListener('click',()=>document.getElementById('ctf-fullscreen').requestFullscreen());",
  "const fit=new FitAddon.FitAddon();xterm.loadAddon(fit);fit.fit();",
  "xterm.onData(data=>vm.serial0_send(data.replace(/\\r/g,'\\n')));",
  "let sent=false;vm.add_listener('serial0-output-byte',byte=>{",
@@ -150,6 +154,18 @@ try{
  await page.keyboard.press("Enter");
  await page.waitForFunction(()=>window.__serial.includes("\nHPDE_XTERM_INPUT_OK\n"),undefined,{timeout:15000});
  console.log("PASS: xterm.js renders ANSI colors and Enter sends real commands to the v86 Linux shell.");
+ await page.locator("#focus-xterm").click();
+ const focused=await page.evaluate(()=>{
+   const helper=document.querySelector("#xterm-test .xterm-helper-textarea");
+   return document.activeElement===helper;
+ });
+ if(!focused)throw Error("Focar button failed to return the keyboard to the xterm helper textarea");
+ await page.locator("#project-xterm").click();
+ await page.waitForFunction(()=>document.fullscreenElement?.id==="ctf-fullscreen",undefined,{timeout:10000});
+ await page.keyboard.press("Escape");
+ await page.waitForFunction(()=>document.fullscreenElement===null,undefined,{timeout:10000});
+ console.log("PASS: teacher focus control and browser-native projector fullscreen roundtrip.");
+
 
  console.log("PASS: v86 booted real Linux and executed a shell printf through the serial interface.");
  console.log("Terminal tail:",output.slice(-340));
