@@ -101,7 +101,7 @@ try{
   await page.evaluate(code=>{window.__serial="";window.__vm.serial0_send(code+String.fromCharCode(10));},
     cmd+"; printf '\\n"+marker+"\\n'");
   await page.waitForFunction(m=>window.__serial.includes("\n"+m+"\n") &&
-    /(?:~% |# |\$ )$/.test(window.__serial),marker,{timeout:15000});
+    /(?:~% |[A-Za-z0-9_-]+% |# |\$ )$/.test(window.__serial),marker,{timeout:15000});
   return page.evaluate(()=>window.__serial);
  };
  for(let i=0;i<stages.length;i++){
