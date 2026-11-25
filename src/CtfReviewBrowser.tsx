@@ -526,7 +526,7 @@ export default function CtfReviewBrowser(){
     </div>
     <label>1. Comando utilizado (o que você fez?)<textarea ref={writeupFirstInput} value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
     <label>2. Raciocínio técnico (por que fez isso?)<textarea value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
-    <label>3. Flag obtida e evidência (o que encontrou?)<textarea value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 5 registre SHA-256 e MD5." onChange={e=>edit("evidence",e.target.value)}/></label>
+    <label>3. Flag obtida e evidência (o que encontrou?)<textarea value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 3 registre o hash SHA-256, a senha recuperada pelo dicionário e a evidência decifrada." onChange={e=>edit("evidence",e.target.value)}/></label>
     {writeupDirty&&<p className="ctf-writeup-unsaved" role="status">
       Há alterações no write-up que ainda não foram salvas no Supabase.
      </p>}
