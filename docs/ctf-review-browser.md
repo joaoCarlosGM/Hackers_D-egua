@@ -72,3 +72,13 @@ A formatação de write-up permanece em três campos: **Comando utilizado**, **R
 ## Foco e projeção
 
 O botão **Focar** alterna para um modo sem distrações, com o terminal maior e os demais painéis ocultos; posiciona também o teclado na entrada interna do xterm.js. Use Esc ou **Sair do foco** para restaurar. O botão **Ampliar para projeção** usa a Fullscreen API do navegador sobre todo o laboratório (problema + terminal + orientação); use Esc para sair, ou o botão correspondente. Se o navegador bloquear fullscreen (ex.: iframe sem permissão), abra o site em uma aba independente e utilize F11. A alteração de fonte é feita por A+/A−.
+
+## Sessões e auditoria do professor
+
+O laboratório permanece em `#admin/revisao-ctf`; o histórico agora é consultado somente na página `#admin/auditoria-ctf`, com identificação explícita **Terminal do professor**, pesquisa, eventos, write-ups, exportação JSON e ligação ao CTF oficial quando o usuário é administrador.
+
+**Encerrar e salvar** grava o write-up atual e sincroniza os eventos no Supabase. **Descartar sessão** exige confirmação e elimina somente a sessão demonstrativa do professor e seus eventos, por RPC com verificação de autorização e propriedade. Não interfere nas notas ou ranking.
+
+Foram retirados do rodapé do terminal os comandos rápidos, o botão de limpeza e a listagem longa das sessões. Os comandos continuam disponíveis dentro do Linux. Antes de mudar de módulo, o professor deve encerrar ou descartar a demonstração para não deixar uma sessão não encerrada.
+
+Para corrigir a inicialização com os arquivos em cache, a interface aguarda a montagem real do elemento xterm antes de criar a VM; erros de carregamento dos scripts têm limite de tempo e orientação de recuperação.
