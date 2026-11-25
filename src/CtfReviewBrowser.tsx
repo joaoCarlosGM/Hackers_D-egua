@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { rpc } from "./api";
 import { explainReviewCommand, reviewMissions } from "./ctfReviewMissions";
+import { reviewHashFixture } from "./ctfReviewHashFixture";
 import "./ctf-review-browser.css";
 type Kind="vm_boot"|"vm_ready"|"lab_setup"|"command"|"output"|"challenge"|"writeup"|"vm_stop"|"error";
 type E={kind:Kind;detail:string};
@@ -24,18 +25,20 @@ declare global{interface Window{
 const assets=import.meta.env.BASE_URL+"ctf-v86/";
 const quote=(v:string)=>"'"+v.replaceAll("'","'\\''")+"'";
 const initCommands=(seed:string)=>[
- "mkdir -p /var/tmp/relatorios/.auditoria /home/aluno/desafios/permissoes /home/aluno/desafios/logs /tmp/ctf-bin",
- "echo 'investigadores:x:1300:' >> /etc/group",
+ "mkdir -p /var/tmp/relatorios/.auditoria /opt/desafio_dac /var/log /opt/evidencias /tmp/ctf-bin",
+ "echo 'alunos:x:1300:' >> /etc/group",
  "printf '%s\\n' "+quote("FLAG{ARQUIVO_REVIS_"+seed+"}")+" > /var/tmp/relatorios/.auditoria/.relatorio.txt",
- "printf '%s\\n' "+quote("FLAG{GRUPO_REVIS_"+seed+"}")+" > /home/aluno/desafios/permissoes/segredo.txt",
- "chgrp investigadores /home/aluno/desafios/permissoes/segredo.txt; chmod 600 /home/aluno/desafios/permissoes/segredo.txt",
- "printf '%s\\n' '# auth.log (dados fictícios)' > /home/aluno/desafios/logs/auth.log",
- "for i in 1 2 3 4 5 6 7 8 9; do echo 'Failed password for test from 198.51.100.44 port 2222 ssh2' >> /home/aluno/desafios/logs/auth.log; done",
- "for i in 1 2 3 4; do echo 'Failed password for guest from 203.0.113.7 port 2222 ssh2' >> /home/aluno/desafios/logs/auth.log; done",
+ "printf '%s\\n' "+quote("FLAG{GRUPO_REVIS_"+seed+"}")+" > /opt/desafio_dac/flag.txt",
+ "chgrp alunos /opt/desafio_dac/flag.txt; chmod 600 /opt/desafio_dac/flag.txt",
+ "printf '%s\\n' '# auth.log (dados fictícios)' > /var/log/auth_simulado.log",
+ "for i in 1 2 3 4 5 6 7 8 9; do echo 'Failed password for test from 198.51.100.44 port 2222 ssh2' >> /var/log/auth_simulado.log; done",
+ "for i in 1 2 3 4; do echo 'Failed password for guest from 203.0.113.7 port 2222 ssh2' >> /var/log/auth_simulado.log; done",
  "printf '%s\\n' '#!/bin/sh' 'echo \"ctf.hackerspaidegua.local. IN TXT \\\"FLAG{DNS_REVIS_"+seed+"}\\\"\"' > /tmp/ctf-bin/dig",
  "chmod +x /tmp/ctf-bin/dig; export PATH=/tmp/ctf-bin:$PATH",
- "printf '%s\\n' 'REVISAO PRE-CTF (sem pontos)' '1) find /var/tmp -name \".*\"' '2) chmod g+r /home/aluno/desafios/permissoes/segredo.txt' '3) cat /home/aluno/desafios/logs/auth.log' '4) dig @127.0.0.1 ctf.hackerspaidegua.local TXT' > /home/aluno/missao.txt",
- "test -f /var/tmp/relatorios/.auditoria/.relatorio.txt && test -f /home/aluno/desafios/permissoes/segredo.txt && test -f /home/aluno/desafios/logs/auth.log && test -x /tmp/ctf-bin/dig && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
+ "i=1; while [ \"$i\" -le 50 ]; do n=$(printf '%02d' \"$i\"); printf 'Registro tecnico %s\\nDado sintetico %s\\n' \"$n\" \"$n\" > /opt/evidencias/registro_$n.txt; i=$((i+1)); done",
+ "printf '%s\\n' "+quote(reviewHashFixture.fileHeader)+" "+quote(reviewHashFixture.flag)+" > "+reviewHashFixture.evidenceFile,
+ "printf '%s\\n' 'REVISAO PRE-CTF (sem pontos)' '1) find /var/tmp -name \".*\"' '2) ls -l /opt/desafio_dac/flag.txt e chmod g+r' '3) cat /var/log/auth_simulado.log' '4) dig @192.168.56.1 ctf.hackerspaidegua.local TXT (script didatico)' '5) sha256sum /opt/evidencias/* e MD5 da flag' > /home/aluno/missao.txt",
+ "test -f /var/tmp/relatorios/.auditoria/.relatorio.txt && test -f /opt/desafio_dac/flag.txt && test -f /var/log/auth_simulado.log && test -x /tmp/ctf-bin/dig && test \"$(find /opt/evidencias -type f | wc -l)\" -eq 50 && command -v sha256sum >/dev/null && command -v md5sum >/dev/null && sha256sum "+reviewHashFixture.evidenceFile+" | grep -q '"+reviewHashFixture.sha256File+"' && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
 ];
 let scriptPromise:Promise<void>|undefined;
 let terminalPromise:Promise<void>|undefined;
