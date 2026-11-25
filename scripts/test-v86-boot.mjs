@@ -145,7 +145,7 @@ try{
  const a=componentSource.indexOf("const initCommands=");
  const b=componentSource.indexOf("let scriptPromise:",a);
  if(constants.some(v=>!v)||a<0||b<0)throw Error("Cannot locate Aula 7 guest provisioning source");
- const raw=[...constants,componentSource.slice(a,b),"globalThis.__initCommands=initCommands;"].join("\\n");
+ const raw=[...constants,componentSource.slice(a,b),"globalThis.__initCommands=initCommands;"].join("\n");
  const transpiled=ts.transpileModule(raw,{compilerOptions:{target:ts.ScriptTarget.ES2022,
   module:ts.ModuleKind.None}}).outputText;
  const scope={};
