@@ -42,7 +42,7 @@ const initCommands=(seed:string)=>[
  "i=1; while [ \"$i\" -le 50 ]; do n=$(printf '%02d' \"$i\"); printf 'Registro tecnico %s\\nDado sintetico %s\\n' \"$n\" \"$n\" > /opt/evidencias/registro_$n.txt; i=$((i+1)); done",
  "printf '%s\\n' "+quote(reviewHashFixture.fileHeader)+" "+quote(reviewHashFixture.flag)+" > "+reviewHashFixture.evidenceFile,
  "printf '%s\\n' 'REVISAO PRE-CTF (sem pontos)' '1) find /var/tmp -name \".*\"' '2) ls -l /opt/desafio_dac/flag.txt e chmod g+r' '3) cat /var/log/auth_simulado.log' '4) dig @192.168.56.1 ctf.hackerspaidegua.local TXT (script didatico)' '5) sha256sum /opt/evidencias/* e MD5 da flag' > /home/aluno/missao.txt",
- "test -f /var/tmp/relatorios/.auditoria/.relatorio.txt && test -f /opt/desafio_dac/flag.txt && test -f /var/log/auth_simulado.log && test -x /tmp/ctf-bin/dig && test \"$(find /opt/evidencias -type f | wc -l)\" -eq 50 && command -v sha256sum >/dev/null && command -v md5sum >/dev/null && sha256sum "+reviewHashFixture.evidenceFile+" | grep -q '"+reviewHashFixture.sha256File+"' && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
+ "test -f /var/tmp/relatorios/.auditoria/.relatorio.txt && test -f /opt/desafio_dac/flag.txt && test -f /var/log/auth_simulado.log && test -x /tmp/ctf-bin/dig && test \"$(find /opt/evidencias -name 'registro_*.txt' | wc -l)\" -eq 50 && command -v sha256sum >/dev/null && command -v md5sum >/dev/null && sha256sum "+reviewHashFixture.evidenceFile+" | grep -q '"+reviewHashFixture.sha256File+"' && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
 ];
 let scriptPromise:Promise<void>|undefined;
 let terminalPromise:Promise<void>|undefined;
