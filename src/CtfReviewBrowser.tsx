@@ -99,7 +99,7 @@ export default function CtfReviewBrowser(){
  const [busy,setBusy]=useState(false),[challenge,setChallenge]=useState(0),[flag,setFlag]=useState("");
  const [solved,setSolved]=useState<number[]>([]),[writeups,setWriteups]=useState<Record<string,W>>({});
  const [saved,setSaved]=useState(0),[pending,setPending]=useState(0);
- const [projector,setProjector]=useState(false),[fontSize,setFontSize]=useState(17);
+ const [projector,setProjector]=useState(false),[terminalFocusMode,setTerminalFocusMode]=useState(false),[fontSize,setFontSize]=useState(17);
  const machine=useRef<VM|null>(null),terminalHost=useRef<HTMLDivElement>(null);
  const fullscreenHost=useRef<HTMLElement|null>(null);
  const terminal=useRef<XtermHandle|null>(null),fitAddon=useRef<XtermFit|null>(null);
@@ -128,6 +128,7 @@ export default function CtfReviewBrowser(){
   const onEscape=(event:KeyboardEvent)=>{
    if(event.key==="Escape"&&projector&&document.fullscreenElement!==fullscreenHost.current)
     setProjector(false);
+   if(event.key==="Escape"&&terminalFocusMode)setTerminalFocusMode(false);
   };
   document.addEventListener("fullscreenchange",syncFullscreen);
   window.addEventListener("keydown",onEscape);
@@ -135,13 +136,13 @@ export default function CtfReviewBrowser(){
    document.removeEventListener("fullscreenchange",syncFullscreen);
    window.removeEventListener("keydown",onEscape);
   };
- },[projector]);
+ },[projector,terminalFocusMode]);
  useEffect(()=>{if(ready)focusTerminal();},[ready]);
   useEffect(()=>{
    if(!terminal.current)return;
    terminal.current.options.fontSize=fontSize;
    requestAnimationFrame(()=>fitAddon.current?.fit());
-  },[fontSize,projector]);
+  },[fontSize,projector,terminalFocusMode]);
  const record=(kind:Kind,detail:string)=>{if(!activeRun.current)return;
   for(const part of detail.match(/[\s\S]{1,2400}/g)||[""])events.current.push({kind,detail:part});
   if(events.current.length>2000){events.current.splice(0,events.current.length-2000);setError("Buffer de auditoria cheio.");}
@@ -175,6 +176,12 @@ export default function CtfReviewBrowser(){
    input?.focus({preventScroll:true});
   });
  }
+ function toggleFocusMode(){
+  setTerminalFocusMode(current=>!current);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+   refitTerminal();focusTerminal();
+  }));
+ }
  function toggleProjection(){
   const target=fullscreenHost.current;
   if(!target)return;
@@ -183,6 +190,7 @@ export default function CtfReviewBrowser(){
   }else if(target.requestFullscreen){
    // Acione diretamente a partir do clique: Fullscreen API exige gesto do usuário.
    void target.requestFullscreen().then(()=>{
+    setTerminalFocusMode(false);
     setProjector(true);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
      refitTerminal();focusTerminal();
@@ -229,7 +237,7 @@ export default function CtfReviewBrowser(){
    const id=await rpc<string>("ctf_teacher_review_start");activeRun.current=id;
    setRun({id,title:"Revisão Pré-CTF",started_at:new Date().toISOString(),closed_at:null,writeup:{}});
    setSolved([]);setWriteups({});setSaved(0);setReport(null);setReady(false);readyRef.current=false;
-   setShowExplanations(false);setLastAction(null);
+   setShowExplanations(false);setLastAction(null);setTerminalFocusMode(false);
    if(bootTimer.current)clearTimeout(bootTimer.current);
    bootTimer.current=setTimeout(()=>{
     if(activeRun.current===id&&!readyRef.current&&mounted.current){
@@ -336,7 +344,7 @@ export default function CtfReviewBrowser(){
   if(document.fullscreenElement===fullscreenHost.current){
    try{await document.exitFullscreen();}catch{/* browser fullscreen already closed */}
   }
-  setProjector(false);
+  setProjector(false);setTerminalFocusMode(false);
   if(bootTimer.current)clearTimeout(bootTimer.current);
   try{record("vm_stop","Revisão demonstrativa encerrada");if(out.current){record("output",out.current);out.current="";}
    await sync();await rpc("ctf_teacher_review_close",{p_run:activeRun.current});
@@ -346,7 +354,7 @@ export default function CtfReviewBrowser(){
   }catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function audit(id:string){setBusy(true);try{setReport(await rpc<Report>("ctf_teacher_review_report",{p_run:id}));}
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- return <section ref={fullscreenHost} className={"ctf-browser"+(projector?" ctf-projector":"")}>
+ return <section ref={fullscreenHost} className={"ctf-browser"+(projector?" ctf-projector":"")+(terminalFocusMode?" ctf-focus-mode":"")}>
   <div className="ctf-browser-head"><div><p>HACKERS PAI D'ÉGUA / REVISÃO PRÉ-CTF</p>
    <h2>Laboratório Linux do professor</h2><small>v86 + Buildroot · {reviewMissions.length} desafios · sem notas nem pontos</small></div>
    {run?<button onClick={()=>void close()} disabled={busy}>Encerrar demonstração</button>:
@@ -392,8 +400,10 @@ export default function CtfReviewBrowser(){
     <div className="ctf-window-head">
       <div className="ctf-window-lights" aria-hidden="true"><i/><i/><i/></div>
       <span>ghost@lab-professor: ~ / xterm.js</span>
-      <button type="button" onMouseDown={event=>event.preventDefault()} onClick={focusTerminal} disabled={!ready}
-        title="Posicionar o cursor dentro do terminal Linux">⌨ Focar</button>
+      <button type="button" aria-pressed={terminalFocusMode} onMouseDown={event=>event.preventDefault()}
+        onClick={toggleFocusMode} title="Expandir ou restaurar o terminal, sem perder a sessão Linux">
+        {terminalFocusMode?"✕ Sair do foco (Esc)":"⌨ Focar"}
+      </button>
     </div>
     <div className="ctf-terminal-toolbar">
       <span><strong>Linux v86 · Terminal interativo</strong><small>{ready?"● Terminal ativo":"● "+status}</small></span>
