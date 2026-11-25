@@ -302,3 +302,88 @@
  .ctf-evidence-header-actions {width:100%;justify-content:space-between;}
  .ctf-terminal-controls .ctf-writeup-shortcut {white-space:normal;}
 }
+
+
+/* Editor is portaled to body outside normal administration, or to the native
+   fullscreen element when projecting. Thus page scroll/stacking cannot block typing. */
+.ctf-writeup-portal {
+ position:fixed;inset:0;z-index:2147483646;
+ display:flex;justify-content:center;align-items:center;
+ padding:12px;box-sizing:border-box;overflow:hidden;
+ isolation:isolate;pointer-events:none;
+}
+.ctf-writeup-portal .ctf-writeup-backdrop {
+ position:absolute;inset:0;display:block;z-index:0;
+ border:0;border-radius:0;width:100%;height:100%;margin:0;
+ background:rgba(3,12,22,.78);backdrop-filter:blur(3px);
+ pointer-events:auto;cursor:default;
+}
+.ctf-writeup-portal .ctf-evidence-panel.ctf-writeup-open {
+ position:relative;left:auto;top:auto;transform:none;
+ z-index:1;display:block;visibility:visible;
+ width:min(880px,100%);max-width:100%;
+ max-height:calc(100dvh - 24px);min-height:0;
+ overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+ pointer-events:auto;touch-action:pan-y;
+ background:#142634;color:#dfefeb;border:1px solid #6bd5b4;
+ border-radius:14px;padding:20px 24px;
+ box-shadow:0 24px 100px #020b1df0;
+ scrollbar-width:thin;scrollbar-color:#4c817e #142634;
+}
+.ctf-writeup-portal .ctf-evidence-header {
+ display:flex;flex-wrap:wrap;justify-content:space-between;
+ align-items:flex-start;gap:12px;
+}
+.ctf-writeup-portal .ctf-evidence-header h3 {font-size:18px;margin:0 0 10px;color:#e4fff4;}
+.ctf-writeup-portal .ctf-evidence-header-actions {display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.ctf-writeup-portal .ctf-evidence-panel>p {color:#c0d8de;font-size:12px;line-height:1.7;}
+.ctf-writeup-portal .ctf-evidence-panel label {
+ display:grid;gap:8px;margin:13px 0;font-size:12px;color:#d4e9e6;font-weight:650;
+}
+.ctf-writeup-portal .ctf-evidence-panel textarea {
+ display:block;box-sizing:border-box;width:100%;
+ min-height:105px;max-height:35dvh;resize:vertical;
+ border:1px solid #517386;background:#0a1b29;color:#e8fff2;
+ padding:12px;font:12px/1.6 ui-monospace,Consolas,monospace;
+ border-radius:8px;overflow:auto;pointer-events:auto;
+}
+.ctf-writeup-portal .ctf-evidence-panel input {
+ display:inline-block;box-sizing:border-box;max-width:500px;width:min(100%,500px);
+ color:#eafff6;background:#0b1b29;border:1px solid #547586;
+ padding:9px;border-radius:7px;margin-right:8px;
+}
+.ctf-writeup-portal .ctf-evidence-panel input:focus,
+.ctf-writeup-portal .ctf-evidence-panel textarea:focus {
+ outline:2px solid #6fe8bd;outline-offset:2px;
+}
+.ctf-writeup-portal .ctf-writeup-unsaved {
+ padding:9px 11px;border-left:3px solid #d7af68;
+ background:#3a3227;color:#ffedca;
+}
+.ctf-writeup-portal .ctf-evidence-actions {
+ display:flex;flex-wrap:wrap;gap:9px;margin-top:14px;
+}
+.ctf-writeup-portal .ctf-evidence-actions button,
+.ctf-writeup-portal .ctf-writeup-close {
+ cursor:pointer;padding:9px 12px;border:1px solid #528f7c;
+ border-radius:7px;background:#244b49;color:#eefef6;
+}
+.ctf-browser .ctf-mission-main>.ctf-evidence-panel {
+ /* Keep form immediately below terminal, not after a long investigation sidebar. */
+ margin:0;min-width:0;overflow:visible;
+}
+.ctf-browser .ctf-mission-workspace {min-width:0;}
+.ctf-browser .ctf-mission-guide {min-width:0;}
+.ctf-browser .ctf-browser-terminal {scroll-margin-top:16px;}
+.ctf-browser .ctf-mission-main>.ctf-evidence-panel {scroll-margin-top:16px;}
+/* The ordinary Focus layout hides the inline form, but the portal is still accessible. */
+.ctf-browser.ctf-focus-mode .ctf-mission-main>.ctf-evidence-panel:not(.ctf-writeup-open) {
+ display:none;
+}
+@media(max-width:650px) {
+ .ctf-writeup-portal {padding:4px;}
+ .ctf-writeup-portal .ctf-evidence-panel.ctf-writeup-open {
+  padding:14px;max-height:calc(100dvh - 8px);width:100%;
+ }
+ .ctf-writeup-portal .ctf-evidence-panel input {max-width:100%;margin:0 0 8px;}
+}
