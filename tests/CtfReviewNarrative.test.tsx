@@ -46,6 +46,7 @@ describe("revisão CTF com enunciado e raciocínio pedagógico", () => {
     expect(screen.getByRole("heading", { name: "Qual arquivo é a evidência legítima?" })).toBeTruthy();
     expect(screen.getByText(/a67ac8c054f704be2673a9a7c72cffa8/)).toBeTruthy();
     expect(screen.getByText(/MD5 é hash, não criptografia reversível/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Preencher write-up/i }));
     expect(screen.getByRole("button", { name: /Exportar \.md/i })).toBeTruthy();
     expect(screen.getByText(/Raciocínio técnico/i)).toBeTruthy();
   });
