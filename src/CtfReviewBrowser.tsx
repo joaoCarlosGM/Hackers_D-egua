@@ -162,7 +162,7 @@ export default function CtfReviewBrowser(){
  useEffect(()=>{
   if(!writeupOpen)return;
   const frame=requestAnimationFrame(()=>{
-   writeupDialog.current?.scrollTo({top:0});
+   if(writeupDialog.current)writeupDialog.current.scrollTop=0;
    writeupFirstInput.current?.focus({preventScroll:true});
   });
   return()=>cancelAnimationFrame(frame);
