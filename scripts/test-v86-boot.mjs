@@ -21,7 +21,7 @@ const html=[
  "const xterm=new Terminal({convertEol:true,cursorBlink:true,fontSize:14});",
  "xterm.open(document.getElementById('xterm-test'));window.__xterm=xterm;",
  "document.getElementById('focus-xterm').addEventListener('click',()=>xterm.focus());",
- "document.getElementById('project-xterm').addEventListener('click',()=>document.getElementById('ctf-fullscreen').requestFullscreen());",
+ "document.getElementById('project-xterm').addEventListener('click',()=>document.fullscreenElement ? document.exitFullscreen() : document.getElementById('ctf-fullscreen').requestFullscreen());",
  "const fit=new FitAddon.FitAddon();xterm.loadAddon(fit);fit.fit();",
  "xterm.onData(data=>vm.serial0_send(data.replace(/\\r/g,'\\n')));",
  "let sent=false;vm.add_listener('serial0-output-byte',byte=>{",
@@ -163,6 +163,10 @@ try{
  await page.locator("#project-xterm").click();
  await page.waitForFunction(()=>document.fullscreenElement?.id==="ctf-fullscreen",undefined,{timeout:10000});
  await page.keyboard.press("Escape");
+ // Headless Chromium can keep fullscreen active after a synthetic Escape.
+ // Verify the same explicit close control available to the teacher.
+ if(await page.evaluate(()=>document.fullscreenElement!==null))
+  await page.locator("#project-xterm").click();
  await page.waitForFunction(()=>document.fullscreenElement===null,undefined,{timeout:10000});
  console.log("PASS: teacher focus control and browser-native projector fullscreen roundtrip.");
 
