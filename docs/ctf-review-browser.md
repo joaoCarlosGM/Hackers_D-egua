@@ -12,6 +12,17 @@ A tela **Administração → Revisão Pré-CTF** é um laboratório Linux demons
 
 O build executa `scripts/prepare-v86.mjs`, que prepara `public/ctf-v86/aula07-evidencias.json`. Os dados AES-256-CBC são cifrados de verdade com PBKDF2 SHA-256 (10.000 iterações), salt OpenSSL de 8 bytes, e verificação do SHA-256 do arquivo 37. O browser injeta os 50 binários na máquina virtual via `base64 -d`. O provisionamento só marca laboratório pronto quando a auditoria de arquivos, logs, wordlist, dicionário e hash confere.
 
+O botão **Pacote Kali** no terminal baixa `aula07-evidencias.tar`, contendo 50 arquivos AES, `dicionario_paraense.txt` e `senha_cofre.md5`. Após baixar no Kali, execute:
+
+```bash
+tar -xf aula07-evidencias.tar
+sha256sum evidencias/*.enc | grep 'e4b2'
+john --format=raw-md5 --wordlist=evidencias/dicionario_paraense.txt evidencias/senha_cofre.md5
+openssl enc -d -aes-256-cbc -pbkdf2 -in evidencias/evidencia_37.enc -pass pass:SENHA_RECUPERADA
+```
+
+Troque `SENHA_RECUPERADA` pela senha encontrada, sem publicar a resposta aos alunos.
+
 **Limite:** a imagem Linux Buildroot não inclui, por padrão, o executável John the Ripper nem OpenSSL. O comando `john` disponível na revisão é uma *implementação didática* que testa cada candidata por `md5sum`, não o programa oficial. Não apresentá-lo como John original. A descriptografia AES com `openssl enc -d -aes-256-cbc -pbkdf2` deve ser feita em um Linux/Kali com OpenSSL enquanto não houver uma imagem browser Linux com a ferramenta real. Não fingir descriptografia no terminal nem fornecer a flag sem decifrar.
 
 ## Write-up e auditoria
