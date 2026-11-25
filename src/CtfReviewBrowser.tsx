@@ -33,7 +33,7 @@ async function loadAula07Evidence():Promise<EncryptedBundle>{
  const bundle=await response.json() as EncryptedBundle;
  if(bundle.sha256Evidence37!==evidenceSha256 || bundle.files?.length!==50 ||
   bundle.files[36].name!=="evidencia_37.enc" ||
-  bundle.files.some(f=>!/^evidencia_\\d{2}\\.enc$/.test(f.name)||!/^[A-Za-z0-9+/=]+$/.test(f.base64)))
+  bundle.files.some(f=>!/^evidencia_\d{2}\.enc$/.test(f.name)||!/^[A-Za-z0-9+/=]+$/.test(f.base64)))
   throw Error("Pacote AES da Aula 7 inválido ou incompleto.");
  return bundle;
 }
