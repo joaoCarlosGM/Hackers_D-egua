@@ -507,6 +507,7 @@ export default function CtfReviewBrowser(){
      <a href="#admin/auditoria-ctf">Histórico do terminal do professor</a>
     </>}
    </div></div>
+  {run&&<p className="ctf-browser-session-note">Terminal do professor: antes de sair, selecione <strong>Encerrar e salvar</strong> ou <strong>Descartar sessão</strong>.</p>}
   <p role="status" className="ctf-browser-status">{status}</p>{error&&<p role="alert" className="error">{error}</p>}
   <div className="ctf-browser-stats"><div>Progresso <strong>{solved.length}/{reviewMissions.length}</strong></div>
     <div>Auditoria <strong>{saved} eventos</strong></div><div>Sincronização <strong>{pending} pendentes</strong></div></div>
