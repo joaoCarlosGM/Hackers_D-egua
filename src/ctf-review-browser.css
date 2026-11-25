@@ -254,3 +254,51 @@
 @media(max-width:650px){
  .ctf-browser.ctf-focus-mode .ctf-terminal-display {height:65dvh;min-height:300px;}
 }
+
+
+/* Always-accessible write-up editor. In normal, focus and native projector mode
+   the same React form is presented, so teacher draft state never gets remounted. */
+.ctf-terminal-controls .ctf-writeup-shortcut {
+ border-color:#409f85;
+ background:#205447;
+ color:#e7fff0;
+ font-weight:800;
+ white-space:nowrap;
+}
+.ctf-terminal-controls .ctf-writeup-shortcut:hover { background:#2d7160; }
+.ctf-browser .ctf-writeup-backdrop {
+ position:fixed;inset:0;z-index:2147483628;
+ background:rgba(3,12,22,.76);backdrop-filter:blur(3px);
+}
+.ctf-browser .ctf-evidence-panel.ctf-writeup-open,
+.ctf-browser.ctf-focus-mode>.ctf-evidence-panel.ctf-writeup-open,
+.ctf-browser.ctf-projector>.ctf-evidence-panel.ctf-writeup-open {
+ position:fixed;display:block;left:50%;top:50%;transform:translate(-50%,-50%);
+ z-index:2147483629;width:min(860px,calc(100vw - 24px));
+ max-height:92dvh;overflow:auto;overscroll-behavior:contain;
+ background:#142634;border:1px solid #6bd5b4;border-radius:14px;
+ padding:20px 22px;box-shadow:0 22px 100px #020b1df0;
+}
+.ctf-evidence-header-actions {display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.ctf-browser .ctf-writeup-close {
+ border:1px solid #5e8b86;border-radius:7px;color:#e6fff5;
+ background:#234353;padding:7px 12px;font-size:12px;cursor:pointer;
+}
+.ctf-browser .ctf-writeup-close:hover {background:#346171;}
+.ctf-browser .ctf-writeup-unsaved {
+ border-left:3px solid #edbf6e;padding:9px 11px;background:#3a3327;
+ color:#f8e3ba;font-size:11px;line-height:1.5;
+}
+.ctf-browser .ctf-evidence-panel.ctf-writeup-open textarea:focus,
+.ctf-browser .ctf-evidence-panel.ctf-writeup-open input:focus {
+ outline:2px solid #6ee5be;outline-offset:1px;
+}
+.ctf-browser.ctf-projector .ctf-evidence-panel.ctf-writeup-open,
+.ctf-browser.ctf-focus-mode .ctf-evidence-panel.ctf-writeup-open {
+ visibility:visible;pointer-events:auto;
+}
+@media(max-width:630px) {
+ .ctf-browser .ctf-evidence-panel.ctf-writeup-open {padding:12px;max-height:94dvh;}
+ .ctf-evidence-header-actions {width:100%;justify-content:space-between;}
+ .ctf-terminal-controls .ctf-writeup-shortcut {white-space:normal;}
+}
