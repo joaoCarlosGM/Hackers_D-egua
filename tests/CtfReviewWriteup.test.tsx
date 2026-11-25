@@ -12,7 +12,11 @@ vi.mock("../src/api", () => ({
   return null;
  })
 }));
-afterEach(()=>{cleanup();vi.clearAllMocks();});
+afterEach(()=>{
+ cleanup();
+ for(const el of document.querySelectorAll('script[src*="libv86.js"], script[src*="xterm"], link[href*="xterm.css"]'))el.remove();
+ vi.clearAllMocks();
+});
 
 async function startDemo(){
  const result=render(<CtfReviewBrowser/>);
@@ -20,8 +24,9 @@ async function startDemo(){
  await screen.findByRole("heading",{name:/O relatório que desapareceu/i});
  // Simulate a failed emulator asset fetch: it settles the asynchronous
  // session bootstrap and enables the form without needing to boot Linux in jsdom.
- await waitFor(()=>expect(document.querySelector('script[src*="libv86.js"]')).toBeTruthy());
- fireEvent.error(document.querySelector('script[src*="libv86.js"]') as HTMLScriptElement);
+ await waitFor(()=>expect(document.querySelectorAll('script[src*="libv86.js"]').length).toBeGreaterThan(0));
+ const scripts=document.querySelectorAll('script[src*="libv86.js"]');
+ fireEvent.error(scripts[scripts.length-1] as HTMLScriptElement);
  await waitFor(()=>expect((screen.getByRole("button",{name:/Salvar write-up no Supabase/i}) as HTMLButtonElement).disabled).toBe(false));
  return result;
 }
