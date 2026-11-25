@@ -100,8 +100,10 @@ export default function CtfReviewBrowser(){
  const [solved,setSolved]=useState<number[]>([]),[writeups,setWriteups]=useState<Record<string,W>>({});
  const [saved,setSaved]=useState(0),[pending,setPending]=useState(0);
  const [projector,setProjector]=useState(false),[terminalFocusMode,setTerminalFocusMode]=useState(false),[fontSize,setFontSize]=useState(17);
+ const [writeupOpen,setWriteupOpen]=useState(false),[writeupDirty,setWriteupDirty]=useState(false);
  const machine=useRef<VM|null>(null),terminalHost=useRef<HTMLDivElement>(null);
  const fullscreenHost=useRef<HTMLElement|null>(null);
+ const writeupFirstInput=useRef<HTMLTextAreaElement|null>(null);
  const terminal=useRef<XtermHandle|null>(null),fitAddon=useRef<XtermFit|null>(null);
  const termResize=useRef<ResizeObserver|null>(null);
  const terminalInput=useRef(""),termSubscription=useRef<{dispose:()=>void}|null>(null);
@@ -126,6 +128,11 @@ export default function CtfReviewBrowser(){
     requestAnimationFrame(()=>requestAnimationFrame(refitTerminal));
   };
   const onEscape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&writeupOpen){
+    setWriteupOpen(false);
+    event.stopPropagation();
+    return;
+   }
    if(event.key==="Escape"&&projector&&document.fullscreenElement!==fullscreenHost.current)
     setProjector(false);
    if(event.key==="Escape"&&terminalFocusMode)setTerminalFocusMode(false);
@@ -136,8 +143,13 @@ export default function CtfReviewBrowser(){
    document.removeEventListener("fullscreenchange",syncFullscreen);
    window.removeEventListener("keydown",onEscape);
   };
- },[projector,terminalFocusMode]);
+ },[projector,terminalFocusMode,writeupOpen]);
  useEffect(()=>{if(ready)focusTerminal();},[ready]);
+ useEffect(()=>{
+  if(!writeupOpen)return;
+  const frame=requestAnimationFrame(()=>writeupFirstInput.current?.focus({preventScroll:true}));
+  return()=>cancelAnimationFrame(frame);
+ },[writeupOpen,challenge]);
   useEffect(()=>{
    if(!terminal.current)return;
    terminal.current.options.fontSize=fontSize;
@@ -175,6 +187,15 @@ export default function CtfReviewBrowser(){
    terminal.current?.focus();
    input?.focus({preventScroll:true});
   });
+ }
+ function openWriteup(){
+  setWriteupOpen(true);
+ }
+ function closeWriteup(){
+  setWriteupOpen(false);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+   if(readyRef.current)focusTerminal();
+  }));
  }
  function toggleFocusMode(){
   setTerminalFocusMode(current=>!current);
@@ -237,7 +258,7 @@ export default function CtfReviewBrowser(){
    const id=await rpc<string>("ctf_teacher_review_start");activeRun.current=id;
    setRun({id,title:"Revisão Pré-CTF",started_at:new Date().toISOString(),closed_at:null,writeup:{}});
    setSolved([]);setWriteups({});setSaved(0);setReport(null);setReady(false);readyRef.current=false;
-   setShowExplanations(false);setLastAction(null);setTerminalFocusMode(false);
+   setShowExplanations(false);setLastAction(null);setTerminalFocusMode(false);setWriteupOpen(false);setWriteupDirty(false);
    if(bootTimer.current)clearTimeout(bootTimer.current);
    bootTimer.current=setTimeout(()=>{
     if(activeRun.current===id&&!readyRef.current&&mounted.current){
@@ -328,6 +349,7 @@ export default function CtfReviewBrowser(){
     setSolved(v=>[...v,challenge]);
     record("challenge","Objetivo "+(challenge+1)+" confirmado sem pontos");
    }
+   setWriteupDirty(true);
    setWriteups(prev=>{
     const currentValue=prev[String(challenge)]??{command:"",reason:"",evidence:""};
     const submitted=flag.trim();
@@ -335,16 +357,23 @@ export default function CtfReviewBrowser(){
     return {...prev,[String(challenge)]:{...currentValue,evidence:
       [currentValue.evidence,"Flag obtida: "+submitted].filter(Boolean).join("\n")}};
    });
+   openWriteup();
   }else setError("Flag inválida. Verifique o terminal.");setFlag("");};
- const edit=(field:keyof W,value:string)=>setWriteups(v=>({...v,[String(challenge)]:{...current,[field]:value}}));
+ const edit=(field:keyof W,value:string)=>{
+  setWriteupDirty(true);
+  setWriteups(prev=>({
+   ...prev,
+   [String(challenge)]:{...(prev[String(challenge)]??{command:"",reason:"",evidence:""}),[field]:value}
+  }));
+ };
  async function saveWriteup(){if(!activeRun.current)return;setBusy(true);
-  try{await rpc("ctf_teacher_review_writeup",{p_run:activeRun.current,p_writeup:writeups});record("writeup","Write-up salvo");await sync();setStatus("Write-up salvo no Supabase");}
+  try{await rpc("ctf_teacher_review_writeup",{p_run:activeRun.current,p_writeup:writeups});record("writeup","Write-up salvo");await sync();setWriteupDirty(false);setStatus("Write-up salvo no Supabase");}
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function close(){if(!activeRun.current)return;setBusy(true);
   if(document.fullscreenElement===fullscreenHost.current){
    try{await document.exitFullscreen();}catch{/* browser fullscreen already closed */}
   }
-  setProjector(false);setTerminalFocusMode(false);
+  setProjector(false);setTerminalFocusMode(false);setWriteupOpen(false);
   if(bootTimer.current)clearTimeout(bootTimer.current);
   try{record("vm_stop","Revisão demonstrativa encerrada");if(out.current){record("output",out.current);out.current="";}
    await sync();await rpc("ctf_teacher_review_close",{p_run:activeRun.current});
@@ -408,6 +437,8 @@ export default function CtfReviewBrowser(){
     <div className="ctf-terminal-toolbar">
       <span><strong>Linux v86 · Terminal interativo</strong><small>{ready?"● Terminal ativo":"● "+status}</small></span>
       <div className="ctf-terminal-controls">
+        <button type="button" className="ctf-writeup-shortcut" onClick={openWriteup}
+          title="Preencher o relatório da missão sem interromper o Linux">✎ Preencher write-up</button>
         <button type="button" onClick={()=>setFontSize(n=>Math.max(12,n-2))} aria-label="Diminuir fonte do terminal">A−</button>
         <button type="button" onClick={()=>setFontSize(n=>Math.min(30,n+2))} aria-label="Aumentar fonte do terminal">A+</button>
         <button type="button" aria-pressed={projector} onClick={toggleProjection}
@@ -474,11 +505,18 @@ export default function CtfReviewBrowser(){
      </section>
     </aside>
    </div>
-   <section className="ctf-browser-card ctf-evidence-panel">
+   {writeupOpen&&<div className="ctf-writeup-backdrop" onClick={closeWriteup} aria-hidden="true"/>}
+   <section className={"ctf-browser-card ctf-evidence-panel"+(writeupOpen?" ctf-writeup-open":"")}
+    role={writeupOpen?"dialog":undefined} aria-modal={writeupOpen?true:undefined}
+    aria-labelledby="ctf-writeup-title">
     <div className="ctf-evidence-header">
      <div><div className="ctf-guide-eyebrow">ENTREGA DA MISSÃO {String(mission.id).padStart(2,"0")}</div>
-      <h3>Evidência e relatório de investigação</h3></div>
-     <span className="ctf-evidence-status">{solved.includes(challenge)?"Evidência encontrada":"Aguardando evidência"}</span>
+      <h3 id="ctf-writeup-title">Evidência e relatório de investigação</h3></div>
+     <div className="ctf-evidence-header-actions">
+      <span className="ctf-evidence-status">{solved.includes(challenge)?"Evidência encontrada":"Aguardando evidência"}</span>
+      {writeupOpen&&<button type="button" className="ctf-writeup-close" onClick={closeWriteup}
+       aria-label="Fechar editor de write-up e voltar ao terminal">✕ Fechar</button>}
+     </div>
     </div>
     <p>Ao concluir a investigação, registre a flag encontrada no terminal e documente como chegou ao resultado. A revisão não concede pontos.</p>
     <p><strong>Formato esperado:</strong> <code>{mission.flagFormat}</code></p>
@@ -489,13 +527,16 @@ export default function CtfReviewBrowser(){
      <h4>Write-up: o que você fez e por quê?</h4>
      <p>Explique o problema, o procedimento usado, o motivo da escolha dos comandos e a evidência obtida. É isso que o professor analisará nos CTFs oficiais.</p>
     </div>
-    <label>1. Comando utilizado (o que você fez?)<textarea value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
+    <label>1. Comando utilizado (o que você fez?)<textarea ref={writeupFirstInput} value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
     <label>2. Raciocínio técnico (por que fez isso?)<textarea value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
     <label>3. Flag obtida e evidência (o que encontrou?)<textarea value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 5 registre SHA-256 e MD5." onChange={e=>edit("evidence",e.target.value)}/></label>
+    {writeupDirty&&<p className="ctf-writeup-unsaved" role="status">
+      Há alterações no write-up que ainda não foram salvas no Supabase.
+     </p>}
     <div className="ctf-evidence-actions">
      <button type="button" disabled={busy} onClick={()=>void saveWriteup()}>Salvar write-up no Supabase</button>
      <button type="button" onClick={()=>download("writeup_revisao_professor.md",formatReviewWriteup(writeups),"text/markdown;charset=utf-8")}>Exportar .md</button>
-     <button type="button" disabled={challenge>=reviewMissions.length-1} onClick={()=>{setChallenge(i=>i+1);setFlag("");setShowExplanations(false);setLastAction(null);}}>Próximo desafio →</button>
+     <button type="button" disabled={challenge>=reviewMissions.length-1} onClick={()=>{setChallenge(i=>i+1);setFlag("");setShowExplanations(false);setLastAction(null);setWriteupOpen(false);}}>Próximo desafio →</button>
     </div>
    </section></>}
   <div className="ctf-browser-card"><h3>Histórico de demonstrações</h3>
