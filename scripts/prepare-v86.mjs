@@ -83,3 +83,39 @@ await writeFile(path.join(root,"aula07-evidencias.json"),JSON.stringify({
  files:encrypted
 }));
 console.log("[v86] Aula 7: 50 arquivos AES-256-CBC gerados e validados.");
+
+/* Export a portable tar archive for Kali/Live Boot, where OpenSSL and the
+ * official John the Ripper can run. This is professor demo data, not graded. */
+function tarOctal(header,offset,length,value){
+ const digits=value.toString(8).padStart(length-1,"0");
+ header.write(digits.slice(-(length-1))+"\\0",offset,length,"ascii");
+}
+function tarFile(name,bytes){
+ const header=Buffer.alloc(512,0);
+ header.write(name,0,Math.min(name.length,99),"utf8");
+ tarOctal(header,100,8,0o644);
+ tarOctal(header,108,8,0);
+ tarOctal(header,116,8,0);
+ tarOctal(header,124,12,bytes.length);
+ tarOctal(header,136,12,0);
+ header.fill(32,148,156);
+ header.write("0",156);
+ header.write("ustar\\0",257,"ascii");header.write("00",263,"ascii");
+ const checksum=header.reduce((sum,byte)=>sum+byte,0);
+ tarOctal(header,148,8,checksum);
+ const padding=Buffer.alloc((512-bytes.length%512)%512);
+ return Buffer.concat([header,bytes,padding]);
+}
+const wordlist=["123456","admin2026","ufpa_itec","veropeso123","tacaca_quente",
+ "acai_com_peixe","mangal_das_garcas","ilha_do_marajo","boto_cor_de_rosa",
+ "maniwa_2026","castanha_do_para","paidegua2026","cirio_de_nazare",
+ "estacao_docas","guama_ufpa"].join("\\n")+"\\n";
+const md5=createHash("md5").update("paidegua2026").digest("hex")+"\\n";
+const tarEntries=[
+ tarFile("evidencias/dicionario_paraense.txt",Buffer.from(wordlist)),
+ tarFile("evidencias/senha_cofre.md5",Buffer.from(md5)),
+ ...encrypted.map(f=>tarFile("evidencias/"+f.name,Buffer.from(f.base64,"base64")))
+];
+await writeFile(path.join(root,"aula07-evidencias.tar"),
+ Buffer.concat([...tarEntries,Buffer.alloc(1024)]));
+console.log("[v86] Pacote de laboratorio Kali Aula 7 gerado.");
