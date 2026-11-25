@@ -8,8 +8,6 @@ type Kind="vm_boot"|"vm_ready"|"lab_setup"|"command"|"output"|"challenge"|"write
 type E={kind:Kind;detail:string};
 type W={command:string;reason:string;evidence:string};
 type Run={id:string;title:string;started_at:string;closed_at:string|null;writeup:Record<string,W>};
-type Event={id:number;at:string;kind:Kind;detail:string};
-type Report={run:Run;events:Event[];truncated:boolean};
 type VM={add_listener:(name:string,fn:(byte:number)=>void)=>void;serial0_send:(command:string)=>void;stop:()=>void;destroy:()=>void};
 type XtermFit={fit:()=>void;dispose?:()=>void};
 type XtermHandle={
@@ -76,7 +74,6 @@ function library(){
 }
 function download(name:string,data:string,type="application/json"){const url=URL.createObjectURL(new Blob([data],{type}));
  const a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-const date=(s:string)=>new Date(s).toLocaleString("pt-BR");
 function formatReviewWriteup(entries:Record<string,W>) {
  return [
   "# Write-up CTF 1 — Hackers Pai D'Égua",
@@ -94,8 +91,7 @@ function formatReviewWriteup(entries:Record<string,W>) {
 }
 
 export default function CtfReviewBrowser(){
- const [run,setRun]=useState<Run|null>(null),[history,setHistory]=useState<Run[]>([]);
- const [report,setReport]=useState<Report|null>(null),[status,setStatus]=useState("Pronto para iniciar");
+ const [run,setRun]=useState<Run|null>(null),[status,setStatus]=useState("Pronto para iniciar");
  const [error,setError]=useState(""),[ready,setReady]=useState(false);
  const [busy,setBusy]=useState(false),[challenge,setChallenge]=useState(0),[flag,setFlag]=useState("");
  const [solved,setSolved]=useState<number[]>([]),[writeups,setWriteups]=useState<Record<string,W>>({});
@@ -117,7 +113,7 @@ export default function CtfReviewBrowser(){
  const mission=reviewMissions[challenge];
  const [showExplanations,setShowExplanations]=useState(false);
  const [lastAction,setLastAction]=useState<{command:string;what:string;why:string}|null>(null);
- useEffect(()=>{mounted.current=true;void rpc<Run[]>("ctf_teacher_review_history").then(setHistory).catch(e=>setError((e as Error).message));
+ useEffect(()=>{mounted.current=true;
   return()=>{mounted.current=false;
    if(bootTimer.current)clearTimeout(bootTimer.current);
    machine.current?.stop();machine.current?.destroy();machine.current=null;
@@ -263,12 +259,11 @@ export default function CtfReviewBrowser(){
   machine.current.serial0_send(value+"\n");
   terminal.current?.focus();
  }
- const reload=async()=>setHistory(await rpc<Run[]>("ctf_teacher_review_history"));
  async function start(){if(busy)return;setBusy(true);setError("");setStatus("Criando sessão...");
   try{
    const id=await rpc<string>("ctf_teacher_review_start");activeRun.current=id;
    setRun({id,title:"Revisão Pré-CTF",started_at:new Date().toISOString(),closed_at:null,writeup:{}});
-   setSolved([]);setWriteups({});setSaved(0);setReport(null);setReady(false);readyRef.current=false;
+   setSolved([]);setWriteups({});setSaved(0);setPending(0);setReady(false);readyRef.current=false;
    setShowExplanations(false);setLastAction(null);setTerminalFocusMode(false);setWriteupOpen(false);setWriteupDirty(false);
    if(bootTimer.current)clearTimeout(bootTimer.current);
    bootTimer.current=setTimeout(()=>{
@@ -283,6 +278,17 @@ export default function CtfReviewBrowser(){
    setStatus("Carregando o terminal xterm.js e a imagem Linux...");
    await Promise.all([library(),loadTerminal()]);
    if(!window.V86)throw Error("v86 indisponível");
+   await new Promise<void>((resolve,reject)=>{
+    // Cached assets can resolve before React commits the xterm host.
+    const deadline=Date.now()+7000;
+    const check=()=>{
+     if(!mounted.current||activeRun.current!==id)return reject(Error("Inicialização cancelada."));
+     if(terminalHost.current)return resolve();
+     if(Date.now()>deadline)return reject(Error("A área do terminal não foi montada. Encerre ou descarte e tente novamente."));
+     setTimeout(check,30);
+    };
+    check();
+   });
    labSeed.current=Math.random().toString(16).slice(2,8).toUpperCase();
    script.current=initCommands(labSeed.current);
    stage.current=-1;tail.current="";setupValid.current=false;
@@ -349,8 +355,7 @@ export default function CtfReviewBrowser(){
      }
      terminal.current?.write(char);out.current+=char;if(out.current.length>2000){record("output",out.current);out.current="";}
    });
-   await reload();
-  }catch(e){setError((e as Error).message);record("error",(e as Error).message);setStatus("Falha ao iniciar");}
+  }catch(e){setError((e as Error).message);record("error",(e as Error).message);setStatus("Falha ao iniciar o Linux — encerre ou descarte para tentar outra vez");}
   finally{setBusy(false);}
  }
  
@@ -392,8 +397,6 @@ export default function CtfReviewBrowser(){
    destroyTerminal();
    readyRef.current=false;setReady(false);setRun(null);setStatus("Encerrada; histórico salvo no Supabase");await reload();
   }catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- async function audit(id:string){setBusy(true);try{setReport(await rpc<Report>("ctf_teacher_review_report",{p_run:id}));}
-  catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  const writeupPanel=(
    <section className={"ctf-browser-card ctf-evidence-panel"+(writeupOpen?" ctf-writeup-open":"")}
     role={writeupOpen?"dialog":undefined} aria-modal={writeupOpen?true:undefined}
@@ -441,8 +444,15 @@ export default function CtfReviewBrowser(){
  return <section ref={fullscreenHost} className={"ctf-browser"+(projector?" ctf-projector":"")+(terminalFocusMode?" ctf-focus-mode":"")}>
   <div className="ctf-browser-head"><div><p>HACKERS PAI D'ÉGUA / REVISÃO PRÉ-CTF</p>
    <h2>Laboratório Linux do professor</h2><small>v86 + Buildroot · {reviewMissions.length} desafios · sem notas nem pontos</small></div>
-   {run?<button onClick={()=>void close()} disabled={busy}>Encerrar demonstração</button>:
-    <button onClick={()=>void start()} disabled={busy}>Iniciar demonstração</button>}</div>
+   <div className="ctf-session-controls">
+    {run?<>
+     <button type="button" disabled={busy} onClick={()=>void close()}>Encerrar e salvar</button>
+     <button type="button" className="ctf-session-discard" disabled={busy} onClick={()=>void discardSession()}>Descartar sessão</button>
+    </>:<>
+     <button type="button" disabled={busy} onClick={()=>void start()}>Iniciar demonstração</button>
+     <a href="#admin/auditoria-ctf">Histórico do terminal do professor</a>
+    </>}
+   </div></div>
   <p role="status" className="ctf-browser-status">{status}</p>{error&&<p role="alert" className="error">{error}</p>}
   <div className="ctf-browser-stats"><div>Progresso <strong>{solved.length}/{reviewMissions.length}</strong></div>
     <div>Auditoria <strong>{saved} eventos</strong></div><div>Sincronização <strong>{pending} pendentes</strong></div></div>
@@ -497,14 +507,6 @@ export default function CtfReviewBrowser(){
     <div className="ctf-terminal-footer">
       <span>{ready?"● LINUX ATIVO":"● PREPARANDO LINUX"}</span>
       <span>↑↓ histórico · Ctrl+C interromper · Enter executar</span>
-    </div>
-    <div className="ctf-terminal-quick">
-      <span>O enunciado fica acima do terminal. Leia a situação-problema antes de executar comandos.</span>
-      <button type="button" disabled={!ready} onClick={()=>sendQuickCommand("cat missao.txt")}>Ler instruções da VM</button>
-    </div>
-    <div className="ctf-terminal-utilities">
-      <button type="button" disabled={!ready} onClick={()=>{machine.current?.serial0_send("\x03");terminal.current?.focus();}}>Ctrl+C</button>
-      <button type="button" onClick={()=>{terminal.current?.clear();terminal.current?.focus();}}>Limpar tela</button>
     </div>
    </div>
    {writeupOpen?createPortal(
@@ -562,14 +564,5 @@ export default function CtfReviewBrowser(){
    </div>
 </>}
 
-  <div className="ctf-browser-card"><h3>Histórico de demonstrações</h3>
-   <button onClick={()=>void reload().catch(e=>setError((e as Error).message))}>Atualizar</button>
-   {history.map(r=><div key={r.id} className="ctf-browser-history"><span>{date(r.started_at)} · {r.closed_at?"Encerrada":"Em andamento"}</span>
-    <button disabled={busy} onClick={()=>void audit(r.id)}>Auditoria</button></div>)}</div>
-  {report&&<div className="ctf-browser-card"><h3>Auditoria — {date(report.run.started_at)}</h3>
-   <p>{report.events.length} eventos; registros fornecidos pelo navegador, não são prova pericial.</p>
-   <button onClick={()=>download("revisao_ctf_auditoria.json",JSON.stringify(report,null,2))}>Exportar JSON</button>
-   <div className="ctf-browser-events">{report.events.map(e=><div key={e.id}><time>{date(e.at)}</time><b>{e.kind}</b><span>{e.detail}</span></div>)}</div>
-  </div>}
- </section>;
+  </section>;
 }
