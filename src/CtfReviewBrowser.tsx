@@ -397,7 +397,10 @@ export default function CtfReviewBrowser(){
  const writeupPanel=(
    <section className={"ctf-browser-card ctf-evidence-panel"+(writeupOpen?" ctf-writeup-open":"")}
     role={writeupOpen?"dialog":undefined} aria-modal={writeupOpen?true:undefined}
-    aria-labelledby="ctf-writeup-title" onKeyDown={event=>event.stopPropagation()}
+    aria-labelledby="ctf-writeup-title" onKeyDown={event=>{
+     event.stopPropagation();
+     if(event.key==="Escape"){event.preventDefault();closeWriteup();}
+    }}
     onFocusCapture={()=>{writeupEditing.current=true;}}
     onBlurCapture={event=>{
      if(!event.currentTarget.contains(event.relatedTarget as Node | null)){
