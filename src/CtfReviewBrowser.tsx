@@ -385,18 +385,50 @@ export default function CtfReviewBrowser(){
  async function saveWriteup(){if(!activeRun.current)return;setBusy(true);
   try{await rpc("ctf_teacher_review_writeup",{p_run:activeRun.current,p_writeup:writeups});record("writeup","Write-up salvo");await sync();setWriteupDirty(false);setStatus("Write-up salvo no Supabase");}
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- async function close(){if(!activeRun.current)return;setBusy(true);
+ async function close(){
+  if(!activeRun.current||busy)return;
+  setBusy(true);setError("");
   if(document.fullscreenElement===fullscreenHost.current){
-   try{await document.exitFullscreen();}catch{/* browser fullscreen already closed */}
+   try{await document.exitFullscreen();}catch{/* already exited */}
   }
-  setProjector(false);setTerminalFocusMode(false);setWriteupOpen(false);
-  if(bootTimer.current)clearTimeout(bootTimer.current);
-  try{record("vm_stop","Revisão demonstrativa encerrada");if(out.current){record("output",out.current);out.current="";}
-   await sync();await rpc("ctf_teacher_review_close",{p_run:activeRun.current});
-   machine.current?.stop();machine.current?.destroy();machine.current=null;activeRun.current=null;
-   destroyTerminal();
-   readyRef.current=false;setReady(false);setRun(null);setStatus("Encerrada; histórico salvo no Supabase");await reload();
-  }catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+  try{
+   await rpc("ctf_teacher_review_writeup",{p_run:activeRun.current,p_writeup:writeups});
+   setWriteupDirty(false);
+   record("writeup","Write-up preservado ao encerrar a demonstração do professor");
+   record("vm_stop","Terminal do professor — demonstração encerrada e salva");
+   if(out.current){record("output",out.current);out.current="";}
+   await sync();
+   if(events.current.length)throw Error("Auditoria ainda não foi sincronizada. Tente encerrar novamente.");
+   await rpc("ctf_teacher_review_close",{p_run:activeRun.current});
+   if(bootTimer.current)clearTimeout(bootTimer.current);
+   machine.current?.stop();machine.current?.destroy();machine.current=null;
+   activeRun.current=null;destroyTerminal();
+   readyRef.current=false;setReady(false);setRun(null);setWriteupOpen(false);
+   setProjector(false);setTerminalFocusMode(false);
+   setStatus("Encerrada e salva: write-up e auditoria disponíveis na página Auditoria CTF.");
+  }catch(e){setError((e as Error).message);}finally{setBusy(false);}
+ }
+ async function discardSession(){
+  const id=activeRun.current;
+  if(!id||busy)return;
+  if(!window.confirm("Descartar permanentemente esta demonstração do terminal do professor? O write-up e todos os eventos serão apagados do Supabase. O CTF oficial, as notas e o ranking NÃO serão afetados."))return;
+  setBusy(true);setError("");
+  try{
+   readyRef.current=false;
+   activeRun.current=null; // stop new browser-generated audit events
+   if(bootTimer.current)clearTimeout(bootTimer.current);
+   machine.current?.stop();machine.current?.destroy();machine.current=null;
+   destroyTerminal();events.current=[];out.current="";
+   setPending(0);
+   await rpc("ctf_teacher_review_discard",{p_run:id});
+   setRun(null);setWriteupOpen(false);setWriteups({});setWriteupDirty(false);
+   setProjector(false);setTerminalFocusMode(false);setReady(false);setSaved(0);
+   setStatus("Demonstração descartada: nenhum registro mantido no histórico.");
+  }catch(e){
+   activeRun.current=id;
+   setError("Não foi possível descartar. O Linux foi interrompido; tente descartar ou encerrar novamente. "+(e as Error).message);
+  }finally{setBusy(false);}
+ }
  const writeupPanel=(
    <section className={"ctf-browser-card ctf-evidence-panel"+(writeupOpen?" ctf-writeup-open":"")}
     role={writeupOpen?"dialog":undefined} aria-modal={writeupOpen?true:undefined}
