@@ -44,7 +44,11 @@ let terminalPromise:Promise<void>|undefined;
 function loadScript(name:string){
  return new Promise<void>((resolve,reject)=>{
   const script=document.createElement("script");script.src=assets+name;script.async=true;
-  script.onload=()=>resolve();script.onerror=()=>reject(Error("Falha ao carregar "+name+" para o terminal."));
+  const timeout=setTimeout(()=>{
+   script.remove();reject(Error("Tempo esgotado ao carregar "+name+". Verifique a conexão e reinicie a demonstração."));
+  },20000);
+  script.onload=()=>{clearTimeout(timeout);resolve();};
+  script.onerror=()=>{clearTimeout(timeout);reject(Error("Falha ao carregar "+name+" para o terminal."));};
   document.head.append(script);
  });
 }
@@ -53,7 +57,9 @@ function loadTerminal(){
  if(!terminalPromise)terminalPromise=(async()=>{
   const css=document.createElement("link");css.rel="stylesheet";css.href=assets+"xterm.css";
   const styleReady=new Promise<void>((resolve,reject)=>{
-   css.onload=()=>resolve();css.onerror=()=>reject(Error("O estilo do terminal xterm.js não carregou."));
+   const timeout=setTimeout(()=>reject(Error("O estilo do terminal xterm.js demorou demais para carregar.")),20000);
+   css.onload=()=>{clearTimeout(timeout);resolve();};
+   css.onerror=()=>{clearTimeout(timeout);reject(Error("O estilo do terminal xterm.js não carregou."));};
   });
   document.head.append(css);
   await Promise.all([styleReady,loadScript("xterm.js")]);
@@ -66,8 +72,11 @@ function library(){
  if(window.V86)return Promise.resolve();
  if(!scriptPromise)scriptPromise=new Promise<void>((resolve,reject)=>{
   const s=document.createElement("script");s.src=assets+"libv86.js";s.async=true;
-  s.onload=()=>window.V86?resolve():reject(Error("v86 não carregou corretamente"));
-  s.onerror=()=>reject(Error("Assets do v86 indisponíveis. Execute o script de preparação antes de compilar."));
+  const timeout=setTimeout(()=>{
+   s.remove();reject(Error("O Linux v86 demorou demais para carregar. Verifique a conexão e tente uma nova demonstração."));
+  },20000);
+  s.onload=()=>{clearTimeout(timeout);window.V86?resolve():reject(Error("v86 não carregou corretamente"));};
+  s.onerror=()=>{clearTimeout(timeout);reject(Error("Assets do v86 indisponíveis. Atualize a página e tente novamente."));};
   document.head.append(s);
  }).catch(e=>{scriptPromise=undefined;throw e;});
  return scriptPromise;
