@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
 import CtfReviewBrowser from "../src/CtfReviewBrowser";
 import { rpc } from "../src/api";
 
@@ -27,7 +28,7 @@ async function startDemo(){
  await waitFor(()=>expect(document.querySelectorAll('script[src*="libv86.js"]').length).toBeGreaterThan(0));
  const scripts=document.querySelectorAll('script[src*="libv86.js"]');
  fireEvent.error(scripts[scripts.length-1] as HTMLScriptElement);
- await waitFor(()=>expect((screen.getByRole("button",{name:/Salvar write-up no Supabase/i}) as HTMLButtonElement).disabled).toBe(false));
+ await waitFor(()=>expect((screen.getByRole("button",{name:/Encerrar e salvar/i}) as HTMLButtonElement).disabled).toBe(false));
  return result;
 }
 describe("write-up editing and scrolling for teacher-only CTF review",()=>{
@@ -66,11 +67,16 @@ describe("write-up editing and scrolling for teacher-only CTF review",()=>{
   expect(container.contains(portal)).toBe(false);
   expect(container.querySelector(".ctf-mission-main > .ctf-evidence-panel")).toBeNull();
   expect(screen.getByRole("dialog",{name:/Evidência e relatório de investigação/i})).toBeTruthy();
+  const flag=screen.getByRole("textbox",{name:"Flag encontrada"}) as HTMLInputElement;
+  await userEvent.type(flag,"FLAG{TESTE_DIGITADO}");
+  expect(flag.value).toBe("FLAG{TESTE_DIGITADO}");
   const command=screen.getByRole("textbox",{name:/1\. Comando utilizado/i}) as HTMLTextAreaElement;
   fireEvent.change(command,{target:{value:"pwd && ls -la"}});
   expect(command.value).toBe("pwd && ls -la");
   fireEvent.keyDown(command,{key:"Escape"});
   await waitFor(()=>expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.queryByRole("textbox",{name:/1\. Comando utilizado/i})).toBeNull();
+  fireEvent.click(screen.getByRole("button",{name:/Preencher write-up/i}));
   expect((screen.getByRole("textbox",{name:/1\. Comando utilizado/i}) as HTMLTextAreaElement).value).toBe("pwd && ls -la");
  });
  it("allows opening and editing the write-up while the terminal is in Focar mode",async()=>{
