@@ -404,3 +404,29 @@
 
 .ctf-browser-session-note{font-size:11px;line-height:1.6;margin:6px 0 10px;color:#9ecfc3}
 .ctf-browser-session-note strong{color:#e0f6e9}
+
+/* Write-up scrolling must remain independent of the xterm viewport and the
+   fullscreen administration shell. Keep Save/Export reachable at the bottom. */
+.ctf-writeup-portal .ctf-evidence-panel.ctf-writeup-open {
+ height:auto;
+ min-height:0;
+ max-height:calc(100dvh - 24px);
+ overflow-y:auto;
+ overscroll-behavior-y:contain;
+ -webkit-overflow-scrolling:touch;
+ scrollbar-gutter:stable;
+}
+.ctf-writeup-portal .ctf-evidence-panel.ctf-writeup-open .ctf-evidence-actions {
+ position:sticky;
+ bottom:-20px;
+ z-index:2;
+ padding:12px 0 4px;
+ background:#142634;
+ border-top:1px solid #355363;
+}
+.ctf-browser .ctf-mission-main > .ctf-evidence-panel:not(.ctf-writeup-open) {
+ overflow:visible;
+}
+@media(max-width:650px) {
+ .ctf-writeup-portal .ctf-evidence-panel.ctf-writeup-open .ctf-evidence-actions {bottom:-14px;}
+}
