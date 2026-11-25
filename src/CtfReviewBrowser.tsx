@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { rpc } from "./api";
 import { explainReviewCommand, reviewMissions } from "./ctfReviewMissions";
+import { reviewHashFixture } from "./ctfReviewHashFixture";
 import "./ctf-review-browser.css";
 type Kind="vm_boot"|"vm_ready"|"lab_setup"|"command"|"output"|"challenge"|"writeup"|"vm_stop"|"error";
 type E={kind:Kind;detail:string};
@@ -24,18 +25,20 @@ declare global{interface Window{
 const assets=import.meta.env.BASE_URL+"ctf-v86/";
 const quote=(v:string)=>"'"+v.replaceAll("'","'\\''")+"'";
 const initCommands=(seed:string)=>[
- "mkdir -p /var/tmp/relatorios/.auditoria /home/aluno/desafios/permissoes /home/aluno/desafios/logs /tmp/ctf-bin",
- "echo 'investigadores:x:1300:' >> /etc/group",
+ "mkdir -p /var/tmp/relatorios/.auditoria /opt/desafio_dac /var/log /opt/evidencias /home/aluno /tmp/ctf-bin",
+ "echo 'alunos:x:1300:' >> /etc/group",
  "printf '%s\\n' "+quote("FLAG{ARQUIVO_REVIS_"+seed+"}")+" > /var/tmp/relatorios/.auditoria/.relatorio.txt",
- "printf '%s\\n' "+quote("FLAG{GRUPO_REVIS_"+seed+"}")+" > /home/aluno/desafios/permissoes/segredo.txt",
- "chgrp investigadores /home/aluno/desafios/permissoes/segredo.txt; chmod 600 /home/aluno/desafios/permissoes/segredo.txt",
- "printf '%s\\n' '# auth.log (dados fictícios)' > /home/aluno/desafios/logs/auth.log",
- "for i in 1 2 3 4 5 6 7 8 9; do echo 'Failed password for test from 198.51.100.44 port 2222 ssh2' >> /home/aluno/desafios/logs/auth.log; done",
- "for i in 1 2 3 4; do echo 'Failed password for guest from 203.0.113.7 port 2222 ssh2' >> /home/aluno/desafios/logs/auth.log; done",
+ "printf '%s\\n' "+quote("FLAG{GRUPO_REVIS_"+seed+"}")+" > /opt/desafio_dac/flag.txt",
+ "chgrp alunos /opt/desafio_dac/flag.txt; chmod 600 /opt/desafio_dac/flag.txt",
+ "printf '%s\\n' '# auth.log (dados fictícios)' > /var/log/auth_simulado.log",
+ "for i in 1 2 3 4 5 6 7 8 9; do echo 'Failed password for test from 198.51.100.44 port 2222 ssh2' >> /var/log/auth_simulado.log; done",
+ "for i in 1 2 3 4; do echo 'Failed password for guest from 203.0.113.7 port 2222 ssh2' >> /var/log/auth_simulado.log; done",
  "printf '%s\\n' '#!/bin/sh' 'echo \"ctf.hackerspaidegua.local. IN TXT \\\"FLAG{DNS_REVIS_"+seed+"}\\\"\"' > /tmp/ctf-bin/dig",
  "chmod +x /tmp/ctf-bin/dig; export PATH=/tmp/ctf-bin:$PATH",
- "printf '%s\\n' 'REVISAO PRE-CTF (sem pontos)' '1) find /var/tmp -name \".*\"' '2) chmod g+r /home/aluno/desafios/permissoes/segredo.txt' '3) cat /home/aluno/desafios/logs/auth.log' '4) dig @127.0.0.1 ctf.hackerspaidegua.local TXT' > /home/aluno/missao.txt",
- "test -f /var/tmp/relatorios/.auditoria/.relatorio.txt && test -f /home/aluno/desafios/permissoes/segredo.txt && test -f /home/aluno/desafios/logs/auth.log && test -x /tmp/ctf-bin/dig && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
+ "i=1; while [ \"$i\" -le 50 ]; do n=$(printf '%02d' \"$i\"); printf 'Registro tecnico %s\\nDado sintetico %s\\n' \"$n\" \"$n\" > /opt/evidencias/registro_$n.txt; i=$((i+1)); done",
+ "printf '%s\\n' "+quote(reviewHashFixture.fileHeader)+" "+quote(reviewHashFixture.flag)+" > "+reviewHashFixture.evidenceFile,
+ "printf '%s\\n' 'REVISAO PRE-CTF (sem pontos)' '1) find /var/tmp -name \".*\"' '2) ls -l /opt/desafio_dac/flag.txt e chmod g+r' '3) cat /var/log/auth_simulado.log' '4) dig @192.168.56.1 ctf.hackerspaidegua.local TXT (script didatico)' '5) sha256sum /opt/evidencias/* e MD5 da flag' > /home/aluno/missao.txt",
+ "test -f /var/tmp/relatorios/.auditoria/.relatorio.txt && test -f /opt/desafio_dac/flag.txt && test -f /var/log/auth_simulado.log && test -x /tmp/ctf-bin/dig && test \"$(find /opt/evidencias -type f | wc -l)\" -eq 50 && command -v sha256sum >/dev/null && command -v md5sum >/dev/null && sha256sum "+reviewHashFixture.evidenceFile+" | grep -q '"+reviewHashFixture.sha256File+"' && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
 ];
 let scriptPromise:Promise<void>|undefined;
 let terminalPromise:Promise<void>|undefined;
@@ -70,9 +73,25 @@ function library(){
  }).catch(e=>{scriptPromise=undefined;throw e;});
  return scriptPromise;
 }
-function download(name:string,data:string){const url=URL.createObjectURL(new Blob([data],{type:"application/json"}));
+function download(name:string,data:string,type="application/json"){const url=URL.createObjectURL(new Blob([data],{type}));
  const a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 const date=(s:string)=>new Date(s).toLocaleString("pt-BR");
+function formatReviewWriteup(entries:Record<string,W>) {
+ return [
+  "# Write-up CTF 1 — Hackers Pai D'Égua",
+  "**Tipo:** Revisão demonstrativa do professor — sem pontuação",
+  ...reviewMissions.map((m,i)=>{
+   const v=entries[String(i)]??{command:"",reason:"",evidence:""};
+   return [
+    "## Desafio "+m.id+": "+m.title,
+    "**Comando utilizado:**\n"+(v.command||"(não preenchido)"),
+    "**Raciocínio técnico:**\n"+(v.reason||"(não preenchido)"),
+    "**Flag obtida / evidência:**\n"+(v.evidence||"(não preenchido)")
+   ].join("\n\n");
+  })
+ ].join("\n\n");
+}
+
 export default function CtfReviewBrowser(){
  const [run,setRun]=useState<Run|null>(null),[history,setHistory]=useState<Run[]>([]);
  const [report,setReport]=useState<Report|null>(null),[status,setStatus]=useState("Pronto para iniciar");
@@ -80,8 +99,9 @@ export default function CtfReviewBrowser(){
  const [busy,setBusy]=useState(false),[challenge,setChallenge]=useState(0),[flag,setFlag]=useState("");
  const [solved,setSolved]=useState<number[]>([]),[writeups,setWriteups]=useState<Record<string,W>>({});
  const [saved,setSaved]=useState(0),[pending,setPending]=useState(0);
- const [projector,setProjector]=useState(false),[fontSize,setFontSize]=useState(17);
+ const [projector,setProjector]=useState(false),[terminalFocusMode,setTerminalFocusMode]=useState(false),[fontSize,setFontSize]=useState(17);
  const machine=useRef<VM|null>(null),terminalHost=useRef<HTMLDivElement>(null);
+ const fullscreenHost=useRef<HTMLElement|null>(null);
  const terminal=useRef<XtermHandle|null>(null),fitAddon=useRef<XtermFit|null>(null);
  const termResize=useRef<ResizeObserver|null>(null);
  const terminalInput=useRef(""),termSubscription=useRef<{dispose:()=>void}|null>(null);
@@ -100,17 +120,29 @@ export default function CtfReviewBrowser(){
    termResize.current?.disconnect();termSubscription.current?.dispose();
    terminal.current?.dispose();terminal.current=null;};},[]);
  useEffect(()=>{
-  if(!projector)return;
-  const onKey=(event:KeyboardEvent)=>{if(event.key==="Escape")setProjector(false);};
-  window.addEventListener("keydown",onKey);
-  return()=>window.removeEventListener("keydown",onKey);
- },[projector]);
- useEffect(()=>{if(ready)terminal.current?.focus();},[ready]);
+  const syncFullscreen=()=>{
+    const active=document.fullscreenElement===fullscreenHost.current;
+    setProjector(active);
+    requestAnimationFrame(()=>requestAnimationFrame(refitTerminal));
+  };
+  const onEscape=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"&&projector&&document.fullscreenElement!==fullscreenHost.current)
+    setProjector(false);
+   if(event.key==="Escape"&&terminalFocusMode)setTerminalFocusMode(false);
+  };
+  document.addEventListener("fullscreenchange",syncFullscreen);
+  window.addEventListener("keydown",onEscape);
+  return()=>{
+   document.removeEventListener("fullscreenchange",syncFullscreen);
+   window.removeEventListener("keydown",onEscape);
+  };
+ },[projector,terminalFocusMode]);
+ useEffect(()=>{if(ready)focusTerminal();},[ready]);
   useEffect(()=>{
    if(!terminal.current)return;
    terminal.current.options.fontSize=fontSize;
    requestAnimationFrame(()=>fitAddon.current?.fit());
-  },[fontSize,projector]);
+  },[fontSize,projector,terminalFocusMode]);
  const record=(kind:Kind,detail:string)=>{if(!activeRun.current)return;
   for(const part of detail.match(/[\s\S]{1,2400}/g)||[""])events.current.push({kind,detail:part});
   if(events.current.length>2000){events.current.splice(0,events.current.length-2000);setError("Buffer de auditoria cheio.");}
@@ -129,6 +161,46 @@ export default function CtfReviewBrowser(){
   termSubscription.current?.dispose();termSubscription.current=null;
   terminal.current?.dispose();terminal.current=null;fitAddon.current=null;
   terminalInput.current="";
+ }
+ function refitTerminal(){
+  try{fitAddon.current?.fit();}catch{/* terminal unmounted */}
+ }
+ function focusTerminal(){
+  if(!terminal.current||!terminalHost.current)return;
+  refitTerminal();
+  terminal.current.focus();
+  const input=terminalHost.current.querySelector<HTMLTextAreaElement>(".xterm-helper-textarea");
+  input?.focus({preventScroll:true});
+  requestAnimationFrame(()=>{
+   terminal.current?.focus();
+   input?.focus({preventScroll:true});
+  });
+ }
+ function toggleFocusMode(){
+  setTerminalFocusMode(current=>!current);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+   refitTerminal();focusTerminal();
+  }));
+ }
+ function toggleProjection(){
+  const target=fullscreenHost.current;
+  if(!target)return;
+  if(document.fullscreenElement===target){
+   void document.exitFullscreen().catch(e=>setError("Não foi possível sair da projeção: "+String(e)));
+  }else if(target.requestFullscreen){
+   // Acione diretamente a partir do clique: Fullscreen API exige gesto do usuário.
+   void target.requestFullscreen().then(()=>{
+    setTerminalFocusMode(false);
+    setProjector(true);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+     refitTerminal();focusTerminal();
+    }));
+   }).catch(e=>{
+    setError("O navegador impediu a projeção em tela cheia. Abra o site em uma aba normal e pressione F11. Detalhe: "+String(e));
+   });
+  }else{
+   setError("Este navegador não oferece a API de tela cheia. Use F11 para projetar.");
+  }
  }
  function recordCommand(text:string){
   if(!text.trim())return;
@@ -165,7 +237,7 @@ export default function CtfReviewBrowser(){
    const id=await rpc<string>("ctf_teacher_review_start");activeRun.current=id;
    setRun({id,title:"Revisão Pré-CTF",started_at:new Date().toISOString(),closed_at:null,writeup:{}});
    setSolved([]);setWriteups({});setSaved(0);setReport(null);setReady(false);readyRef.current=false;
-   setShowExplanations(false);setLastAction(null);
+   setShowExplanations(false);setLastAction(null);setTerminalFocusMode(false);
    if(bootTimer.current)clearTimeout(bootTimer.current);
    bootTimer.current=setTimeout(()=>{
     if(activeRun.current===id&&!readyRef.current&&mounted.current){
@@ -205,7 +277,7 @@ export default function CtfReviewBrowser(){
    xterm.writeln("\x1b[1;36mHACKERS PAI D'ÉGUA  /  LABORATÓRIO LINUX · xterm.js\x1b[0m");
    xterm.writeln("\x1b[90m────────────────────────────────────────────────────────────\x1b[0m");
    xterm.writeln("\x1b[33m[PROFESSOR]\x1b[0m Iniciando Linux real emulado no navegador...");
-   xterm.writeln("\x1b[90mAguarde a preparação dos quatro desafios.\x1b[0m");
+   xterm.writeln("\x1b[90mAguarde a preparação dos cinco desafios.\x1b[0m");
    xterm.writeln("");
    const vm=new window.V86({
      wasm_path:assets+"v86.wasm",bios:{url:assets+"seabios.bin"},vga_bios:{url:assets+"vgabios.bin"},
@@ -219,7 +291,7 @@ export default function CtfReviewBrowser(){
      // Oculta o boot inicial e os comandos de provisionamento, incluindo as flags.
      if(!readyRef.current){
        if(stage.current===-1 && /(?:~% |# |\$ )$/.test(tail.current)){
-         stage.current=0;setStatus("Preparando quatro desafios...");
+         stage.current=0;setStatus("Preparando cinco desafios...");
          print("\x1b[36mLinux iniciado. Preparando arquivos e ferramentas da missão...\x1b[0m\n");
          vm.serial0_send(script.current[0]+"; printf '\\nHPDE_MARK_0\\n'\n");
        }else if(stage.current>=0&&tail.current.includes("\nHPDE_MARK_"+stage.current+"\n")){
@@ -228,7 +300,7 @@ export default function CtfReviewBrowser(){
          else if(setupValid.current){
            if(bootTimer.current)clearTimeout(bootTimer.current);
            readyRef.current=true;setReady(true);
-           record("vm_ready","Linux e quatro desafios preparados");
+           record("vm_ready","Linux e cinco desafios preparados, incluindo SHA-256 e MD5");
            setStatus("Linux pronto · digite cat missao.txt");
            print("\x1b[1;32m✓ Linux pronto.\x1b[0m Use \x1b[1mcat missao.txt\x1b[0m para começar.\n\n");
            terminal.current?.focus();
@@ -250,15 +322,29 @@ export default function CtfReviewBrowser(){
   finally{setBusy(false);}
  }
  
- const validate=()=>{const keys=["FLAG{ARQUIVO_REVIS_"+labSeed.current+"}","FLAG{GRUPO_REVIS_"+labSeed.current+"}","FLAG{IP_198.51.100.44}","FLAG{DNS_REVIS_"+labSeed.current+"}"];
+ const validate=()=>{const keys=["FLAG{ARQUIVO_REVIS_"+labSeed.current+"}","FLAG{GRUPO_REVIS_"+labSeed.current+"}","FLAG{IP_198.51.100.44}","FLAG{DNS_REVIS_"+labSeed.current+"}",reviewHashFixture.flag];
   if(flag.trim()===keys[challenge]){
-   if(!solved.includes(challenge)){setSolved(v=>[...v,challenge]);record("challenge","Objetivo "+(challenge+1)+" confirmado sem pontos");}
+   if(!solved.includes(challenge)){
+    setSolved(v=>[...v,challenge]);
+    record("challenge","Objetivo "+(challenge+1)+" confirmado sem pontos");
+   }
+   setWriteups(prev=>{
+    const currentValue=prev[String(challenge)]??{command:"",reason:"",evidence:""};
+    const submitted=flag.trim();
+    if(currentValue.evidence.includes(submitted))return prev;
+    return {...prev,[String(challenge)]:{...currentValue,evidence:
+      [currentValue.evidence,"Flag obtida: "+submitted].filter(Boolean).join("\n")}};
+   });
   }else setError("Flag inválida. Verifique o terminal.");setFlag("");};
  const edit=(field:keyof W,value:string)=>setWriteups(v=>({...v,[String(challenge)]:{...current,[field]:value}}));
  async function saveWriteup(){if(!activeRun.current)return;setBusy(true);
   try{await rpc("ctf_teacher_review_writeup",{p_run:activeRun.current,p_writeup:writeups});record("writeup","Write-up salvo");await sync();setStatus("Write-up salvo no Supabase");}
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function close(){if(!activeRun.current)return;setBusy(true);
+  if(document.fullscreenElement===fullscreenHost.current){
+   try{await document.exitFullscreen();}catch{/* browser fullscreen already closed */}
+  }
+  setProjector(false);setTerminalFocusMode(false);
   if(bootTimer.current)clearTimeout(bootTimer.current);
   try{record("vm_stop","Revisão demonstrativa encerrada");if(out.current){record("output",out.current);out.current="";}
    await sync();await rpc("ctf_teacher_review_close",{p_run:activeRun.current});
@@ -268,18 +354,18 @@ export default function CtfReviewBrowser(){
   }catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  async function audit(id:string){setBusy(true);try{setReport(await rpc<Report>("ctf_teacher_review_report",{p_run:id}));}
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- return <section className={"ctf-browser"+(projector?" ctf-projector":"")}>
+ return <section ref={fullscreenHost} className={"ctf-browser"+(projector?" ctf-projector":"")+(terminalFocusMode?" ctf-focus-mode":"")}>
   <div className="ctf-browser-head"><div><p>HACKERS PAI D'ÉGUA / REVISÃO PRÉ-CTF</p>
-   <h2>Laboratório Linux do professor</h2><small>v86 + Buildroot · 4 desafios · sem notas nem pontos</small></div>
+   <h2>Laboratório Linux do professor</h2><small>v86 + Buildroot · {reviewMissions.length} desafios · sem notas nem pontos</small></div>
    {run?<button onClick={()=>void close()} disabled={busy}>Encerrar demonstração</button>:
     <button onClick={()=>void start()} disabled={busy}>Iniciar demonstração</button>}</div>
   <p role="status" className="ctf-browser-status">{status}</p>{error&&<p role="alert" className="error">{error}</p>}
-  <div className="ctf-browser-stats"><div>Progresso <strong>{solved.length}/4</strong></div>
+  <div className="ctf-browser-stats"><div>Progresso <strong>{solved.length}/{reviewMissions.length}</strong></div>
     <div>Auditoria <strong>{saved} eventos</strong></div><div>Sincronização <strong>{pending} pendentes</strong></div></div>
   <section className="ctf-review-intro">
    <div className="ctf-guide-eyebrow">COMO FUNCIONA UM CTF</div>
    <h3>Investigue um problema, execute comandos e explique sua descoberta.</h3>
-   <p>O CTF oficial apresentará uma missão com cenário, objetivos, terminal, evidências e entrega de um write-up. Nesta revisão, o professor demonstra esse mesmo fluxo com quatro situações do Linux, sem competição, notas ou ranking.</p>
+   <p>O CTF oficial apresentará uma missão com cenário, objetivos, terminal, evidências e entrega de um write-up. Nesta revisão, o professor demonstra esse mesmo fluxo com cinco situações: Linux, permissões, logs, DNS e hashes MD5/SHA-256, sem competição, notas ou ranking.</p>
    <div className="ctf-review-flow" aria-label="Etapas da atividade">
     <span>1. Ler o problema</span><span>2. Investigar no terminal</span>
     <span>3. Encontrar a evidência</span><span>4. Explicar o raciocínio</span>
@@ -298,7 +384,7 @@ export default function CtfReviewBrowser(){
     <div className="ctf-mission-main">
      <section className="ctf-mission-brief" aria-labelledby="ctf-current-mission">
       <div className="ctf-mission-meta">
-       <span className="ctf-mission-tag">CTF REVISÃO · {String(mission.id).padStart(2,"0")}/04</span>
+       <span className="ctf-mission-tag">CTF REVISÃO · {String(mission.id).padStart(2,"0")}/{String(reviewMissions.length).padStart(2,"0")}</span>
        <span>{mission.category}</span>
        <span>{mission.difficulty}</span>
       </div>
@@ -314,17 +400,20 @@ export default function CtfReviewBrowser(){
     <div className="ctf-window-head">
       <div className="ctf-window-lights" aria-hidden="true"><i/><i/><i/></div>
       <span>ghost@lab-professor: ~ / xterm.js</span>
-      <button type="button" onClick={()=>terminal.current?.focus()} disabled={!ready}>⌨ Focar</button>
+      <button type="button" aria-pressed={terminalFocusMode} onMouseDown={event=>event.preventDefault()}
+        onClick={toggleFocusMode} title="Expandir ou restaurar o terminal, sem perder a sessão Linux">
+        {terminalFocusMode?"✕ Sair do foco (Esc)":"⌨ Focar"}
+      </button>
     </div>
     <div className="ctf-terminal-toolbar">
       <span><strong>Linux v86 · Terminal interativo</strong><small>{ready?"● Terminal ativo":"● "+status}</small></span>
       <div className="ctf-terminal-controls">
         <button type="button" onClick={()=>setFontSize(n=>Math.max(12,n-2))} aria-label="Diminuir fonte do terminal">A−</button>
         <button type="button" onClick={()=>setFontSize(n=>Math.min(30,n+2))} aria-label="Aumentar fonte do terminal">A+</button>
-        <button type="button" aria-pressed={projector} onClick={()=>{
-          setProjector(v=>!v);
-          requestAnimationFrame(()=>{fitAddon.current?.fit();terminal.current?.focus();});
-        }}>{projector?"Sair da projeção (Esc)":"⛶ Ampliar para projeção"}</button>
+        <button type="button" aria-pressed={projector} onClick={toggleProjection}
+          title="Abrir o roteiro e o terminal em tela cheia do navegador">
+          {projector?"Sair da projeção (Esc)":"⛶ Ampliar para projeção"}
+        </button>
       </div>
     </div>
     <div className="ctf-terminal-display" ref={terminalHost} role="application" aria-label="Terminal Linux real, com cursor, cores ANSI e comandos digitados diretamente"/>
@@ -400,11 +489,12 @@ export default function CtfReviewBrowser(){
      <h4>Write-up: o que você fez e por quê?</h4>
      <p>Explique o problema, o procedimento usado, o motivo da escolha dos comandos e a evidência obtida. É isso que o professor analisará nos CTFs oficiais.</p>
     </div>
-    <label>1. O que você fez? (comando ou procedimento)<textarea value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
-    <label>2. Por que fez isso? (raciocínio)<textarea value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
-    <label>3. O que encontrou? (resultado e conclusão)<textarea value={current.evidence} placeholder="Registre o resultado e o que ele demonstra..." onChange={e=>edit("evidence",e.target.value)}/></label>
+    <label>1. Comando utilizado (o que você fez?)<textarea value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
+    <label>2. Raciocínio técnico (por que fez isso?)<textarea value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
+    <label>3. Flag obtida e evidência (o que encontrou?)<textarea value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 5 registre SHA-256 e MD5." onChange={e=>edit("evidence",e.target.value)}/></label>
     <div className="ctf-evidence-actions">
      <button type="button" disabled={busy} onClick={()=>void saveWriteup()}>Salvar write-up no Supabase</button>
+     <button type="button" onClick={()=>download("writeup_revisao_professor.md",formatReviewWriteup(writeups),"text/markdown;charset=utf-8")}>Exportar .md</button>
      <button type="button" disabled={challenge>=reviewMissions.length-1} onClick={()=>{setChallenge(i=>i+1);setFlag("");setShowExplanations(false);setLastAction(null);}}>Próximo desafio →</button>
     </div>
    </section></>}
