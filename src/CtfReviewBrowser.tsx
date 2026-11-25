@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { rpc } from "./api";
 import { explainReviewCommand, reviewMissions } from "./ctfReviewMissions";
-import { reviewHashFixture } from "./ctfReviewHashFixture";
 import "./ctf-review-browser.css";
 type Kind="vm_boot"|"vm_ready"|"lab_setup"|"command"|"output"|"challenge"|"writeup"|"vm_stop"|"error";
 type E={kind:Kind;detail:string};
@@ -25,24 +24,35 @@ const assets=import.meta.env.BASE_URL+"ctf-v86/";
 const reviewWordlist=["123456","admin2026","ufpa_itec","veropeso123","tacaca_quente","acai_com_peixe","mangal_das_garcas","ilha_do_marajo","boto_cor_de_rosa","maniwa_2026","castanha_do_para","paidegua2026","cirio_de_nazare","estacao_docas","guama_ufpa"];
 const reviewJohnScript="#!/bin/sh\n# Modo didatico, NAO John the Ripper original\nwordlist=/opt/evidencias/dicionario_paraense.txt\ntarget=/opt/evidencias/senha_cofre.md5\nfor arg in \"$@\"; do\n case \"$arg\" in\n --wordlist=*) wordlist=\"${arg#--wordlist=}\" ;;\n --format=raw-md5|--show) ;;\n --*) echo \"Opcao nao suportada: $arg\"; exit 2 ;;\n *) target=\"$arg\" ;;\n esac\ndone\nif [ ! -r \"$wordlist\" ] || [ ! -r \"$target\" ]; then echo \"Wordlist ou hash nao encontrado\"; exit 1; fi\nhash=$(head -n 1 \"$target\" | cut -d ' ' -f 1)\necho \"[Revisao didatica] Dicionario MD5 em Linux (nao e John original)\"\nwhile IFS= read -r candidate || [ -n \"$candidate\" ]; do\n digest=$(printf '%s' \"$candidate\" | md5sum | cut -d ' ' -f 1)\n if [ \"$digest\" = \"$hash\" ]; then echo \"$candidate (raw-md5)\"; exit 0; fi\ndone < \"$wordlist\"\necho \"Nenhuma correspondencia\"; exit 1";
 const quote=(v:string)=>"'"+v.replaceAll("'","'\\''")+"'";
-const initCommands=(seed:string)=>[
- "mkdir -p /var/tmp/relatorios/.auditoria /opt/desafio_dac /var/log /opt/evidencias /home/aluno /tmp/ctf-bin",
- "echo 'alunos:x:1300:' >> /etc/group",
- "printf '%s\\n' "+quote("FLAG{ARQUIVO_REVIS_"+seed+"}")+" > /var/tmp/relatorios/.auditoria/.relatorio.txt",
- "printf '%s\\n' "+quote("FLAG{GRUPO_REVIS_"+seed+"}")+" > /opt/desafio_dac/flag.txt",
- "chgrp alunos /opt/desafio_dac/flag.txt; chmod 600 /opt/desafio_dac/flag.txt",
- "printf '%s\\n' '# auth.log (dados fictícios)' > /var/log/auth_simulado.log",
- "for i in 1 2 3 4 5 6 7 8 9; do echo 'Failed password for test from 198.51.100.44 port 2222 ssh2' >> /var/log/auth_simulado.log; done",
- "for i in 1 2 3 4; do echo 'Failed password for guest from 203.0.113.7 port 2222 ssh2' >> /var/log/auth_simulado.log; done",
- "printf '%s\\n' '#!/bin/sh' 'echo \"ctf.hackerspaidegua.local. IN TXT \\\"FLAG{DNS_REVIS_"+seed+"}\\\"\"' > /tmp/ctf-bin/dig",
- "chmod +x /tmp/ctf-bin/dig; export PATH=/tmp/ctf-bin:$PATH",
+type EncryptedFixture={name:string;base64:string};
+type EncryptedBundle={sha256Evidence37:string;files:EncryptedFixture[]};
+const evidenceSha256="3d3f540b1656b4f48c5db9e1fad13883c1b59ef7266c43879673ac4d332fe4b2";
+async function loadAula07Evidence():Promise<EncryptedBundle>{
+ const response=await fetch(assets+"aula07-evidencias.json",{cache:"no-store"});
+ if(!response.ok)throw Error("Pacote cifrado da Aula 7 indisponível. Verifique a publicação.");
+ const bundle=await response.json() as EncryptedBundle;
+ if(bundle.sha256Evidence37!==evidenceSha256 || bundle.files?.length!==50 ||
+  bundle.files[36].name!=="evidencia_37.enc" ||
+  bundle.files.some(f=>!/^evidencia_\d{2}\.enc$/.test(f.name)||!/^[A-Za-z0-9+/=]+$/.test(f.base64)))
+  throw Error("Pacote AES da Aula 7 inválido ou incompleto.");
+ return bundle;
+}
+const initCommands=(bundle:EncryptedBundle)=>[
+ "mkdir -p /var/tmp/cache_sistema/logs_tmp /var/tmp/sessao_antiga/bkp_2026 /var/tmp/auditoria_boto/coleta_secreta /var/log /opt/evidencias /home/aluno /tmp/ctf-bin",
+ "printf '%s\\n' 'Relatorio confidencial do CTF 1' 'FLAG{r4str0_0cult0_chm0d_p41_d3gu4}' > /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt; chmod 000 /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt",
+ "printf '%s\\n' '# auth.log (simulacao da Aula 7)' > /var/log/auth_simulado.log",
+ "i=1; while [ $i -le 25 ]; do printf 'Nov 27 14:10:%02d servidor-ufpa sshd[210%d]: Accepted password for aluno from 192.168.56.10 port 5122 ssh2\\n' $((i%60)) $i >> /var/log/auth_simulado.log; i=$((i+1)); done",
+ "i=1; while [ $i -le 35 ]; do printf 'Nov 27 14:12:%02d servidor-ufpa sshd[310%d]: Failed password for root from 10.0.2.15 port 4412 ssh2\\n' $((i%60)) $i >> /var/log/auth_simulado.log; i=$((i+1)); done",
+ "i=1; while [ $i -le 60 ]; do printf 'Nov 27 14:15:%02d servidor-ufpa sshd[410%d]: Failed password for admin from 172.16.0.99 port 3912 ssh2\\n' $((i%60)) $i >> /var/log/auth_simulado.log; i=$((i+1)); done",
+ "i=1; while [ $i -le 180 ]; do printf 'Nov 27 14:20:%02d servidor-ufpa sshd[510%d]: Failed password for root from 185.220.101.42 port 6012 ssh2\\n' $((i%60)) $i >> /var/log/auth_simulado.log; i=$((i+1)); done",
  "printf '%s\\n' "+reviewWordlist.map(quote).join(" ")+" > /opt/evidencias/dicionario_paraense.txt",
- "printf '%s\\n' "+reviewJohnScript.split("\n").map(quote).join(" ")+" > /tmp/ctf-bin/john; chmod +x /tmp/ctf-bin/john",
+ "printf '%s\\n' "+reviewJohnScript.split("\n").map(quote).join(" ")+" > /tmp/ctf-bin/john; chmod +x /tmp/ctf-bin/john; export PATH=/tmp/ctf-bin:$PATH",
  "printf '%s' 'paidegua2026' | md5sum | cut -d ' ' -f 1 > /opt/evidencias/senha_cofre.md5",
- "i=1; while [ \"$i\" -le 50 ]; do n=$(printf '%02d' \"$i\"); printf 'Registro tecnico %s\\nDado sintetico %s\\n' \"$n\" \"$n\" > /opt/evidencias/registro_$n.txt; i=$((i+1)); done",
- "printf '%s\\n' "+quote(reviewHashFixture.fileHeader)+" "+quote(reviewHashFixture.flag)+" > "+reviewHashFixture.evidenceFile,
- "printf '%s\\n' 'REVISAO PRE-CTF (sem pontos)' '1) find /var/tmp -name \".*\"' '2) ls -l /opt/desafio_dac/flag.txt e chmod g+r' '3) cat /var/log/auth_simulado.log' '4) dig @192.168.56.1 ctf.hackerspaidegua.local TXT (script didatico)' '5) sha256sum /opt/evidencias/* e MD5 da flag' > /home/aluno/missao.txt",
- "test -f /var/tmp/relatorios/.auditoria/.relatorio.txt && test -f /opt/desafio_dac/flag.txt && test -f /var/log/auth_simulado.log && test -x /tmp/ctf-bin/dig && test \"$(find /opt/evidencias -name 'registro_*.txt' | wc -l)\" -eq 50 && test -x /tmp/ctf-bin/john && test -s /opt/evidencias/dicionario_paraense.txt && grep -qx paidegua2026 /opt/evidencias/dicionario_paraense.txt && /tmp/ctf-bin/john --format=raw-md5 --wordlist=/opt/evidencias/dicionario_paraense.txt /opt/evidencias/senha_cofre.md5 | grep -q 'paidegua2026 (raw-md5)' && command -v sha256sum >/dev/null && command -v md5sum >/dev/null && sha256sum "+reviewHashFixture.evidenceFile+" | grep -q '"+reviewHashFixture.sha256File+"' && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
+ ...Array.from({length:10},(_,i)=>bundle.files.slice(i*5,i*5+5).map(f=>
+  "printf '%s' "+quote(f.base64)+" | base64 -d > /opt/evidencias/"+f.name
+ ).join("; ")),
+ "printf '%s\\n' 'REVISAO CTF 1 - AULA 7 (sem pontos)' '1) O Rastro Trancado - /var/tmp' '2) O Invasor Insistente - /var/log/auth_simulado.log' '3) MD5, wordlist, SHA-256 e AES - /opt/evidencias' > /home/aluno/missao.txt",
+ "test -f /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt && test \"$(stat -c %a /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt)\" = 0 && test \"$(grep -c 'Failed password' /var/log/auth_simulado.log)\" -eq 275 && test \"$(find /opt/evidencias -name '*.enc' | wc -l)\" -eq 50 && test -x /tmp/ctf-bin/john && test -s /opt/evidencias/dicionario_paraense.txt && /tmp/ctf-bin/john --format=raw-md5 --wordlist=/opt/evidencias/dicionario_paraense.txt /opt/evidencias/senha_cofre.md5 | grep -q 'paidegua2026 (raw-md5)' && sha256sum /opt/evidencias/evidencia_37.enc | grep -q '3d3f540b1656b4f48c5db9e1fad13883c1b59ef7266c43879673ac4d332fe4b2' && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
 ];
 let scriptPromise:Promise<void>|undefined;
 let terminalPromise:Promise<void>|undefined;
@@ -341,7 +351,8 @@ export default function CtfReviewBrowser(){
     check();
    });
    labSeed.current=Math.random().toString(16).slice(2,8).toUpperCase();
-   script.current=initCommands(labSeed.current);
+   const bundle=await loadAula07Evidence();
+   script.current=initCommands(bundle);
    stage.current=-1;tail.current="";setupValid.current=false;
    destroyTerminal();
    if(!terminalHost.current||!window.Terminal||!window.FitAddon?.FitAddon)
@@ -366,7 +377,7 @@ export default function CtfReviewBrowser(){
    xterm.writeln("\x1b[1;36mHACKERS PAI D'ÉGUA  /  LABORATÓRIO LINUX · xterm.js\x1b[0m");
    xterm.writeln("\x1b[90m────────────────────────────────────────────────────────────\x1b[0m");
    xterm.writeln("\x1b[33m[PROFESSOR]\x1b[0m Iniciando Linux real emulado no navegador...");
-   xterm.writeln("\x1b[90mAguarde a preparação dos cinco desafios.\x1b[0m");
+   xterm.writeln("\x1b[90mAguarde a preparação dos três desafios.\x1b[0m");
    xterm.writeln("");
    const vm=new window.V86({
      wasm_path:assets+"v86.wasm",bios:{url:assets+"seabios.bin"},vga_bios:{url:assets+"vgabios.bin"},
@@ -380,7 +391,7 @@ export default function CtfReviewBrowser(){
      // Oculta o boot inicial e os comandos de provisionamento, incluindo as flags.
      if(!readyRef.current){
        if(stage.current===-1 && /(?:~% |# |\$ )$/.test(tail.current)){
-         stage.current=0;setStatus("Preparando cinco desafios...");
+         stage.current=0;setStatus("Preparando três desafios...");
          print("\x1b[36mLinux iniciado. Preparando arquivos e ferramentas da missão...\x1b[0m\n");
          vm.serial0_send(script.current[0]+"; printf '\\nHPDE_MARK_0\\n'\n");
        }else if(stage.current>=0&&tail.current.includes("\nHPDE_MARK_"+stage.current+"\n")){
@@ -389,7 +400,7 @@ export default function CtfReviewBrowser(){
          else if(setupValid.current){
            if(bootTimer.current)clearTimeout(bootTimer.current);
            readyRef.current=true;setReady(true);
-           record("vm_ready","Linux e cinco desafios preparados, incluindo SHA-256 e MD5");
+           record("vm_ready","Linux e três desafios preparados, incluindo SHA-256 e MD5");
            setStatus("Linux pronto · digite cat missao.txt");
            print("\x1b[1;32m✓ Linux pronto.\x1b[0m Use \x1b[1mcat missao.txt\x1b[0m para começar.\n\n");
            terminal.current?.focus();
@@ -397,7 +408,7 @@ export default function CtfReviewBrowser(){
          else{
            if(bootTimer.current)clearTimeout(bootTimer.current);
            record("error","Falha ao preparar filesystem da VM");
-           setError("O Linux iniciou, mas não conseguiu preparar os quatro desafios. Encerre e inicie novamente.");
+           setError("O Linux iniciou, mas não conseguiu preparar os três desafios. Encerre e inicie novamente.");
            setStatus("Falha na preparação do laboratório");
            print("\nFalha ao preparar o laboratório.\n");
          }
@@ -410,7 +421,7 @@ export default function CtfReviewBrowser(){
   finally{setBusy(false);}
  }
  
- const validate=()=>{const keys=["FLAG{ARQUIVO_REVIS_"+labSeed.current+"}","FLAG{GRUPO_REVIS_"+labSeed.current+"}","FLAG{IP_198.51.100.44}","FLAG{DNS_REVIS_"+labSeed.current+"}",reviewHashFixture.flag];
+ const validate=()=>{const keys=["FLAG{r4str0_0cult0_chm0d_p41_d3gu4}","FLAG{185.220.101.42}","FLAG{cr1pt0_sh4256_p41_d3gu4_m0d1}"];
   if(flag.trim()===keys[challenge]){
    if(!solved.includes(challenge)){
     setSolved(v=>[...v,challenge]);
@@ -515,7 +526,7 @@ export default function CtfReviewBrowser(){
     </div>
     <label>1. Comando utilizado (o que você fez?)<textarea ref={writeupFirstInput} value={current.command} placeholder="Registre os comandos utilizados na investigação..." onChange={e=>edit("command",e.target.value)}/></label>
     <label>2. Raciocínio técnico (por que fez isso?)<textarea value={current.reason} placeholder="Explique a hipótese e por que escolheu esse procedimento..." onChange={e=>edit("reason",e.target.value)}/></label>
-    <label>3. Flag obtida e evidência (o que encontrou?)<textarea value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 5 registre SHA-256 e MD5." onChange={e=>edit("evidence",e.target.value)}/></label>
+    <label>3. Flag obtida e evidência (o que encontrou?)<textarea value={current.evidence} placeholder="Inclua a FLAG{...}, o resultado do comando e sua interpretação. No desafio 3 registre o hash SHA-256, a senha recuperada pelo dicionário e a evidência decifrada." onChange={e=>edit("evidence",e.target.value)}/></label>
     {writeupDirty&&<p className="ctf-writeup-unsaved" role="status">
       Há alterações no write-up que ainda não foram salvas no Supabase.
      </p>}
@@ -579,6 +590,7 @@ export default function CtfReviewBrowser(){
     <div className="ctf-terminal-toolbar">
       <span><strong>Linux v86 · Terminal interativo</strong><small>{ready?"● Terminal ativo":"● "+status}</small></span>
       <div className="ctf-terminal-controls">
+        <a className="ctf-aula07-download" href={assets+"aula07-evidencias.tar"} download="aula07-evidencias.tar" title="Wordlist e arquivos cifrados para Kali com OpenSSL real">↓ Pacote Kali</a>
         <button type="button" className="ctf-writeup-shortcut" onClick={openWriteup}
           title="Preencher o relatório da missão sem interromper o Linux">✎ Preencher write-up</button>
         <button type="button" onClick={()=>setFontSize(n=>Math.max(12,n-2))} aria-label="Diminuir fonte do terminal">A−</button>

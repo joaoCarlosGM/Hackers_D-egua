@@ -1,141 +1,74 @@
-/** Enunciados da Revisão Pré-CTF. Conteúdo exclusivamente pedagógico, sem pontuação.
- * O CTF oficial poderá utilizar o mesmo padrão visual, mas não herda flags nem permissões.
+/** Aula 7 — CTF 1: três desafios integrados, revisão SEM pontuação.
+ * Enunciados derivados do material da aula e do provisionamento do instrutor.
+ * Não reutilizar flags estáticas em CTF oficial com pontuação.
  */
 export type ReviewInvestigationStep = {
-  title: string;
-  doing: string;
-  why: string;
-  example: string;
+ title:string;doing:string;why:string;example:string;
 };
 export type ReviewMission = {
-  id: number;
-  title: string;
-  subtitle: string;
-  category: string;
-  difficulty: string;
-  incident: string;
-  context: string;
-  objective: string;
-  deliverable: string;
-  realWorld: string;
-  startingPoint: string;
-  flagFormat: string;
-  steps: ReviewInvestigationStep[];
-  studentQuestion: string;
-  closing: string;
-  caveat?: string;
+ id:number;title:string;subtitle:string;category:string;difficulty:string;
+ incident:string;context:string;objective:string;deliverable:string;
+ realWorld:string;startingPoint:string;flagFormat:string;
+ steps:ReviewInvestigationStep[];studentQuestion:string;closing:string;caveat?:string;
 };
-export const reviewMissions: ReviewMission[] = [
-  {
-    id: 1,
-    title: "Navegação e Arquivos Ocultos",
-    subtitle: "O relatório que desapareceu",
-    category: "Linux · Sistema de arquivos",
-    difficulty: "Iniciante",
-    incident: "Um relatório de investigação deixou de aparecer na listagem de arquivos. A equipe suspeita que a evidência ainda esteja guardada em uma pasta temporária do Linux.",
-    context: "Você foi chamado para localizar a evidência sem alterar os arquivos da máquina. A única pista recebida é que o material passou por /var/tmp.",
-    objective: "Inspecionar o sistema de arquivos, encontrar um arquivo oculto e ler a evidência que ele contém.",
-    deliverable: "Uma flag no formato FLAG{ARQUIVO_REVIS_...}, encontrada dentro de um arquivo real.",
-    realWorld: "Arquivos e diretórios iniciados por ponto não aparecem em listagens comuns. Saber procurá-los é essencial em inventários, manutenção e investigações de incidentes.",
-    startingPoint: "Comece identificando o diretório em que você está. Depois explore /var/tmp.",
-    flagFormat: "FLAG{ARQUIVO_REVIS_...}",
-    steps: [
-      { title: "Reconhecer o ambiente", doing: "Descobrir o diretório atual e listar os arquivos.", why: "Antes de investigar, você precisa saber onde está e o que pode visualizar.", example: "pwd && ls -la" },
-      { title: "Procurar a evidência", doing: "Pesquisar arquivos ocultos no diretório temporário.", why: "O comando ls sem -a pode esconder pistas; find procura também em subdiretórios.", example: "find /var/tmp -type f -name '.*'" },
-      { title: "Ler e registrar", doing: "Abrir o arquivo encontrado e guardar a flag.", why: "Uma conclusão deve ser sustentada pelo conteúdo encontrado, não apenas pelo nome do arquivo.", example: "cat /var/tmp/relatorios/.auditoria/.relatorio.txt" }
-    ],
-    studentQuestion: "Qual comando encontrou o arquivo e por que uma listagem normal poderia não mostrá-lo?",
-    closing: "Explique a diferença entre localizar um arquivo e ler seu conteúdo. Mostre por que ls -la e find são úteis em uma investigação."
-  },
-  {
-    id: 2,
-    title: "Permissões e Grupos Restritos",
-    subtitle: "A evidência bloqueada",
-    category: "Linux · Controle de acesso",
-    difficulty: "Iniciante–intermediário",
-    incident: "Uma equipe de alunos precisa consultar um arquivo, mas as permissões não concedem leitura ao grupo responsável pela investigação.",
-    context: "O arquivo está em /opt/desafio_dac/flag.txt e pertence ao grupo alunos. O objetivo é compreender a configuração e corrigir apenas o acesso necessário.",
-    objective: "Ler as permissões e identificar dono e grupo; adicionar leitura ao grupo, preservando a restrição para outros usuários.",
-    deliverable: "Uma explicação das permissões antes e depois e a flag no arquivo flag.txt.",
-    realWorld: "Permissões mal configuradas impedem o trabalho de equipes legítimas ou expõem informações indevidamente. A menor permissão necessária reduz riscos.",
-    startingPoint: "Primeiro analise a saída de ls -l. Não altere permissões sem compreender cada coluna.",
-    flagFormat: "FLAG{GRUPO_REVIS_...}",
-    steps: [
-      { title: "Inspecionar permissões", doing: "Ver quais permissões existem para dono, grupo e outros.", why: "Isso revela exatamente quem pode ler, escrever ou executar o arquivo.", example: "ls -l /opt/desafio_dac/flag.txt" },
-      { title: "Aplicar o menor ajuste", doing: "Conceder leitura somente ao grupo alunos.", why: "chmod g+r modifica a leitura do grupo sem liberar acesso para qualquer usuário.", example: "chmod g+r /opt/desafio_dac/flag.txt" },
-      { title: "Confirmar e analisar", doing: "Consultar as permissões novamente e ler a evidência.", why: "Uma boa alteração de segurança precisa ser verificada e documentada.", example: "ls -l /opt/desafio_dac/flag.txt && cat /opt/desafio_dac/flag.txt" }
-    ],
-    studentQuestion: "Por que chmod g+r é preferível a chmod 777 nesse caso?",
-    closing: "Compare rw------- com rw-r----- e explique o significado de usuário, grupo e outros.",
-    caveat: "Neste laboratório demonstrativo o shell inicia como root. Portanto, conseguir executar cat antes do chmod não comprova que um usuário comum teria acesso; use a saída de ls -l para ensinar os bits de permissão."
-  },
-  {
-    id: 3,
-    title: "Mineração de Logs de Força Bruta",
-    subtitle: "Quem está tentando entrar?",
-    category: "Segurança · Logs de autenticação",
-    difficulty: "Intermediário",
-    incident: "O sistema de autenticação registrou várias tentativas de senha incorreta. A equipe precisa identificar qual endereço IP aparece mais vezes nas falhas.",
-    context: "O arquivo /var/log/auth_simulado.log contém eventos SSH fictícios. Existem acessos suspeitos de mais de uma origem.",
-    objective: "Filtrar falhas, extrair os endereços de origem, agrupar as ocorrências e identificar o IP predominante.",
-    deliverable: "O IP mais frequente, a quantidade de ocorrências e uma flag no formato FLAG{IP_endereco.ip}.",
-    realWorld: "A análise de logs ajuda equipes a detectar automações suspeitas, apoiar bloqueios e justificar decisões com evidências.",
-    startingPoint: "Inspecione o formato das linhas do log antes de construir um pipeline.",
-    flagFormat: "FLAG{IP_endereco.ip}",
-    steps: [
-      { title: "Selecionar os eventos", doing: "Filtrar linhas que registram senha incorreta.", why: "Logs misturam diferentes tipos de eventos; um filtro reduz o ruído.", example: "grep 'Failed password' /var/log/auth_simulado.log" },
-      { title: "Extrair e agrupar", doing: "Separar o campo do IP, ordenar e contar ocorrências.", why: "sort e uniq -c permitem descobrir repetições sem contar manualmente.", example: "grep 'Failed password' /var/log/auth_simulado.log | cut -d' ' -f6 | sort | uniq -c" },
-      { title: "Priorizar a origem", doing: "Ordenar os resultados pela maior quantidade e registrar o IP.", why: "A origem mais frequente orienta a análise; frequência não é, por si só, prova de invasão.", example: "grep 'Failed password' /var/log/auth_simulado.log | cut -d' ' -f6 | sort | uniq -c | sort -nr | head" }
-    ],
-    studentQuestion: "Qual é a diferença entre uma tentativa de acesso falha e a confirmação de uma invasão?",
-    closing: "Mostre como grep, cut, sort, uniq -c e head colaboram para transformar um log bruto em uma hipótese verificável."
-  },
-  {
-    id: 4,
-    title: "Mensagem Secreta no DNS",
-    subtitle: "O recado no registro TXT",
-    category: "Redes · Resolução de nomes",
-    difficulty: "Intermediário",
-    incident: "A equipe recebeu a indicação de que uma mensagem técnica foi armazenada em um registro DNS do tipo TXT, mas ninguém sabe como consultar esse registro.",
-    context: "O nome investigado é ctf.hackerspaidegua.local, consultado no laboratório pelo endereço 192.168.56.1. Na revisão, um script Linux reproduz a resposta TXT, sem servidor DNS verdadeiro.",
-    objective: "Compreender o propósito dos registros TXT, interpretar a estrutura de uma consulta DNS e localizar a mensagem.",
-    deliverable: "A mensagem TXT obtida por dig e uma explicação do papel do DNS nesse cenário.",
-    realWorld: "Registros DNS não servem apenas para localizar endereços IP. Registros TXT também transportam informações como verificações de domínio e políticas de e-mail.",
-    startingPoint: "Identifique o nome consultado, o tipo de registro e o servidor solicitado no comando.",
-    flagFormat: "FLAG{DNS_REVIS_...}",
-    steps: [
-      { title: "Definir a consulta", doing: "Identificar o domínio e o tipo de registro que podem conter a mensagem.", why: "Uma consulta DNS só faz sentido quando sabemos qual nome e qual tipo de informação queremos.", example: "cat missao.txt" },
-      { title: "Consultar o TXT", doing: "Executar uma consulta didática usando dig.", why: "O parâmetro TXT pede especificamente registros de texto, não endereços IP.", example: "dig @192.168.56.1 ctf.hackerspaidegua.local TXT" },
-      { title: "Interpretar a resposta", doing: "Localizar o conteúdo entre aspas e justificar a conclusão.", why: "Entender a estrutura da resposta é tão importante quanto copiar a flag.", example: "dig @192.168.56.1 ctf.hackerspaidegua.local TXT" }
-    ],
-    studentQuestion: "O que muda quando consultamos um registro A em vez de um TXT?",
-    closing: "Explique a diferença entre resolução de nomes e consulta de dados textuais no DNS.",
-    caveat: "A saída de dig desta revisão é uma simulação didática produzida por um script dentro do Linux. Não existe um servidor DNS local real nesta VM; não apresente esta etapa como teste real de rede."
-  },
-  {
-    id: 5,
-    title: "A Impressão Digital Perdida",
-    subtitle: "Qual arquivo é a evidência legítima?",
-    category: "Integridade · Hashes SHA-256 e MD5",
-    difficulty: "Intermediário",
-    incident: "Uma pasta recebeu 50 arquivos com nomes e aparências semelhantes. Apenas um é a evidência original: o SHA-256 de seu conteúdo termina exatamente com os quatro caracteres c4e1.",
-    context: "O analista precisa investigar /opt/evidencias/ sem confiar no nome dos arquivos. Depois de encontrar a evidência correta, deverá ler a flag e calcular seu resumo MD5 para comparar com a referência da investigação.",
-    objective: "Calcular SHA-256 dos 50 arquivos, localizar o único hash terminado em c4e1, ler a flag e verificar o MD5 do texto exato da flag, sem quebra de linha.",
-    deliverable: "O caminho da evidência, o hash SHA-256 completo, a flag obtida e o MD5 da flag comparado à referência a67ac8c054f704be2673a9a7c72cffa8.",
-    realWorld: "Hashes verificam integridade e ajudam a comparar evidências. SHA-256 oferece maior resistência a colisões que MD5, que não é adequado para proteger dados sensíveis nem assinaturas modernas.",
-    startingPoint: "Liste os 50 registros de /opt/evidencias/. Comece pelo SHA-256 e só depois confirme a flag usando MD5.",
-    flagFormat: "FLAG{MD5_SHA256_INTEGRIDADE_...}",
-    steps: [
-      { title: "Calcular a impressão digital", doing: "Executar sha256sum sobre todos os arquivos de evidência.", why: "Um hash identifica o conteúdo binário de cada arquivo, independentemente do nome escolhido.", example: "sha256sum /opt/evidencias/*" },
-      { title: "Localizar a evidência", doing: "Filtrar o resultado para encontrar o hash terminado em c4e1 e ler a flag do arquivo correspondente.", why: "A condição c4e1 seleciona uma evidência específica entre os 50 candidatos; a flag precisa vir do conteúdo do arquivo.", example: "sha256sum /opt/evidencias/* | grep -E 'c4e1[[:space:]]'" },
-      { title: "Confirmar a flag com MD5", doing: "Aplicar md5sum à flag como texto sem quebra de linha e comparar com a referência publicada.", why: "A comparação demonstra uma verificação de integridade. MD5 é hash, não criptografia reversível, e é inseguro contra colisões.", example: "printf '%s' 'COLE_AQUI_A_FLAG_ENCONTRADA' | md5sum" }
-    ],
-    studentQuestion: "Por que calcular hashes é diferente de criptografar, e por que hoje preferimos SHA-256 ao MD5 quando segurança importa?",
-    closing: "Explique a descoberta por SHA-256, registre o MD5 correspondente à flag e destaque que MD5 é uma função hash antiga, vulnerável a colisões, não um mecanismo de criptografia. Como exercício adicional, analise o hash de senha com a wordlist paraense e compare o ataque de dicionário com a verificação de integridade.",
-    caveat: "Exercício adicional: /opt/evidencias/dicionario_paraense.txt e /opt/evidencias/senha_cofre.md5. Neste Buildroot, o comando john é uma implementação didática de comparação MD5 via md5sum, NÃO o executável oficial John the Ripper. Para o CTF oficial com John real será necessária uma imagem Linux equipada com a ferramenta."
-  }
+export const reviewMissions:ReviewMission[] = [
+ {
+ id:1,title:"O Rastro Trancado",subtitle:"O Rastro Trancado",
+ category:"Linux · Arquivos ocultos e permissões DAC",difficulty:"Fundamentos",
+ incident:"Um agente escondeu um relatório confidencial em arquivo oculto dentro de /var/tmp e retirou todas as permissões do arquivo antes de sair.",
+ context:"Investigue o caminho real em /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt. A revisão executa em Linux Buildroot e demonstra os bits DAC.",
+ objective:"Localizar o arquivo oculto, diagnosticar permissões 000, conceder leitura mínima e obter a primeira flag.",
+ deliverable:"Caminho encontrado, permissões antes/depois, comando utilizado e flag.",
+ realWorld:"Busca recursiva e princípios de menor privilégio são usados na investigação de sistemas Unix.",
+ startingPoint:"Comece por /var/tmp. Procure arquivos ocultos com find, consulte ls -l e altere as permissões somente depois de diagnosticá-las.",
+ flagFormat:"FLAG{r4str0_...}",
+ steps:[
+ {title:"Localizar arquivo oculto",doing:"Pesquisar arquivos iniciados por ponto.",why:"Arquivos ocultos não aparecem na listagem comum.",example:"find /var/tmp -type f -name '.*' 2>/dev/null"},
+ {title:"Diagnosticar DAC",doing:"Ler os bits de permissão.",why:"chmod 000 remove todas as permissões comuns de leitura, escrita e execução.",example:"ls -la /var/tmp/auditoria_boto/coleta_secreta/"},
+ {title:"Corrigir e ler",doing:"Conceder apenas leitura e confirmar a evidência.",why:"Documente a mudança e registre a flag.",example:"chmod u+r /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt && cat /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt"}
+ ],
+ studentQuestion:"Como localizar um arquivo oculto e explicar o significado de chmod 000?",
+ closing:"Registre no write-up o arquivo, as permissões e por que a alteração foi necessária.",
+ caveat:"O shell da revisão inicia como root. Root pode ler arquivos mesmo com modo 000; para comprovar o bloqueio de um aluno comum seria necessário executar como usuário não privilegiado."
+ },
+ {
+ id:2,title:"O Invasor Insistente",subtitle:"O Invasor Insistente",
+ category:"Redes · Logs SSH e pipelines",difficulty:"Fundamentos",
+ incident:"Um servidor registrou uma tempestade de tentativas de autenticação SSH. É preciso descobrir o IP com mais falhas.",
+ context:"Analise /var/log/auth_simulado.log; os registros são inteiramente fictícios e não representam acessos reais.",
+ objective:"Filtrar Failed password, extrair os IPs após 'from', contabilizar e descobrir o maior agressor.",
+ deliverable:"Endereço IP, total de tentativas, pipeline e flag no formato FLAG{ip}.",
+ realWorld:"Triagem de logs e agrupamento ajudam a identificar padrões suspeitos sem presumir comprometimento.",
+ startingPoint:"Leia algumas linhas do log antes de escolher o campo a extrair.",
+ flagFormat:"FLAG{ip.do.atacante}",
+ steps:[
+ {title:"Filtrar falhas",doing:"Separar registros Failed password.",why:"Remova os eventos de acesso aceito.",example:"grep 'Failed password' /var/log/auth_simulado.log | head"},
+ {title:"Extrair IP e contar",doing:"Obter o campo imediatamente após 'from'.",why:"O número do campo depende do formato do log; neste arquivo use awk ou cut -d' ' -f 11.",example:"grep 'Failed password' /var/log/auth_simulado.log | awk '{print $11}' | sort | uniq -c"},
+ {title:"Identificar o maior",doing:"Ordenar a contagem do maior para o menor.",why:"Isso apresenta a origem mais frequente.",example:"grep 'Failed password' /var/log/auth_simulado.log | awk '{print $11}' | sort | uniq -c | sort -nr | head -n 1"}
+ ],
+ studentQuestion:"Qual IP aparece mais vezes, e por que isso não confirma uma invasão bem-sucedida?",
+ closing:"Inclua a quantidade de falhas e o pipeline que fundamentou a resposta."
+ },
+ {
+ id:3,title:"A Impressão Digital, Quebra de MD5 e o Cofre",subtitle:"A Impressão Digital, Quebra de MD5 e o Cofre",
+ category:"Criptografia · SHA-256, MD5 e AES-256-CBC",difficulty:"Intermediário",
+ incident:"Em /opt/evidencias há 50 arquivos .enc, um hash de senha MD5 e uma wordlist paraense. Somente o arquivo autêntico tem SHA-256 terminado em e4b2.",
+ context:"Localize a evidência por SHA-256, recupere a senha testando o dicionário contra o MD5 e decifre o cofre AES-256-CBC com PBKDF2.",
+ objective:"Localizar o arquivo .enc legítimo, descobrir a senha do cofre e recuperar a terceira flag da evidência cifrada.",
+ deliverable:"Nome do .enc autêntico, SHA-256 completo, senha recuperada, comando de descriptografia e flag.",
+ realWorld:"Hashes verificam integridade; dicionários demonstram o risco de senhas previsíveis; AES protege confidencialidade.",
+ startingPoint:"Liste /opt/evidencias e comece pelos hashes dos arquivos .enc. A wordlist é dicionario_paraense.txt.",
+ flagFormat:"FLAG{cr1pt0_...}",
+ steps:[
+ {title:"Identificar o arquivo",doing:"Comparar SHA-256 dos 50 arquivos cifrados.",why:"O arquivo autêntico termina em e4b2.",example:"sha256sum /opt/evidencias/*.enc | grep -E 'e4b2[[:space:]]'"},
+ {title:"Descobrir a senha",doing:"Testar as 15 palavras do dicionário contra senha_cofre.md5.",why:"MD5 de senha simples é vulnerável a ataque de dicionário.",example:"john --format=raw-md5 --wordlist=/opt/evidencias/dicionario_paraense.txt /opt/evidencias/senha_cofre.md5"},
+ {title:"Abrir o cofre",doing:"Decifrar o arquivo .enc identificado usando a senha recuperada.",why:"AES-256-CBC com PBKDF2 exige a senha correta.",example:"openssl enc -d -aes-256-cbc -pbkdf2 -in /opt/evidencias/evidencia_37.enc -pass pass:SENHA_RECUPERADA"}
+ ],
+ studentQuestion:"Qual a diferença entre obter a senha de um hash MD5 e decifrar um arquivo protegido por AES?",
+ closing:"O write-up deve explicar a seleção pelo SHA-256, o teste do dicionário e a descriptografia.",
+ caveat:"A revisão Buildroot contém um comando john didático (comparação real com md5sum), não John the Ripper oficial. Se openssl não estiver disponível na imagem Linux, use o script de laboratório em Kali para descriptografar; não simularemos sucesso como se AES tivesse sido executado."
+ }
 ];
-
 
 /** Contextual explanation shown to the instructor after a real shell command.
  * This describes the tool's purpose, not whether the command actually succeeded.

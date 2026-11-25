@@ -430,3 +430,10 @@
 @media(max-width:650px) {
  .ctf-writeup-portal .ctf-evidence-panel.ctf-writeup-open .ctf-evidence-actions {bottom:-14px;}
 }
+
+/* Optional full encrypted lab bundle for running genuine OpenSSL/John on Kali. */
+.ctf-terminal-controls .ctf-aula07-download { display:inline-flex;align-items:center;justify-content:center;
+ border:1px solid #537784;background:#143449;color:#ccefe7;border-radius:7px;
+ text-decoration:none;padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap; }
+.ctf-terminal-controls .ctf-aula07-download:hover {background:#24546a;color:#fff;}
+.ctf-terminal-controls .ctf-aula07-download:focus-visible {outline:2px solid #7fefc6;outline-offset:2px;}

@@ -76,6 +76,10 @@ describe("terminal do professor, histórico separado e descarte",()=>{
   }
   class FakeFit{fit=vi.fn();}
   class FakeResizeObserver{observe=vi.fn();disconnect=vi.fn();}
+  vi.stubGlobal("fetch",vi.fn(async()=>({
+   ok:true,json:async()=>({sha256Evidence37:"3d3f540b1656b4f48c5db9e1fad13883c1b59ef7266c43879673ac4d332fe4b2",
+    files:Array.from({length:50},(_,i)=>({name:"evidencia_"+String(i+1).padStart(2,"0")+".enc",base64:"QUJDRA=="}))})
+  })));
   vi.stubGlobal("ResizeObserver",FakeResizeObserver);
   Object.assign(window,{Terminal:FakeTerminal,V86:FakeV86,FitAddon:{FitAddon:FakeFit}});
   render(<CtfReviewBrowser/>);
