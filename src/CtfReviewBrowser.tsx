@@ -149,6 +149,12 @@ export default function CtfReviewBrowser(){
  useEffect(()=>{if(ready)focusTerminal();},[ready]);
  useEffect(()=>{
   if(!writeupOpen)return;
+  const previousOverflow=document.body.style.overflow;
+  document.body.style.overflow="hidden";
+  return()=>{document.body.style.overflow=previousOverflow;};
+ },[writeupOpen]);
+ useEffect(()=>{
+  if(!writeupOpen)return;
   const frame=requestAnimationFrame(()=>writeupFirstInput.current?.focus({preventScroll:true}));
   return()=>cancelAnimationFrame(frame);
  },[writeupOpen,challenge]);
@@ -391,7 +397,13 @@ export default function CtfReviewBrowser(){
  const writeupPanel=(
    <section className={"ctf-browser-card ctf-evidence-panel"+(writeupOpen?" ctf-writeup-open":"")}
     role={writeupOpen?"dialog":undefined} aria-modal={writeupOpen?true:undefined}
-    aria-labelledby="ctf-writeup-title" onKeyDown={event=>event.stopPropagation()} onFocusCapture={()=>{writeupEditing.current=true;}}>
+    aria-labelledby="ctf-writeup-title" onKeyDown={event=>event.stopPropagation()}
+    onFocusCapture={()=>{writeupEditing.current=true;}}
+    onBlurCapture={event=>{
+     if(!event.currentTarget.contains(event.relatedTarget as Node | null)){
+      writeupEditing.current=writeupOpen;
+     }
+    }}>
     <div className="ctf-evidence-header">
      <div><div className="ctf-guide-eyebrow">ENTREGA DA MISSÃO {String(mission.id).padStart(2,"0")}</div>
       <h3 id="ctf-writeup-title">Evidência e relatório de investigação</h3></div>
@@ -492,6 +504,15 @@ export default function CtfReviewBrowser(){
       <button type="button" onClick={()=>{terminal.current?.clear();terminal.current?.focus();}}>Limpar tela</button>
     </div>
    </div>
+   {writeupOpen?createPortal(
+    <div className="ctf-writeup-portal" data-testid="ctf-writeup-portal">
+     <button type="button" className="ctf-writeup-backdrop" onClick={closeWriteup}
+      aria-label="Fechar editor de write-up"/>
+     {writeupPanel}
+    </div>,
+    document.fullscreenElement===fullscreenHost.current&&fullscreenHost.current
+      ? fullscreenHost.current : document.body
+   ):writeupPanel}
    </div>
     <aside className="ctf-mission-guide" aria-label="Orientações para a investigação">
      <section className="ctf-guide-panel">
@@ -536,15 +557,7 @@ export default function CtfReviewBrowser(){
      </section>
     </aside>
    </div>
-   {writeupOpen?createPortal(
-    <div className="ctf-writeup-portal" data-testid="ctf-writeup-portal">
-     <button type="button" className="ctf-writeup-backdrop" onClick={closeWriteup}
-      aria-label="Fechar editor de write-up"/>
-     {writeupPanel}
-    </div>,
-    document.fullscreenElement===fullscreenHost.current&&fullscreenHost.current
-      ? fullscreenHost.current : document.body
-   ):writeupPanel}</>}
+</>}
 
   <div className="ctf-browser-card"><h3>Histórico de demonstrações</h3>
    <button onClick={()=>void reload().catch(e=>setError((e as Error).message))}>Atualizar</button>
