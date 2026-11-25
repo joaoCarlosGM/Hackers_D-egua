@@ -1,84 +1,23 @@
-# Revisão Pré-CTF: Linux emulado no navegador (v86)
+# Revisão CTF 1 — Aula 7 (sem pontuação)
 
-Implementação publicada via GitHub Pages, exclusiva para o professor na seção **Administração → Revisão Pré-CTF**.
+A tela **Administração → Revisão Pré-CTF** é um laboratório Linux demonstrativo do professor em React + v86/Buildroot. Ela foi alinhada ao PDF `Aula 7: CTF 1 – Desafio Prático de Fundamentos` e ao script `setup_ctf1.sh` do instrutor. **Não contabiliza pontos, não altera ranking, notas ou CTF oficial.**
 
-## Arquitetura
-- **React/Vite/GitHub Pages**: carrega o emulador x86 v86 + imagem Buildroot Linux, tudo dentro do navegador.
-- **Supabase existente**: autenticação dos professores (Supabase Auth + `admin_users`), histórico, comandos registrados pelo aplicativo, saídas de terminal e write-ups.
-- **Sem VPS, Render ou Docker**: cada demonstração usa a CPU/RAM do navegador. Sem alterações no sistema de avaliação ou ranking.
+## Três desafios
 
-## Limitações honestas
-- O terminal mostrado é a porta serial de um **Linux real emulado**, não o shell do computador nem um simulador JavaScript de respostas.
-- A imagem Buildroot mínima pode não ter todos os utilitários das distribuições completas. Em especial, o exercício 4 usa **um script dentro do Linux que reproduz a resposta TXT**; não é um servidor DNS de verdade.
-- Os desafios são provisionados por comandos executados ao inicializar a VM, e por isso a preparação exige um boot bem-sucedido.
-- Os logs são **declarados pelo navegador**: podem ser adulterados por quem controla o navegador, e não oferecem prova pericial. CTF oficial com pontuação deve utilizar sandbox remoto seguro e auditoria de servidor.
-- A revisão não atribui notas nem pontos e só aparece a professor/admin.
-- Não existe ambiente Linux de cada dupla aqui. É exclusivamente apresentação do professor.
+1. **O Rastro Trancado:** localizar `/var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt`, observar permissão `000`, restaurar apenas leitura e capturar a flag. O shell Buildroot inicia como root e, por isso, leitura por root não demonstra uma negação DAC a usuário comum.
+2. **O Invasor Insistente:** analisar `/var/log/auth_simulado.log`. Foram geradas 35 falhas de 10.0.2.15, 60 de 172.16.0.99 e 180 de 185.220.101.42, além de 25 logins aceitos. Extrair com `grep | awk | sort | uniq -c | sort -nr` e entregar `FLAG{ip}`.
+3. **A Impressão Digital, Quebra de MD5 e o Cofre:** 50 arquivos AES-256-CBC em `/opt/evidencias/evidencia_01.enc` a `evidencia_50.enc`; o autêntico tem SHA-256 `3d3f540b1656b4f48c5db9e1fad13883c1b59ef7266c43879673ac4d332fe4b2`. A wordlist `dicionario_paraense.txt` mantém as 15 senhas originais. Comparar com `senha_cofre.md5`, descobrir a senha e decifrar o arquivo usando OpenSSL em um Linux com a ferramenta.
 
-## Preparar os arquivos estáticos
-Execute `node scripts/prepare-v86.mjs` antes da compilação. O script baixa a biblioteca, WASM, BIOS e kernel Buildroot a partir das fontes definidas; esses arquivos não devem ser editados manualmente. O comando `npm run build` faz isso automaticamente.
+## Inicialização técnica
 
-```bash
-npm ci
-npm run build
-npm run dev
-```
+O build executa `scripts/prepare-v86.mjs`, que prepara `public/ctf-v86/aula07-evidencias.json`. Os dados AES-256-CBC são cifrados de verdade com PBKDF2 SHA-256 (10.000 iterações), salt OpenSSL de 8 bytes, e verificação do SHA-256 do arquivo 37. O browser injeta os 50 binários na máquina virtual via `base64 -d`. O provisionamento só marca laboratório pronto quando a auditoria de arquivos, logs, wordlist, dicionário e hash confere.
 
-O emulador é servido no caminho `/Hackers_D-egua/ctf-v86/` do próprio site. Na primeira carga o download leva alguns segundos. Para usar a seção, entre com uma conta de professor ou administrador já cadastrada.
+**Limite:** a imagem Linux Buildroot não inclui, por padrão, o executável John the Ripper nem OpenSSL. O comando `john` disponível na revisão é uma *implementação didática* que testa cada candidata por `md5sum`, não o programa oficial. Não apresentá-lo como John original. A descriptografia AES com `openssl enc -d -aes-256-cbc -pbkdf2` deve ser feita em um Linux/Kali com OpenSSL enquanto não houver uma imagem browser Linux com a ferramenta real. Não fingir descriptografia no terminal nem fornecer a flag sem decifrar.
 
-## Persistência no Supabase
-Migração preparada em `supabase/migrations/202611230002_ctf_teacher_browser_review.sql`. Ela cria `ctf_review_teacher_runs`, `ctf_review_teacher_events` e RPCs restritas que verificam `admin_users`.
+## Write-up e auditoria
 
-Não aplicar automaticamente na produção durante testes de build. O professor inicia a revisão, faz comandos, escreve o write-up e encerra; as mensagens são salvas em lotes e o histórico pode ser consultado depois.
+O write-up é aberto **somente pelo botão no topo do terminal**; não há formulário abaixo dele. O relatório tem três campos (comandos, raciocínio e evidência), validação da flag, salvamento no Supabase, exportação Markdown e edição com a sessão Linux rodando. O histórico do terminal demonstrativo está em `#admin/auditoria-ctf`.
 
-## Caminhos dos cinco exercícios (roteiro da Aula 07)
-1. Diretórios e arquivo oculto em `/var/tmp/relatorios/.auditoria/`.
-2. Grupo `alunos`, arquivo `/opt/desafio_dac/flag.txt`, uso de `ls -l` e `chmod g+r`.
-3. `/var/log/auth_simulado.log`, IP de origem das tentativas: `198.51.100.44`, flag `FLAG{IP_198.51.100.44}`.
-4. `dig @192.168.56.1 ctf.hackerspaidegua.local TXT`, resposta didática pré-programada em um script Linux, sem serviço DNS real.
-5. **A Impressão Digital Perdida:** 50 arquivos em `/opt/evidencias/`, procurar o SHA-256 terminado em `c4e1`, extrair a flag e verificar o MD5 da flag como texto sem quebra de linha.
+## Separação da competição oficial
 
-**Atenção:** sem publicação de pontos, módulos oficiais ou alteração de `ctf_score_events`.
-
-## Nova experiência pedagógica — igual ao fluxo previsto para CTF oficial
-
-A revisão exclusiva do professor agora utiliza a sequência **ler situação-problema → compreender objetivo → investigar no terminal → registrar evidência/flag → explicar o raciocínio no write-up**. São cinco casos do roteiro da Aula 07: arquivos ocultos, permissões DAC, logs SSH, DNS TXT e integridade de evidências com hashes MD5 e SHA-256.
-
-A tela da missão apresenta o incidente e o contexto de trabalho, o objetivo, o que entregar e uma explicação da relevância para redes/segurança. A coluna lateral apresenta etapas que dizem **o que se está fazendo e por que**. O professor pode revelar comandos ilustrativos apenas quando quiser, evitando entregar a solução antes de fazer perguntas à turma. Após o envio real do comando para o Linux emulado, aparece uma explicação contextual do propósito do comando.
-
-Na demonstração projetada, a missão e o guia de investigação permanecem visíveis ao lado do terminal. O professor mantém a possibilidade de aumentar a fonte, fechar com Esc, confirmar flags, preencher os três campos do relatório e acessar o histórico salvo no Supabase.
-
-**Separação obrigatória:** o modo demonstrativo não atribui notas, não cria sessões de duplas, não altera o ranking e não substitui a auditoria confiável que será exigida nos CTFs oficiais. O quarto cenário continua utilizando uma resposta TXT produzida por script, e o laboratório de permissões utiliza shell root; a interface explicita essas limitações.
-
-
-## Integridade: MD5 + SHA-256
-
-MD5 e SHA-256 **são funções hash, não criptografia reversível**. No quinto desafio, foram preparados 50 arquivos de aspecto semelhante. Um único arquivo tem SHA-256 que termina em `c4e1`:
-
-```bash
-sha256sum /opt/evidencias/* | grep -E 'c4e1[[:space:]]'
-```
-
-Após localizar a evidência e obter sua FLAG no arquivo, o professor demonstra:
-
-```bash
-printf '%s' 'FLAG_ENCONTRADA' | md5sum
-```
-
-Referência MD5 da flag sem quebra de linha: `a67ac8c054f704be2673a9a7c72cffa8`. Não utilizar MD5 para segurança moderna, senhas ou prova contra adulteração maliciosa. SHA-256 é o método recomendado na comparação de integridade do arquivo.
-
-A formatação de write-up permanece em três campos: **Comando utilizado**, **Raciocínio técnico** e **Flag obtida/evidência**. Além de salvar no Supabase, o professor pode exportar um arquivo `.md` seguindo o roteiro.
-
-## Foco e projeção
-
-O botão **Focar** alterna para um modo sem distrações, com o terminal maior e os demais painéis ocultos; posiciona também o teclado na entrada interna do xterm.js. Use Esc ou **Sair do foco** para restaurar. O botão **Ampliar para projeção** usa a Fullscreen API do navegador sobre todo o laboratório (problema + terminal + orientação); use Esc para sair, ou o botão correspondente. Se o navegador bloquear fullscreen (ex.: iframe sem permissão), abra o site em uma aba independente e utilize F11. A alteração de fonte é feita por A+/A−.
-
-## Sessões e auditoria do professor
-
-O laboratório permanece em `#admin/revisao-ctf`; o histórico agora é consultado somente na página `#admin/auditoria-ctf`, com identificação explícita **Terminal do professor**, pesquisa, eventos, write-ups, exportação JSON e ligação ao CTF oficial quando o usuário é administrador.
-
-**Encerrar e salvar** grava o write-up atual e sincroniza os eventos no Supabase. **Descartar sessão** exige confirmação e elimina somente a sessão demonstrativa do professor e seus eventos, por RPC com verificação de autorização e propriedade. Não interfere nas notas ou ranking.
-
-Foram retirados do rodapé do terminal os comandos rápidos, o botão de limpeza e a listagem longa das sessões. Os comandos continuam disponíveis dentro do Linux. Antes de mudar de módulo, o professor deve encerrar ou descartar a demonstração para não deixar uma sessão não encerrada.
-
-Para corrigir a inicialização com os arquivos em cache, a interface aguarda a montagem real do elemento xterm antes de criar a VM; erros de carregamento dos scripts têm limite de tempo e orientação de recuperação.
+As flags e os arquivos gerados nesta revisão do professor são dados estáticos de demonstração presentes nos assets públicos do GitHub Pages. **Nunca reutilize essas flags como prova no CTF pontuado dos alunos.** O CTF real exige flags por dupla, validação e logs no servidor/sandbox seguro; o navegador não é origem confiável para pontuação.
