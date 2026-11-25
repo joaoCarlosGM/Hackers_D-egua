@@ -131,7 +131,8 @@ export const reviewMissions: ReviewMission[] = [
       { title: "Confirmar a flag com MD5", doing: "Aplicar md5sum à flag como texto sem quebra de linha e comparar com a referência publicada.", why: "A comparação demonstra uma verificação de integridade. MD5 é hash, não criptografia reversível, e é inseguro contra colisões.", example: "printf '%s' 'COLE_AQUI_A_FLAG_ENCONTRADA' | md5sum" }
     ],
     studentQuestion: "Por que calcular hashes é diferente de criptografar, e por que hoje preferimos SHA-256 ao MD5 quando segurança importa?",
-    closing: "Explique a descoberta por SHA-256, registre o MD5 correspondente à flag e destaque que MD5 é uma função hash antiga, vulnerável a colisões, não um mecanismo de criptografia."
+    closing: "Explique a descoberta por SHA-256, registre o MD5 correspondente à flag e destaque que MD5 é uma função hash antiga, vulnerável a colisões, não um mecanismo de criptografia. Como exercício adicional, analise o hash de senha com a wordlist paraense e compare o ataque de dicionário com a verificação de integridade.",
+    caveat: "Exercício adicional: /opt/evidencias/dicionario_paraense.txt e /opt/evidencias/senha_cofre.md5. Neste Buildroot, o comando john é uma implementação didática de comparação MD5 via md5sum, NÃO o executável oficial John the Ripper. Para o CTF oficial com John real será necessária uma imagem Linux equipada com a ferramenta."
   }
 ];
 
