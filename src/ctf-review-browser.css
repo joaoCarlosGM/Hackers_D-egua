@@ -401,3 +401,6 @@
 .ctf-session-controls .ctf-session-discard:hover{background:#693342}
 .ctf-session-controls button:disabled{cursor:wait;opacity:.45}
 .ctf-browser-head{min-width:0}
+
+.ctf-browser-session-note{font-size:11px;line-height:1.6;margin:6px 0 10px;color:#9ecfc3}
+.ctf-browser-session-note strong{color:#e0f6e9}
