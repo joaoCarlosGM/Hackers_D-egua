@@ -3,6 +3,8 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "@playwright/test";
 import { createHash } from "node:crypto";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
 
 const root=path.resolve("public/ctf-v86");
 const mime={".js":"application/javascript",".css":"text/css",".wasm":"application/wasm",".bin":"application/octet-stream"};
@@ -132,6 +134,34 @@ try{
  const verified=await execute("sha256sum /opt/evidencias/evidencia_37.enc; command -v openssl || true","HPDE_AES_VERIFIED");
  if(!verified.includes(aula07.sha256Evidence37))
   throw Error("Aula 7 AES fixture transfer/decode failed: "+verified.slice(-700));
+ // Regression: reproduce the *exact* Aula 7 guest provisioner from the React
+ // component, not an independent approximation that can pass while UI fails.
+ const componentSource=await readFile(path.resolve("src/CtfReviewBrowser.tsx"),"utf8");
+ const constants=[
+  componentSource.match(/^const reviewWordlist=.*;$/m)?.[0],
+  componentSource.match(/^const reviewJohnScript=.*;$/m)?.[0],
+  componentSource.match(/^const quote=.*;$/m)?.[0]
+ ];
+ const a=componentSource.indexOf("const initCommands=");
+ const b=componentSource.indexOf("let scriptPromise:",a);
+ if(constants.some(v=>!v)||a<0||b<0)throw Error("Cannot locate Aula 7 guest provisioning source");
+ const raw=[...constants,componentSource.slice(a,b),"globalThis.__initCommands=initCommands;"].join("\\n");
+ const transpiled=ts.transpileModule(raw,{compilerOptions:{target:ts.ScriptTarget.ES2022,
+  module:ts.ModuleKind.None}}).outputText;
+ const scope={};
+ runInNewContext(transpiled,scope,{timeout:1000});
+ if(typeof scope.__initCommands!=="function")throw Error("Aula 7 provisioner not exported by test harness");
+ const commands=scope.__initCommands(aula07);
+ console.log("Aula 7 exact VM preparation stages:",commands.length);
+ for(let i=0;i<commands.length;i++){
+  const output=await execute(commands[i],"HPDE_REAL_SETUP_"+i);
+  if(i===commands.length-1 && !output.includes("HPDE_LAB_PRONTO"))
+   throw Error("REAL Aula 7 boot FAILED in guest at final validation: "+output.slice(-1000));
+ }
+ const final=await execute("find /opt/evidencias -name '*.enc' | wc -l; sha256sum /opt/evidencias/evidencia_37.enc; cat /home/aluno/missao.txt","HPDE_REAL_SCENARIO_CHECK");
+ if(!final.includes(aula07.sha256Evidence37)||!final.includes("REVISAO CTF 1"))
+  throw Error("Real Aula 7 guest setup lacks required files: "+final.slice(-700));
+ console.log("PASS: actual UI provisioner initialized all three Aula 7 challenges in Linux guest.");
  console.log("Aula 7 AES fixture sha256:",aula07.sha256Evidence37,
   "OpenSSL available in guest:",verified.includes("/openssl"));
  console.log("PASS: five Linux mission setups, including 50 files, SHA-256 integrity and MD5 of flag.");
