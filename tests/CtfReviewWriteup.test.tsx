@@ -68,8 +68,8 @@ describe("write-up editing and scrolling for teacher-only CTF review",()=>{
   expect(container.querySelector(".ctf-mission-main > .ctf-evidence-panel")).toBeNull();
   expect(screen.getByRole("dialog",{name:/Evidência e relatório de investigação/i})).toBeTruthy();
   const flag=screen.getByRole("textbox",{name:"Flag encontrada"}) as HTMLInputElement;
-  await userEvent.type(flag,"FLAG{TESTE_DIGITADO}");
-  expect(flag.value).toBe("FLAG{TESTE_DIGITADO}");
+  await userEvent.type(flag,"FLAG_TESTE_DIGITADO");
+  expect(flag.value).toBe("FLAG_TESTE_DIGITADO");
   const command=screen.getByRole("textbox",{name:/1\. Comando utilizado/i}) as HTMLTextAreaElement;
   fireEvent.change(command,{target:{value:"pwd && ls -la"}});
   expect(command.value).toBe("pwd && ls -la");
