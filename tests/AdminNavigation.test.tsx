@@ -10,8 +10,9 @@ describe("administrative module navigation", () => {
     render(<AdminNavigation section="overview" role="admin"><p>Resumo pedagógico</p></AdminNavigation>);
     const navigation = screen.getByRole("navigation", { name: "Seções da administração" });
     const links = within(navigation).getAllByRole("link");
-    expect(links).toHaveLength(10);
+    expect(links).toHaveLength(11);
     expect(links.some(link => link.getAttribute("href") === "#admin/revisao-ctf")).toBe(true);
+    expect(links.some(link => link.getAttribute("href") === "#admin/auditoria-ctf")).toBe(true);
     expect(within(navigation).getByRole("link", { name: /Calculadora/ }).getAttribute("href")).toBe("#admin/calculadora");
     expect(within(navigation).getByRole("link", { name: /Início/ }).getAttribute("aria-current")).toBe("page");
     expect(within(navigation).getByRole("link", { name: /Turmas/ }).getAttribute("href")).toBe("#admin/turmas");

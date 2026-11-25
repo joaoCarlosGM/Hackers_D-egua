@@ -8,8 +8,6 @@ type Kind="vm_boot"|"vm_ready"|"lab_setup"|"command"|"output"|"challenge"|"write
 type E={kind:Kind;detail:string};
 type W={command:string;reason:string;evidence:string};
 type Run={id:string;title:string;started_at:string;closed_at:string|null;writeup:Record<string,W>};
-type Event={id:number;at:string;kind:Kind;detail:string};
-type Report={run:Run;events:Event[];truncated:boolean};
 type VM={add_listener:(name:string,fn:(byte:number)=>void)=>void;serial0_send:(command:string)=>void;stop:()=>void;destroy:()=>void};
 type XtermFit={fit:()=>void;dispose?:()=>void};
 type XtermHandle={
@@ -46,7 +44,11 @@ let terminalPromise:Promise<void>|undefined;
 function loadScript(name:string){
  return new Promise<void>((resolve,reject)=>{
   const script=document.createElement("script");script.src=assets+name;script.async=true;
-  script.onload=()=>resolve();script.onerror=()=>reject(Error("Falha ao carregar "+name+" para o terminal."));
+  const timeout=setTimeout(()=>{
+   script.remove();reject(Error("Tempo esgotado ao carregar "+name+". Verifique a conexão e reinicie a demonstração."));
+  },20000);
+  script.onload=()=>{clearTimeout(timeout);resolve();};
+  script.onerror=()=>{clearTimeout(timeout);reject(Error("Falha ao carregar "+name+" para o terminal."));};
   document.head.append(script);
  });
 }
@@ -55,7 +57,9 @@ function loadTerminal(){
  if(!terminalPromise)terminalPromise=(async()=>{
   const css=document.createElement("link");css.rel="stylesheet";css.href=assets+"xterm.css";
   const styleReady=new Promise<void>((resolve,reject)=>{
-   css.onload=()=>resolve();css.onerror=()=>reject(Error("O estilo do terminal xterm.js não carregou."));
+   const timeout=setTimeout(()=>reject(Error("O estilo do terminal xterm.js demorou demais para carregar.")),20000);
+   css.onload=()=>{clearTimeout(timeout);resolve();};
+   css.onerror=()=>{clearTimeout(timeout);reject(Error("O estilo do terminal xterm.js não carregou."));};
   });
   document.head.append(css);
   await Promise.all([styleReady,loadScript("xterm.js")]);
@@ -68,15 +72,17 @@ function library(){
  if(window.V86)return Promise.resolve();
  if(!scriptPromise)scriptPromise=new Promise<void>((resolve,reject)=>{
   const s=document.createElement("script");s.src=assets+"libv86.js";s.async=true;
-  s.onload=()=>window.V86?resolve():reject(Error("v86 não carregou corretamente"));
-  s.onerror=()=>reject(Error("Assets do v86 indisponíveis. Execute o script de preparação antes de compilar."));
+  const timeout=setTimeout(()=>{
+   s.remove();reject(Error("O Linux v86 demorou demais para carregar. Verifique a conexão e tente uma nova demonstração."));
+  },20000);
+  s.onload=()=>{clearTimeout(timeout);if(window.V86)resolve();else reject(Error("v86 não carregou corretamente"));};
+  s.onerror=()=>{clearTimeout(timeout);reject(Error("Assets do v86 indisponíveis. Atualize a página e tente novamente."));};
   document.head.append(s);
  }).catch(e=>{scriptPromise=undefined;throw e;});
  return scriptPromise;
 }
 function download(name:string,data:string,type="application/json"){const url=URL.createObjectURL(new Blob([data],{type}));
  const a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-const date=(s:string)=>new Date(s).toLocaleString("pt-BR");
 function formatReviewWriteup(entries:Record<string,W>) {
  return [
   "# Write-up CTF 1 — Hackers Pai D'Égua",
@@ -94,8 +100,7 @@ function formatReviewWriteup(entries:Record<string,W>) {
 }
 
 export default function CtfReviewBrowser(){
- const [run,setRun]=useState<Run|null>(null),[history,setHistory]=useState<Run[]>([]);
- const [report,setReport]=useState<Report|null>(null),[status,setStatus]=useState("Pronto para iniciar");
+ const [run,setRun]=useState<Run|null>(null),[status,setStatus]=useState("Pronto para iniciar");
  const [error,setError]=useState(""),[ready,setReady]=useState(false);
  const [busy,setBusy]=useState(false),[challenge,setChallenge]=useState(0),[flag,setFlag]=useState("");
  const [solved,setSolved]=useState<number[]>([]),[writeups,setWriteups]=useState<Record<string,W>>({});
@@ -117,7 +122,7 @@ export default function CtfReviewBrowser(){
  const mission=reviewMissions[challenge];
  const [showExplanations,setShowExplanations]=useState(false);
  const [lastAction,setLastAction]=useState<{command:string;what:string;why:string}|null>(null);
- useEffect(()=>{mounted.current=true;void rpc<Run[]>("ctf_teacher_review_history").then(setHistory).catch(e=>setError((e as Error).message));
+ useEffect(()=>{mounted.current=true;
   return()=>{mounted.current=false;
    if(bootTimer.current)clearTimeout(bootTimer.current);
    machine.current?.stop();machine.current?.destroy();machine.current=null;
@@ -167,11 +172,24 @@ export default function CtfReviewBrowser(){
   for(const part of detail.match(/[\s\S]{1,2400}/g)||[""])events.current.push({kind,detail:part});
   if(events.current.length>2000){events.current.splice(0,events.current.length-2000);setError("Buffer de auditoria cheio.");}
   setPending(events.current.length);};
- async function sync(){if(locked.current||!activeRun.current)return;locked.current=true;
-  try{while(events.current.length&&activeRun.current){const batch=events.current.splice(0,20);
-   try{const n=await rpc<number>("ctf_teacher_review_append",{p_run:activeRun.current,p_events:batch});
-    if(mounted.current){setSaved(x=>x+n);setPending(events.current.length);}
-   }catch(e){events.current.unshift(...batch);setError("Auditoria pendente: "+(e as Error).message);break;}
+ async function sync(){if(locked.current||!activeRun.current)return;
+  const session=activeRun.current;
+  locked.current=true;
+  try{while(events.current.length&&activeRun.current===session){
+   const batch=events.current.splice(0,20);
+   try{
+    const n=await rpc<number>("ctf_teacher_review_append",{p_run:session,p_events:batch});
+    if(activeRun.current===session&&mounted.current){
+     setSaved(x=>x+n);setPending(events.current.length);
+    }
+   }catch(e){
+    // Do not resurrect events for a discarded session in a new demonstration.
+    if(activeRun.current===session){
+     events.current.unshift(...batch);
+     setError("Auditoria pendente: "+(e as Error).message);
+    }
+    break;
+   }
   }}finally{locked.current=false;}}
  useEffect(()=>{const id=setInterval(()=>{if(out.current){record("output",out.current);out.current="";}void sync();},1250);
   return()=>clearInterval(id);});
@@ -263,12 +281,11 @@ export default function CtfReviewBrowser(){
   machine.current.serial0_send(value+"\n");
   terminal.current?.focus();
  }
- const reload=async()=>setHistory(await rpc<Run[]>("ctf_teacher_review_history"));
  async function start(){if(busy)return;setBusy(true);setError("");setStatus("Criando sessão...");
   try{
    const id=await rpc<string>("ctf_teacher_review_start");activeRun.current=id;
    setRun({id,title:"Revisão Pré-CTF",started_at:new Date().toISOString(),closed_at:null,writeup:{}});
-   setSolved([]);setWriteups({});setSaved(0);setReport(null);setReady(false);readyRef.current=false;
+   setSolved([]);setWriteups({});setSaved(0);setPending(0);setReady(false);readyRef.current=false;
    setShowExplanations(false);setLastAction(null);setTerminalFocusMode(false);setWriteupOpen(false);setWriteupDirty(false);
    if(bootTimer.current)clearTimeout(bootTimer.current);
    bootTimer.current=setTimeout(()=>{
@@ -283,6 +300,17 @@ export default function CtfReviewBrowser(){
    setStatus("Carregando o terminal xterm.js e a imagem Linux...");
    await Promise.all([library(),loadTerminal()]);
    if(!window.V86)throw Error("v86 indisponível");
+   await new Promise<void>((resolve,reject)=>{
+    // Cached assets can resolve before React commits the xterm host.
+    const deadline=Date.now()+7000;
+    const check=()=>{
+     if(!mounted.current||activeRun.current!==id)return reject(Error("Inicialização cancelada."));
+     if(terminalHost.current)return resolve();
+     if(Date.now()>deadline)return reject(Error("A área do terminal não foi montada. Encerre ou descarte e tente novamente."));
+     setTimeout(check,30);
+    };
+    check();
+   });
    labSeed.current=Math.random().toString(16).slice(2,8).toUpperCase();
    script.current=initCommands(labSeed.current);
    stage.current=-1;tail.current="";setupValid.current=false;
@@ -349,8 +377,7 @@ export default function CtfReviewBrowser(){
      }
      terminal.current?.write(char);out.current+=char;if(out.current.length>2000){record("output",out.current);out.current="";}
    });
-   await reload();
-  }catch(e){setError((e as Error).message);record("error",(e as Error).message);setStatus("Falha ao iniciar");}
+  }catch(e){setError((e as Error).message);record("error",(e as Error).message);setStatus("Falha ao iniciar o Linux — encerre ou descarte para tentar outra vez");}
   finally{setBusy(false);}
  }
  
@@ -380,20 +407,50 @@ export default function CtfReviewBrowser(){
  async function saveWriteup(){if(!activeRun.current)return;setBusy(true);
   try{await rpc("ctf_teacher_review_writeup",{p_run:activeRun.current,p_writeup:writeups});record("writeup","Write-up salvo");await sync();setWriteupDirty(false);setStatus("Write-up salvo no Supabase");}
   catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- async function close(){if(!activeRun.current)return;setBusy(true);
+ async function close(){
+  if(!activeRun.current||busy)return;
+  setBusy(true);setError("");
   if(document.fullscreenElement===fullscreenHost.current){
-   try{await document.exitFullscreen();}catch{/* browser fullscreen already closed */}
+   try{await document.exitFullscreen();}catch{/* already exited */}
   }
-  setProjector(false);setTerminalFocusMode(false);setWriteupOpen(false);
-  if(bootTimer.current)clearTimeout(bootTimer.current);
-  try{record("vm_stop","Revisão demonstrativa encerrada");if(out.current){record("output",out.current);out.current="";}
-   await sync();await rpc("ctf_teacher_review_close",{p_run:activeRun.current});
-   machine.current?.stop();machine.current?.destroy();machine.current=null;activeRun.current=null;
-   destroyTerminal();
-   readyRef.current=false;setReady(false);setRun(null);setStatus("Encerrada; histórico salvo no Supabase");await reload();
-  }catch(e){setError((e as Error).message);}finally{setBusy(false);}}
- async function audit(id:string){setBusy(true);try{setReport(await rpc<Report>("ctf_teacher_review_report",{p_run:id}));}
-  catch(e){setError((e as Error).message);}finally{setBusy(false);}}
+  try{
+   await rpc("ctf_teacher_review_writeup",{p_run:activeRun.current,p_writeup:writeups});
+   setWriteupDirty(false);
+   record("writeup","Write-up preservado ao encerrar a demonstração do professor");
+   record("vm_stop","Terminal do professor — demonstração encerrada e salva");
+   if(out.current){record("output",out.current);out.current="";}
+   await sync();
+   if(events.current.length)throw Error("Auditoria ainda não foi sincronizada. Tente encerrar novamente.");
+   await rpc("ctf_teacher_review_close",{p_run:activeRun.current});
+   if(bootTimer.current)clearTimeout(bootTimer.current);
+   machine.current?.stop();machine.current?.destroy();machine.current=null;
+   activeRun.current=null;destroyTerminal();
+   readyRef.current=false;setReady(false);setRun(null);setWriteupOpen(false);
+   setProjector(false);setTerminalFocusMode(false);
+   setStatus("Encerrada e salva: write-up e auditoria disponíveis na página Auditoria CTF.");
+  }catch(e){setError((e as Error).message);}finally{setBusy(false);}
+ }
+ async function discardSession(){
+  const id=activeRun.current;
+  if(!id||busy)return;
+  if(!window.confirm("Descartar permanentemente esta demonstração do terminal do professor? O write-up e todos os eventos serão apagados do Supabase. O CTF oficial, as notas e o ranking NÃO serão afetados."))return;
+  setBusy(true);setError("");
+  try{
+   readyRef.current=false;
+   activeRun.current=null; // stop new browser-generated audit events
+   if(bootTimer.current)clearTimeout(bootTimer.current);
+   machine.current?.stop();machine.current?.destroy();machine.current=null;
+   destroyTerminal();events.current=[];out.current="";
+   setPending(0);
+   await rpc("ctf_teacher_review_discard",{p_run:id});
+   setRun(null);setWriteupOpen(false);setWriteups({});setWriteupDirty(false);
+   setProjector(false);setTerminalFocusMode(false);setReady(false);setSaved(0);
+   setStatus("Demonstração descartada: nenhum registro mantido no histórico.");
+  }catch(e){
+   activeRun.current=id;
+   setError("Não foi possível descartar. O Linux foi interrompido; tente descartar ou encerrar novamente. "+(e as Error).message);
+  }finally{setBusy(false);}
+ }
  const writeupPanel=(
    <section className={"ctf-browser-card ctf-evidence-panel"+(writeupOpen?" ctf-writeup-open":"")}
     role={writeupOpen?"dialog":undefined} aria-modal={writeupOpen?true:undefined}
@@ -441,8 +498,16 @@ export default function CtfReviewBrowser(){
  return <section ref={fullscreenHost} className={"ctf-browser"+(projector?" ctf-projector":"")+(terminalFocusMode?" ctf-focus-mode":"")}>
   <div className="ctf-browser-head"><div><p>HACKERS PAI D'ÉGUA / REVISÃO PRÉ-CTF</p>
    <h2>Laboratório Linux do professor</h2><small>v86 + Buildroot · {reviewMissions.length} desafios · sem notas nem pontos</small></div>
-   {run?<button onClick={()=>void close()} disabled={busy}>Encerrar demonstração</button>:
-    <button onClick={()=>void start()} disabled={busy}>Iniciar demonstração</button>}</div>
+   <div className="ctf-session-controls">
+    {run?<>
+     <button type="button" disabled={busy} onClick={()=>void close()}>Encerrar e salvar</button>
+     <button type="button" className="ctf-session-discard" disabled={busy} onClick={()=>void discardSession()}>Descartar sessão</button>
+    </>:<>
+     <button type="button" disabled={busy} onClick={()=>void start()}>Iniciar demonstração</button>
+     <a href="#admin/auditoria-ctf">Histórico do terminal do professor</a>
+    </>}
+   </div></div>
+  {run&&<p className="ctf-browser-session-note">Terminal do professor: antes de sair, selecione <strong>Encerrar e salvar</strong> ou <strong>Descartar sessão</strong>.</p>}
   <p role="status" className="ctf-browser-status">{status}</p>{error&&<p role="alert" className="error">{error}</p>}
   <div className="ctf-browser-stats"><div>Progresso <strong>{solved.length}/{reviewMissions.length}</strong></div>
     <div>Auditoria <strong>{saved} eventos</strong></div><div>Sincronização <strong>{pending} pendentes</strong></div></div>
@@ -497,14 +562,6 @@ export default function CtfReviewBrowser(){
     <div className="ctf-terminal-footer">
       <span>{ready?"● LINUX ATIVO":"● PREPARANDO LINUX"}</span>
       <span>↑↓ histórico · Ctrl+C interromper · Enter executar</span>
-    </div>
-    <div className="ctf-terminal-quick">
-      <span>O enunciado fica acima do terminal. Leia a situação-problema antes de executar comandos.</span>
-      <button type="button" disabled={!ready} onClick={()=>sendQuickCommand("cat missao.txt")}>Ler instruções da VM</button>
-    </div>
-    <div className="ctf-terminal-utilities">
-      <button type="button" disabled={!ready} onClick={()=>{machine.current?.serial0_send("\x03");terminal.current?.focus();}}>Ctrl+C</button>
-      <button type="button" onClick={()=>{terminal.current?.clear();terminal.current?.focus();}}>Limpar tela</button>
     </div>
    </div>
    {writeupOpen?createPortal(
@@ -562,14 +619,5 @@ export default function CtfReviewBrowser(){
    </div>
 </>}
 
-  <div className="ctf-browser-card"><h3>Histórico de demonstrações</h3>
-   <button onClick={()=>void reload().catch(e=>setError((e as Error).message))}>Atualizar</button>
-   {history.map(r=><div key={r.id} className="ctf-browser-history"><span>{date(r.started_at)} · {r.closed_at?"Encerrada":"Em andamento"}</span>
-    <button disabled={busy} onClick={()=>void audit(r.id)}>Auditoria</button></div>)}</div>
-  {report&&<div className="ctf-browser-card"><h3>Auditoria — {date(report.run.started_at)}</h3>
-   <p>{report.events.length} eventos; registros fornecidos pelo navegador, não são prova pericial.</p>
-   <button onClick={()=>download("revisao_ctf_auditoria.json",JSON.stringify(report,null,2))}>Exportar JSON</button>
-   <div className="ctf-browser-events">{report.events.map(e=><div key={e.id}><time>{date(e.at)}</time><b>{e.kind}</b><span>{e.detail}</span></div>)}</div>
-  </div>}
- </section>;
+  </section>;
 }
