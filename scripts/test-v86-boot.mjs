@@ -124,6 +124,16 @@ try{
     !hashCheck.includes("FLAG{MD5_SHA256_INTEGRIDADE_096836}") ||
     !/\n50\r?\n/.test(hashCheck))
     throw Error("Hash review is incomplete: 50 files, SHA-256 suffix, MD5 evidence and MD5 flag required.");
+ // Test the new Aula 7 encrypted fixture on the actual v86 guest.
+ const aula07=JSON.parse(await readFile(path.join(root,"aula07-evidencias.json"),"utf8"));
+ if(aula07.files.length!==50)throw Error("Aula 7 must include 50 encrypted files");
+ const encrypted=aula07.files[36];
+ await execute("printf '%s' '"+encrypted.base64+"' | base64 -d > /opt/evidencias/evidencia_37.enc","HPDE_AES_TRANSFER");
+ const verified=await execute("sha256sum /opt/evidencias/evidencia_37.enc; command -v openssl || true","HPDE_AES_VERIFIED");
+ if(!verified.includes(aula07.sha256Evidence37))
+  throw Error("Aula 7 AES fixture transfer/decode failed: "+verified.slice(-700));
+ console.log("Aula 7 AES fixture sha256:",aula07.sha256Evidence37,
+  "OpenSSL available in guest:",verified.includes("/openssl"));
  console.log("PASS: five Linux mission setups, including 50 files, SHA-256 integrity and MD5 of flag.");
  // The same xterm.js version used in the teacher prototype must render ANSI
  // and deliver actual keystrokes to the Linux serial port.
