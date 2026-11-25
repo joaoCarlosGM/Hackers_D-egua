@@ -28,14 +28,21 @@ type EncryptedFixture={name:string;base64:string};
 type EncryptedBundle={sha256Evidence37:string;files:EncryptedFixture[]};
 const evidenceSha256="3d3f540b1656b4f48c5db9e1fad13883c1b59ef7266c43879673ac4d332fe4b2";
 async function loadAula07Evidence():Promise<EncryptedBundle>{
- const response=await fetch(assets+"aula07-evidencias.json",{cache:"no-store"});
- if(!response.ok)throw Error("Pacote cifrado da Aula 7 indisponível. Verifique a publicação.");
- const bundle=await response.json() as EncryptedBundle;
- if(bundle.sha256Evidence37!==evidenceSha256 || bundle.files?.length!==50 ||
-  bundle.files[36].name!=="evidencia_37.enc" ||
-  bundle.files.some(f=>!/^evidencia_\d{2}\.enc$/.test(f.name)||!/^[A-Za-z0-9+/=]+$/.test(f.base64)))
-  throw Error("Pacote AES da Aula 7 inválido ou incompleto.");
- return bundle;
+ let lastError="Erro desconhecido";
+ for(let attempt=0;attempt<3;attempt++){
+  try{
+   const url=assets+"aula07-evidencias.json"+(attempt?"?rev="+Date.now()+"-"+attempt:"");
+   const response=await fetch(url,{cache:"no-store"});
+   if(!response.ok)throw Error("HTTP "+response.status+" "+response.statusText);
+   const bundle=await response.json() as EncryptedBundle;
+   if(bundle.sha256Evidence37!==evidenceSha256||!Array.isArray(bundle.files)||
+      bundle.files.length!==50||bundle.files[36]?.name!=="evidencia_37.enc"||
+      bundle.files.some(f=>!/^evidencia_\d{2}\.enc$/.test(f.name)||!/^[A-Za-z0-9+/=]+$/.test(f.base64)))
+    throw Error("Pacote AES inconsistente (cache ou arquivo incompleto)");
+   return bundle;
+  }catch(e){lastError=(e as Error).message;}
+ }
+ throw Error("Evidências da Aula 7 indisponíveis: "+lastError+". Atualize com Ctrl+Shift+R.");
 }
 const initCommands=(bundle:EncryptedBundle)=>[
  "mkdir -p /var/tmp/cache_sistema/logs_tmp /var/tmp/sessao_antiga/bkp_2026 /var/tmp/auditoria_boto/coleta_secreta /var/log /opt/evidencias /home/aluno /tmp/ctf-bin",
@@ -136,6 +143,7 @@ export default function CtfReviewBrowser(){
  const script=useRef<string[]>([]),stage=useRef(-1),tail=useRef(""),out=useRef("");
  const events=useRef<E[]>([]),locked=useRef(false),activeRun=useRef<string|null>(null);
  const readyRef=useRef(false),mounted=useRef(true),labSeed=useRef(""),setupValid=useRef(false);
+ const stageStartedAt=useRef(0),stageDiagnostics=useRef(""),stageWatchdog=useRef<ReturnType<typeof setInterval>|null>(null);
  const current=writeups[String(challenge)]||{command:"",reason:"",evidence:""};
  const mission=reviewMissions[challenge];
  const [showExplanations,setShowExplanations]=useState(false);
@@ -329,12 +337,12 @@ export default function CtfReviewBrowser(){
    if(bootTimer.current)clearTimeout(bootTimer.current);
    bootTimer.current=setTimeout(()=>{
     if(activeRun.current===id&&!readyRef.current&&mounted.current){
-     const reason="O Linux não concluiu a inicialização. Atualize a página (Ctrl+Shift+R), encerre a sessão e inicie novamente. Se persistir, verifique o console do navegador.";
+     const reason="O Linux não concluiu a inicialização: "+(stage.current<0?"aguardando shell":"etapa "+(stage.current+1)+"/"+script.current.length)+". Descarte esta sessão e tente novamente.";
      setStatus("Tempo limite de inicialização");
      setError(reason);record("error",reason);
      print("\n"+reason+"\n");
     }
-   },90000);
+   },180000);
    record("vm_boot","Linux emulado v86 iniciado pelo professor");
    setStatus("Carregando o terminal xterm.js e a imagem Linux...");
    await Promise.all([library(),loadTerminal()]);
@@ -353,7 +361,16 @@ export default function CtfReviewBrowser(){
    labSeed.current=Math.random().toString(16).slice(2,8).toUpperCase();
    const bundle=await loadAula07Evidence();
    script.current=initCommands(bundle);
-   stage.current=-1;tail.current="";setupValid.current=false;
+   stage.current=-1;tail.current="";setupValid.current=false;stageDiagnostics.current="";stageStartedAt.current=Date.now();
+    if(stageWatchdog.current)clearInterval(stageWatchdog.current);
+    stageWatchdog.current=setInterval(()=>{
+     if(!activeRun.current||readyRef.current){if(stageWatchdog.current)clearInterval(stageWatchdog.current);stageWatchdog.current=null;return;}
+     if(stage.current>=0&&Date.now()-stageStartedAt.current>45000&&mounted.current){
+      const reason="Preparação da VM sem resposta na etapa "+(stage.current+1)+"/"+script.current.length+". Última saída: "+(stageDiagnostics.current||"nenhuma")+". Descarte e reinicie.";
+      setError(reason);setStatus("Falha na preparação do laboratório");record("error",reason);
+      if(stageWatchdog.current)clearInterval(stageWatchdog.current);stageWatchdog.current=null;
+     }
+    },4000);
    destroyTerminal();
    if(!terminalHost.current||!window.Terminal||!window.FitAddon?.FitAddon)
     throw Error("Não foi possível montar o terminal xterm.js no painel.");
@@ -386,20 +403,21 @@ export default function CtfReviewBrowser(){
      cmdline:"tsc=reliable mitigations=off random.trust_cpu=on",autostart:true,disable_keyboard:true,disable_speaker:true
    });machine.current=vm;setStatus("Linux inicializando...");
    vm.add_listener("serial0-output-byte",byte=>{const char=String.fromCharCode(byte);
-     if(char!=="\r")tail.current=(tail.current+char).slice(-350);
+     if(char!=="\r"){tail.current=(tail.current+char).slice(-350);stageDiagnostics.current=(stageDiagnostics.current+char).slice(-180);}
      if(tail.current.includes("\nHPDE_LAB_PRONTO\n"))setupValid.current=true;
      // Oculta o boot inicial e os comandos de provisionamento, incluindo as flags.
      if(!readyRef.current){
        if(stage.current===-1 && /(?:~% |# |\$ )$/.test(tail.current)){
-         stage.current=0;setStatus("Preparando três desafios...");
+         stage.current=0;stageStartedAt.current=Date.now();setStatus("Preparando etapa 1/"+script.current.length+"...");
          print("\x1b[36mLinux iniciado. Preparando arquivos e ferramentas da missão...\x1b[0m\n");
          vm.serial0_send(script.current[0]+"; printf '\\nHPDE_MARK_0\\n'\n");
        }else if(stage.current>=0&&tail.current.includes("\nHPDE_MARK_"+stage.current+"\n")){
          tail.current="";
-         if(stage.current<script.current.length-1){stage.current++;vm.serial0_send(script.current[stage.current]+"; printf '\\nHPDE_MARK_"+stage.current+"\\n'\n");}
+         if(stage.current<script.current.length-1){stage.current++;stageStartedAt.current=Date.now();stageDiagnostics.current="";setStatus("Preparando etapa "+(stage.current+1)+"/"+script.current.length+"...");vm.serial0_send(script.current[stage.current]+"; printf '\\nHPDE_MARK_"+stage.current+"\\n'\n");}
          else if(setupValid.current){
            if(bootTimer.current)clearTimeout(bootTimer.current);
-           readyRef.current=true;setReady(true);
+           if(stageWatchdog.current)clearInterval(stageWatchdog.current);stageWatchdog.current=null;
+            readyRef.current=true;setReady(true);
            record("vm_ready","Linux e três desafios preparados, incluindo SHA-256 e MD5");
            setStatus("Linux pronto · digite cat missao.txt");
            print("\x1b[1;32m✓ Linux pronto.\x1b[0m Use \x1b[1mcat missao.txt\x1b[0m para começar.\n\n");
@@ -407,8 +425,9 @@ export default function CtfReviewBrowser(){
          }
          else{
            if(bootTimer.current)clearTimeout(bootTimer.current);
-           record("error","Falha ao preparar filesystem da VM");
-           setError("O Linux iniciou, mas não conseguiu preparar os três desafios. Encerre e inicie novamente.");
+           if(stageWatchdog.current)clearInterval(stageWatchdog.current);stageWatchdog.current=null;
+           const detail="Falha na verificação final da VM. Última saída: "+stageDiagnostics.current.slice(-150);
+           record("error",detail);setError(detail);
            setStatus("Falha na preparação do laboratório");
            print("\nFalha ao preparar o laboratório.\n");
          }
@@ -417,7 +436,7 @@ export default function CtfReviewBrowser(){
      }
      terminal.current?.write(char);out.current+=char;if(out.current.length>2000){record("output",out.current);out.current="";}
    });
-  }catch(e){setError((e as Error).message);record("error",(e as Error).message);setStatus("Falha ao iniciar o Linux — encerre ou descarte para tentar outra vez");}
+  }catch(e){if(bootTimer.current)clearTimeout(bootTimer.current);if(stageWatchdog.current)clearInterval(stageWatchdog.current);stageWatchdog.current=null;setError((e as Error).message);record("error",(e as Error).message);setStatus("Falha ao iniciar o Linux — encerre ou descarte para tentar outra vez");}
   finally{setBusy(false);}
  }
  
