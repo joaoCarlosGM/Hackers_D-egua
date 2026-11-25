@@ -4,6 +4,7 @@ import Results from "./Results";
 import ClassManagement from "./ClassManagement";
 import AdminNavigation, { type AdminSection } from "./AdminNavigation";
 import CtfReviewBrowser from "./CtfReviewBrowser";
+import CtfReviewAudit from "./CtfReviewAudit";
 import TeamManagement from "./TeamManagement";
 import AdminAccessManagement from "./AdminAccessManagement";
 import AttendanceManagement from "./AttendanceManagement";
@@ -666,6 +667,7 @@ export default function Admin({
                     <a href="#admin/notas"><strong>Conferir entregas</strong><span>Resultados privados, correções e exportação.</span></a>
                     <a href="#admin/chamada"><strong>Registrar presença</strong><span>Chamada por aluno, turma e data da aula.</span></a>
                     <a href="#admin/revisao-ctf"><strong>Revisão Pré-CTF</strong><span>Terminal Linux no navegador, somente professor, sem pontuação.</span></a>
+                     <a href="#admin/auditoria-ctf"><strong>Auditoria do terminal do professor</strong><span>Histórico e relatórios formativos, fora do CTF oficial.</span></a>
                     {role === "admin" && <a href="#admin/ctf"><strong>Registrar pontos CTF</strong><span>Classificação pública independente das notas.</span></a>}
                     {role === "admin" && <a href="#admin/usuarios"><strong>Gerenciar acessos</strong><span>Autorizar professores e administradores já cadastrados no Supabase Auth.</span></a>}
                   </div>
@@ -1541,6 +1543,7 @@ export default function Admin({
                 <AdminAccessManagement currentUserId={identity} />
               )}
               {section === "revisao-ctf" && <CtfReviewBrowser />}
+               {section === "auditoria-ctf" && <CtfReviewAudit canAccessOfficialCtf={role === "admin"} />}
               {section === "ctf" && role !== "admin" && (
                 <p role="alert" className="card">Somente administradores podem ajustar a pontuação do CTF.</p>
               )}
@@ -1572,6 +1575,7 @@ export default function Admin({
                   }}
                 >
                   <h2>Registrar CTF por módulo</h2>
+                   <p><a href="#admin/auditoria-ctf">Consultar auditoria das demonstrações do terminal do professor</a> · Esses registros não alteram a pontuação oficial.</p>
                   <p className="muted">Cada módulo tem um CTF. O tempo é usado somente no desempate, sem acrescentar ou retirar pontos.</p>
                   <label>Módulo do CTF
                     <select name="module" required defaultValue="">
