@@ -387,3 +387,17 @@
  }
  .ctf-writeup-portal .ctf-evidence-panel input {max-width:100%;margin:0 0 8px;}
 }
+
+/* Only core terminal and mission content remain on the lab page.
+   History and its event audit live in #admin/auditoria-ctf. */
+.ctf-session-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.ctf-session-controls button,.ctf-session-controls a{
+ font-size:12px;line-height:1.35;min-height:39px;border:1px solid #538b81;
+ border-radius:7px;padding:9px 12px;color:#ebfff5;background:#205148;
+ text-decoration:none;font-weight:700;
+}
+.ctf-session-controls a{display:inline-flex;align-items:center}
+.ctf-session-controls .ctf-session-discard{background:#402630;border-color:#9c5265;color:#ffdedf}
+.ctf-session-controls .ctf-session-discard:hover{background:#693342}
+.ctf-session-controls button:disabled{cursor:wait;opacity:.45}
+.ctf-browser-head{min-width:0}
