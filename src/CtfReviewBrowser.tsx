@@ -25,7 +25,7 @@ declare global{interface Window{
 const assets=import.meta.env.BASE_URL+"ctf-v86/";
 const quote=(v:string)=>"'"+v.replaceAll("'","'\\''")+"'";
 const initCommands=(seed:string)=>[
- "mkdir -p /var/tmp/relatorios/.auditoria /opt/desafio_dac /var/log /opt/evidencias /tmp/ctf-bin",
+ "mkdir -p /var/tmp/relatorios/.auditoria /opt/desafio_dac /var/log /opt/evidencias /home/aluno /tmp/ctf-bin",
  "echo 'alunos:x:1300:' >> /etc/group",
  "printf '%s\\n' "+quote("FLAG{ARQUIVO_REVIS_"+seed+"}")+" > /var/tmp/relatorios/.auditoria/.relatorio.txt",
  "printf '%s\\n' "+quote("FLAG{GRUPO_REVIS_"+seed+"}")+" > /opt/desafio_dac/flag.txt",
