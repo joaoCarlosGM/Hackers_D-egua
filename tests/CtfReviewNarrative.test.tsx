@@ -15,8 +15,9 @@ afterEach(cleanup);
 describe("revisão CTF com enunciado e raciocínio pedagógico", () => {
   it("explica o fluxo oficial sem atribuir pontos", () => {
     render(<CtfReviewBrowser />);
-    expect(screen.getByRole("heading", { name: /Investigue um problema, execute comandos/i })).toBeTruthy();
-    expect(screen.getByText(/sem competição, notas ou ranking/i)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /Laboratório Linux do professor/i })).toBeTruthy();
+    expect(screen.getByText(/sem notas nem pontos/i)).toBeTruthy();
+    expect(screen.queryByRole("heading",{name:/Investigue um problema, execute comandos/i})).toBeNull();
   });
 
   it("apresenta situação-problema e roteiro antes de revelar comandos", async () => {
