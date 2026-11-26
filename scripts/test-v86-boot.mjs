@@ -159,8 +159,15 @@ try{
    throw Error("REAL Aula 7 boot FAILED in guest at final validation: "+output.slice(-1000));
  }
  const final=await execute("find /opt/evidencias -name '*.enc' | wc -l; sha256sum /opt/evidencias/evidencia_37.enc; cat /home/aluno/missao.txt","HPDE_REAL_SCENARIO_CHECK");
- if(!final.includes(aula07.sha256Evidence37)||!final.includes("REVISAO CTF 1"))
-  throw Error("Real Aula 7 guest setup lacks required files: "+final.slice(-700));
+ if(!final.includes(aula07.sha256Evidence37)||!final.includes("CTF 1 - REVISAO DO PROFESSOR")||
+     !final.includes("DESAFIO 1 - O RASTRO TRANCADO")||
+     !final.includes("DESAFIO 2 - O INVASOR INSISTENTE")||
+     !final.includes("DESAFIO 3 - A IMPRESSAO DIGITAL")||
+     (final.match(/COMANDO DE PARTIDA:/g)||[]).length!==3||
+     !final.includes("HISTORIA:")||!final.includes("MISSAO:")||
+     final.includes("FLAG{r4str0_0cult0_chm0d_p41_d3gu4}")||
+     final.includes("paidegua2026"))
+  throw Error("Aula 7 missao.txt missing contextual stories, mission text, or starter commands: "+final.slice(-2000));
  console.log("PASS: actual UI provisioner initialized all three Aula 7 challenges in Linux guest.");
  console.log("Aula 7 AES fixture sha256:",aula07.sha256Evidence37,
   "OpenSSL available in guest:",verified.includes("/openssl"));
