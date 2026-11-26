@@ -140,6 +140,7 @@ try{
  const constants=[
   componentSource.match(/^const reviewWordlist=.*;$/m)?.[0],
   componentSource.match(/^const reviewJohnScript=.*;$/m)?.[0],
+  componentSource.match(/^const reviewMissionLines=.*;$/m)?.[0],
   componentSource.match(/^const quote=.*;$/m)?.[0]
  ];
  const a=componentSource.indexOf("const initCommands=");
