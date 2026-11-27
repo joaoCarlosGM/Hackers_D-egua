@@ -47,6 +47,7 @@ select test_ctf1.denied($q$select public.ctf1_staff_create_round(
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
 insert into test_ctf1.state values('round',public.ctf1_staff_create_round(
  array[(select id from public.classes where slug='poraque')],'Teste CTF Aula 7')::text);
+reset role;
 select test_ctf1.ok((select count(*)=2 from public.ctf1_official_participations
  where round_id=(select v::uuid from test_ctf1.state where k='round')),
  'two registered teams enrolled in CTF1');
@@ -70,6 +71,7 @@ select public.ctf1_staff_start_round((select v::uuid from test_ctf1.state where 
 select test_ctf1.denied($q$select public.ctf1_staff_start_round(
  (select v::uuid from test_ctf1.state where k='round'))$q$,
  'same round cannot start a second time');
+reset role;
 select test_ctf1.ok((select ends_at-started_at=interval '60 minutes'
  from public.ctf1_official_rounds where id=(select v::uuid from test_ctf1.state where k='round')),
  'authoritative server start creates exactly one-hour window');
@@ -101,6 +103,7 @@ select public.ctf1_student_save_writeup(
  (select (v::jsonb)->>'token' from test_ctf1.state where k='team1'),
  (select v::uuid from test_ctf1.state where k='round'),1::smallint,
  '{"command":"ls","reason":"Investigacao DAC","evidence":"Permissoes registradas"}'::jsonb);
+reset role;
 select test_ctf1.ok((select count(*)=1 from public.ctf1_official_writeups
  where round_id=(select v::uuid from test_ctf1.state where k='round')
  and team_id=(select ((v::jsonb)->>'team_id')::uuid from test_ctf1.state where k='team1')),
@@ -124,14 +127,18 @@ select public.ctf1_staff_exclude(
  (select v::uuid from test_ctf1.state where k='round'),
  (select ((v::jsonb)->>'team_id')::uuid from test_ctf1.state where k='team2'),
  'Exclusao de teste, historico preservado');
+reset role;
 select test_ctf1.ok((select excluded_at is not null from public.ctf1_official_participations
  where round_id=(select v::uuid from test_ctf1.state where k='round') and
  team_id=(select ((v::jsonb)->>'team_id')::uuid from test_ctf1.state where k='team2')),
  'exclusion is soft and retains participation');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
 select public.ctf1_staff_restore(
  (select v::uuid from test_ctf1.state where k='round'),
  (select ((v::jsonb)->>'team_id')::uuid from test_ctf1.state where k='team2'),
  'Restaurado apos verificacao administrativa');
+reset role;
 select test_ctf1.ok((select excluded_at is null from public.ctf1_official_participations
  where round_id=(select v::uuid from test_ctf1.state where k='round') and
  team_id=(select ((v::jsonb)->>'team_id')::uuid from test_ctf1.state where k='team2')),
