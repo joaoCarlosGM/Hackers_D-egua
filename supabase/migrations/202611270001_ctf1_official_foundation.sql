@@ -429,6 +429,43 @@ end $ctf1$;
 revoke all on function public.ctf1_student_progress(text,uuid) from public,anon,authenticated;
 grant execute on function public.ctf1_student_progress(text,uuid) to anon,authenticated;
 
+create function public.ctf1_student_append_commands(
+ p_token text,p_round uuid,p_commands jsonb)
+returns integer language plpgsql security definer set search_path='' as $ctf1$
+declare tid uuid:=app_private.team_for_token(p_token);
+ r public.ctf1_official_rounds; p public.ctf1_official_participations;
+ item jsonb; command_text text; n integer:=0;
+begin
+ if p_commands is null or jsonb_typeof(p_commands)<>'array' or
+    jsonb_array_length(p_commands)>12 or pg_column_size(p_commands)>6000 then
+   raise exception 'Lote de comandos inválido' using errcode='22023';end if;
+ select * into r from public.ctf1_official_rounds where id=p_round;
+ select * into p from public.ctf1_official_participations
+ where round_id=p_round and team_id=tid;
+ if r.id is null or p.id is null or p.excluded_at is not null or r.mode<>'test'
+  or r.state<>'running' or clock_timestamp()>=r.ends_at then
+  raise exception 'Rodada encerrada' using errcode='42501';end if;
+ if not app_private.allow_request('ctf1:commands:'||tid::text||':'||p_round::text,30,60)
+ then raise exception 'Limite de telemetria' using errcode='42901';end if;
+ for item in select value from jsonb_array_elements(p_commands) loop
+  if jsonb_typeof(item)<>'string' then raise exception 'Formato de comando inválido';end if;
+  command_text:=left(btrim(item#>>'{}'),200);
+  if command_text<>'' then
+   -- Never persist flags, passwords, hashes or untrusted crypto protocol.
+   command_text:=regexp_replace(command_text,'FLAG\\{[^}]*\\}','FLAG{REDACTED}','g');
+   command_text:=regexp_replace(command_text,'(-pass[[:space:]]+pass:)[^[:space:]]+','\\1[REDACTED]','gi');
+   command_text:=regexp_replace(command_text,'(password|senha|token|credential)=([^[:space:]]+)','\\1=[REDACTED]','gi');
+   command_text:=regexp_replace(command_text,'[a-fA-F0-9]{32,}','[HASH REDACTED]','g');
+   insert into public.ctf1_official_audit(round_id,team_id,kind,detail)
+   values(p_round,tid,'terminal_event',jsonb_build_object('command',command_text));
+   n:=n+1;
+  end if;
+ end loop;
+ return n;
+end $ctf1$;
+revoke all on function public.ctf1_student_append_commands(text,uuid,jsonb) from public,anon,authenticated;
+grant execute on function public.ctf1_student_append_commands(text,uuid,jsonb) to anon,authenticated;
+
 -- Restrict all functions to their intended roles.
 revoke all on function public.ctf1_staff_create_round(uuid[],text,text,uuid[]),
  public.ctf1_staff_start_round(uuid),public.ctf1_staff_end_round(uuid),
