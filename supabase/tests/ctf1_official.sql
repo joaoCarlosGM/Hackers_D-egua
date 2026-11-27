@@ -326,6 +326,41 @@ reset role;
 
 
 
+-- New assessment label is independent of the unchanged test-only browser VM.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
+select test_ctf1.denied($q$select public.ctf1_staff_classify_round(
+ (select v::uuid from test_ctf1.state where k='nine'),'official')$q$,
+ 'running CTF classification cannot be changed mid-round');
+select public.ctf1_staff_classify_round(
+ (select v::uuid from test_ctf1.state where k='seven'),'official');
+select test_ctf1.ok((select assessment_kind='official' and mode='test'
+ from jsonb_to_recordset(public.ctf1_staff_list_rounds()) as x(
+ id uuid,title text,state text,mode text,assessment_kind text)
+ where id=(select v::uuid from test_ctf1.state where k='seven')),
+ 'staff round list differentiates pedagogical label and execution engine');
+select test_ctf1.denied($q$select public.ctf1_staff_discard_round(
+ (select v::uuid from test_ctf1.state where k='seven'),
+ 'Nao descartar prova oficial concluida')$q$,
+ 'official-labeled CTF cannot be discarded');
+select public.ctf1_staff_classify_round(
+ (select v::uuid from test_ctf1.state where k='seven'),'test');
+select test_ctf1.ok((select (public.ctf1_staff_create_labeled_round(
+ array[(select id from public.classes where slug='pitiu')],
+ 'Nova competição Pitiu', 'official')) is not null),
+ 'teacher creates a separate official-labeled draft using existing VM');
+reset role;
+select test_ctf1.ok((select count(*)=2 from public.ctf1_official_audit
+ where round_id=(select v::uuid from test_ctf1.state where k='seven')
+ and kind='round_classification'),
+ 'classification changes are audited and preserve previous history');
+set local role anon;
+select test_ctf1.denied($q$select public.ctf1_staff_create_labeled_round(
+ array[(select id from public.classes where slug='pitiu')],
+ 'Tentativa sem permissão','official')$q$,
+ 'students cannot create official-labeled competitions');
+reset role;
+
 -- Discard the previously started Poraque rehearsal; do not delete any
 -- participation, submission or audit row. Pitiu must remain independent.
 set local role anon;

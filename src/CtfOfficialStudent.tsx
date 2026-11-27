@@ -10,7 +10,7 @@ import { reviewMissions } from "./ctfReviewMissions";
 import "./ctf-review-browser.css";
 import "./ctf-official-admin.css";
 
-type R={round_id:string;title:string;state:string;mode:string;ends_at:string;server_now:string;excluded:boolean};
+type R={round_id:string;title:string;state:string;mode:string;assessment_kind?:"test"|"official";ends_at:string;server_now:string;excluded:boolean};
 type W={command:string;reason:string;evidence:string};
 type Props={token:string;name:string};
 export default function CtfOfficialStudent({token,name}:Props){
@@ -36,6 +36,9 @@ export default function CtfOfficialStudent({token,name}:Props){
  const editor=useRef<HTMLDivElement>(null),input=useRef<HTMLTextAreaElement>(null);
  const inLine=useRef(""),commandHistory=useRef<string[]>([]);
  const auditQueue=useRef<{challenge:number;command:string}[]>([]),auditBusy=useRef(false);
+ // xterm keeps the listener callback created at mount, so use a current ref.
+ const challengeRef=useRef(0);
+ useEffect(()=>{challengeRef.current=challenge;},[challenge]);
  useEffect(()=>{
   if(!selected)return;
   void rpc<{completed:number[];solved:number[];writeups:Record<string,W>}>("ctf1_student_progress",{p_token:token,p_round:selected})
@@ -51,7 +54,8 @@ export default function CtfOfficialStudent({token,name}:Props){
     setWriteups(drafts);
     const done=[0,1,2].filter(i=>delivered.includes(i)&&Boolean(drafts[i]?.command?.trim())&&Boolean(drafts[i]?.reason?.trim())&&Boolean(drafts[i]?.evidence?.trim()));
     setCompleted(done);
-    setChallenge(([0,1,2].find(i=>!done.includes(i))??2));
+    const next=([0,1,2].find(i=>!done.includes(i))??2);
+    challengeRef.current=next;setChallenge(next);
    }).catch(()=>{});
  },[selected,token]);
  const flushAudit=useCallback(async()=>{
@@ -113,7 +117,7 @@ export default function CtfOfficialStudent({token,name}:Props){
    if(ch==="\r"||ch==="\n"){
     if(inLine.current.trim()){
      commandHistory.current.push(inLine.current.slice(0,220));
-     auditQueue.current.push({challenge:challenge+1,command:inLine.current.slice(0,200)});
+     auditQueue.current.push({challenge:challengeRef.current+1,command:inLine.current.slice(0,200)});
      if(auditQueue.current.length>48)auditQueue.current.shift();
      // Terminal commands are client telemetry, not a trusted proof of progress.
     }inLine.current="";
@@ -149,7 +153,7 @@ export default function CtfOfficialStudent({token,name}:Props){
    resize.current=new ResizeObserver(()=>{try{a.fit();}catch{/* Resizing a detached terminal is safe to ignore. */}});
    resize.current.observe(host.current!);
    requestAnimationFrame(()=>{a.fit();t.focus();});
-   t.writeln("HACKERS PAI D'EGUA · CTF 01 · LINUX REAL / MODO TESTE");
+   t.writeln("HACKERS PAI D'EGUA · CTF 01 · LABORATORIO LINUX NO NAVEGADOR");
    t.writeln("Preparando desafios exclusivos desta dupla...");
    stage.current=-1;tail.current="";isVerified.current=false;
    pending.current="";payload.current=null;readyRef.current=false;
@@ -230,15 +234,15 @@ export default function CtfOfficialStudent({token,name}:Props){
    if(result.accepted)setCorrectFlags(previous=>previous.includes(target)?previous:[...previous,target]);
    setWriteupOpen(false);editing.current=false;setFlag("");
    setSaveState("Entrega registrada e bloqueada para edição");
-   if(result.next_challenge){setChallenge(result.next_challenge-1);setStatus("Write-up "+(target+1)+" entregue. Próximo: desafio "+result.next_challenge+".");}
-   else{setChallenge(2);setStatus("Você entregou os 3 desafios! Clique em Finalizar abaixo do terminal.");}
+   if(result.next_challenge){challengeRef.current=result.next_challenge-1;setChallenge(result.next_challenge-1);setStatus("Write-up "+(target+1)+" entregue. Próximo: desafio "+result.next_challenge+".");}
+   else{challengeRef.current=2;setChallenge(2);setStatus("Você entregou os 3 desafios! Clique em Finalizar abaixo do terminal.");}
    requestAnimationFrame(()=>terminal.current?.focus());
   }catch(e){setError((e as Error).message);}
   finally{setLoading(false);}
  }
  const remaining=`${String(Math.floor(seconds/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`;
  return <section className="ctf-browser" aria-label="CTF oficial, laboratório da dupla">
-  <div className="ctf-browser-head"><div><p>HACKERS PAI D'ÉGUA / CTF 01 · ENSAIO</p>
+  <div className="ctf-browser-head"><div><p>HACKERS PAI D'ÉGUA / CTF 01 · {round?.assessment_kind==="official"?"OFICIAL":"TESTE"}</p>
    <h2>Terminal da dupla · {name}</h2><small>Linux v86 real · três desafios da Aula 7 · credenciais existentes</small></div>
    <div className="ctf-session-controls"><strong>{remaining}</strong>
     {active&&<button type="button" onClick={()=>{stop();setStatus("Sessão local encerrada; a rodada continua no servidor.");}}>Desligar meu Linux</button>}
@@ -247,7 +251,7 @@ export default function CtfOfficialStudent({token,name}:Props){
   <label>Rodada disponível
    <select value={selected} onChange={e=>{stop();setSelected(e.target.value);}} disabled={active}>
     <option value="">Nenhuma rodada liberada</option>
-    {rounds.map(r=><option key={r.round_id} value={r.round_id}>{r.title} · {r.mode==="test"?"TESTE":"OFICIAL"} · {r.state}</option>)}
+    {rounds.map(r=><option key={r.round_id} value={r.round_id}>{r.title} · {r.assessment_kind==="official"?"OFICIAL":"TESTE"} · {r.state}</option>)}
    </select></label>
   {!active&&<div className="ctf-official-hero"><div><h3>{running?"CTF autorizado pelo professor":"Aguardando autorização"}</h3>
     <p>{running?"A rodada já está em andamento; você pode iniciar o Linux e investigar.":"O professor ainda não iniciou esta rodada ou ela já foi encerrada."}</p></div>
