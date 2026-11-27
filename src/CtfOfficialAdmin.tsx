@@ -4,7 +4,7 @@ import { calculateOfficialCtf1Total, OFFICIAL_CTF1_CAPS, type OfficialCtf1Scores
 import "./ctf-official-admin.css";
 
 type Round = { id:string; title:string; state:string; class_ids?:string[]; started_at:string|null; ends_at:string|null; created_at?:string;teams?:number };
-type Team = { team_id:string; public_name:string; class_id:string; status:string; excluded_at:string|null; score:OfficialCtf1Scores|null; audited_at:string|null; last_submission:string|null; first_activity_at:string|null; last_activity_at:string|null; mission_opened_at:string|null; solved:number[]; writeups:number[] };
+type Team = { team_id:string; public_name:string; class_id:string; status:string; excluded_at:string|null; score:OfficialCtf1Scores|null; audited_at:string|null; last_submission:string|null; first_activity_at:string|null; last_activity_at:string|null; mission_opened_at:string|null; solved:number[]; writeups:number[]; delivered?:number[]; correct?:number[]; challenge_times?:{challenge:number;seconds:number|null;started_at:string|null;submitted_at:string;flag_accepted:boolean|null}[];total_seconds?:number|null };
 type Dashboard={round:Round&{server_now:string;duration_seconds:number};teams:Team[]};
 type Audit={team_id:string;round_id:string;score:OfficialCtf1Scores|null;score_reason:string|null;audited_at:string|null;excluded_at:string|null;excluded_reason:string|null;submissions:{challenge:number;accepted:boolean;submitted_at:string}[];writeups:Record<string,Record<string,string>>;events:{at:string;kind:string;detail:unknown}[]};
 const zeroScores:OfficialCtf1Scores={mission1:0,mission2:0,mission3:0,writeup1:0,writeup2:0,writeup3:0};
@@ -16,6 +16,7 @@ const labels:Record<keyof OfficialCtf1Scores,string>={
  writeup2:"Write-up do Desafio 2",
  writeup3:"Write-up do Desafio 3"
 };
+function duration(seconds:number|null|undefined){if(seconds==null)return "—";const s=Math.max(0,seconds);return `${String(Math.floor(s/3600)).padStart(2,"0")}:${String(Math.floor(s%3600/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;}
 function leftTime(round:Dashboard["round"],now:number){
  if(round.state!=="running"||!round.ends_at)return "00:00";
  const seconds=Math.max(0,Math.ceil((Date.parse(round.ends_at)-now)/1000));
@@ -45,8 +46,12 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
  },[]);
  const refresh=useCallback(async(id:string)=>{
   if(!id)return;
-  const value=await rpc<Dashboard>("ctf1_staff_dashboard",{p_round:id});
-  setDashboard(value);
+  const [value,progress]=await Promise.all([
+   rpc<Dashboard>("ctf1_staff_dashboard",{p_round:id}),
+   rpc<{team_id:string;delivered:number[];correct:number[];challenge_times:Team["challenge_times"];total_seconds:number|null}[]>("ctf1_staff_challenge_results",{p_round:id})
+  ]);
+  const byTeam=new Map((progress??[]).map(item=>[item.team_id,item]));
+  setDashboard({...value,teams:value.teams.map(team=>({...team,...byTeam.get(team.team_id)}))});
   setTimeDelta(Date.parse(value.round.server_now)-Date.now());
  },[]);
  const refreshAudit=useCallback(async(id:string,team:string)=>{
@@ -136,7 +141,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
   </section>}
   {selectedRound&&<><div className="ctf-official-kpis">
    <div><small>Duplas na rodada</small><strong>{selectedRound.teams.filter(t=>!t.excluded_at).length}</strong></div>
-   <div><small>Três desafios concluídos</small><strong>{selectedRound.teams.filter(t=>[1,2,3].every(n=>t.solved.includes(n)&&t.writeups.includes(n))&&!t.excluded_at).length}</strong></div>
+   <div><small>Três desafios concluídos</small><strong>{selectedRound.teams.filter(t=>t.delivered?.length===3&&!t.excluded_at).length}</strong></div>
    <div><small>Iniciaram o laboratório</small><strong>{investigating.length}</strong><small>Atividade registrada no terminal</small></div>
    <div><small>Auditorias avaliadas</small><strong>{selectedRound.teams.filter(t=>t.audited_at&&!t.excluded_at).length}</strong></div>
   </div>
@@ -156,11 +161,11 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
   </details>
   <div className={teamSelected?"ctf-official-grid":"ctf-official-grid ctf-official-grid--single"}><details className="ctf-official-panel ctf-official-collapsible" open>
    <summary>Progresso por dupla <span>{selectedRound.teams.length} duplas</span></summary>
-   <div className="ctf-official-table-wrap"><table><thead><tr><th>Dupla</th><th>Turma</th><th>Desafio atual</th><th>Missões</th><th>Write-ups</th><th>Atividade</th><th>Avaliação</th><th>Ação</th></tr></thead><tbody>
+   <div className="ctf-official-table-wrap"><table><thead><tr><th>Dupla</th><th>Turma</th><th>Desafio atual</th><th>Flags corretas</th><th>Entregues</th><th>Tempo total</th><th>Atividade</th><th>Avaliação</th><th>Ação</th></tr></thead><tbody>
    {selectedRound.teams.map(t=><tr key={t.team_id}>
     <td><strong>{t.public_name}</strong>{t.excluded_at&&<small> · Participação excluída</small>}</td>
     <td>{classes.find(c=>c.id===t.class_id)?.name??"—"}</td>
-    <td>{[1,2,3].every(n=>t.solved.includes(n)&&t.writeups.includes(n))?"Concluído":`Desafio ${[1,2,3].find(n=>!(t.solved.includes(n)&&t.writeups.includes(n)))??1}`}</td><td>{t.solved.length}/3</td><td>{t.writeups.length}/3</td><td>{t.mission_opened_at?"Missão lida":t.first_activity_at?"Investigando":"Aguardando"}</td>
+    <td>{t.delivered?.length===3?"Concluído":`Desafio ${[1,2,3].find(n=>!t.delivered?.includes(n))??1}`}</td><td><strong>{t.correct?.length??0}/3</strong></td><td>{t.delivered?.length??0}/3</td><td>{duration(t.total_seconds)}</td><td>{t.mission_opened_at?"Missão lida":t.first_activity_at?"Investigando":"Aguardando"}</td>
     <td>{t.audited_at?"Avaliada":"Pendente"}</td>
     <td><button disabled={busy} onClick={()=>{setTeamSelected(t.team_id);setAudit(null);void refreshAudit(selected,t.team_id).catch(e=>setError((e as Error).message));}}>Auditar</button></td>
    </tr>)}</tbody></table></div>
@@ -168,10 +173,15 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
    <div className="ctf-official-audit-heading"><h3>Auditoria individual</h3><button type="button" onClick={closeAudit} aria-label="Fechar auditoria individual">✕ Fechar auditoria</button></div>
    {!currentTeam&&<p>Selecione uma dupla para conferir entregas, write-ups e notas.</p>}
    {currentTeam&&<><h4>{currentTeam.public_name}</h4>
-    <p>{currentTeam.excluded_at?"Excluída desta rodada":"Participação ativa"} · {currentTeam.solved.length}/3 flags confirmadas</p>
+    <p>{currentTeam.excluded_at?"Excluída desta rodada":"Participação ativa"} · {currentTeam.correct?.length??0}/3 flags corretas · {currentTeam.delivered?.length??0}/3 desafios entregues</p>
     {audit&&audit.team_id===currentTeam.team_id&&<>
-     <details open><summary>Validação de flags e evidências</summary><div className="ctf-official-scroll">
-      {audit.submissions.map((s,i)=><p key={i}>D{s.challenge}: {s.accepted?"Flag aceita":"Flag recusada"} · {new Date(s.submitted_at).toLocaleString("pt-BR")}</p>)}
+     <details open><summary>Resultado por desafio e tempo</summary>
+      <div className="ctf-official-table-wrap"><table><thead><tr><th>Desafio</th><th>Entrega</th><th>Flag</th><th>Tempo</th></tr></thead><tbody>
+       {[1,2,3].map(n=>{const item=currentTeam.challenge_times?.find(c=>c.challenge===n);return <tr key={n}><td>Desafio {n}</td><td>{item?"Entregue":"Pendente"}</td><td>{!item?"—":item.flag_accepted===true?"Correta":item.flag_accepted===false?"Incorreta":"Não verificada"}</td><td>{duration(item?.seconds)}</td></tr>;})}
+      </tbody></table></div><p><strong>Tempo total da dupla: {duration(currentTeam.total_seconds)}</strong></p>
+     </details>
+     <details><summary>Validação de flags e evidências</summary><div className="ctf-official-scroll">
+      {audit.submissions.map((s,i)=><p key={i}>D{s.challenge}: {s.accepted?"Flag correta":"Flag incorreta"} · {new Date(s.submitted_at).toLocaleString("pt-BR")}</p>)}
       {audit.submissions.length===0&&<p>Nenhuma flag submetida.</p>}
      </div></details>
      <details><summary>Write-ups salvos</summary>
@@ -222,6 +232,6 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
     </>}
    </>}
   </section>}</div></>}
-  <p className="ctf-official-footnote">As notas deste painel ficam separadas do ranking legado até homologação e publicação administrativa. O histórico enviado pelo navegador é telemetria não confiável: a validação de flags e o horário precisam ser conferidos no servidor.</p>
+  <p className="ctf-official-footnote">Entregar todos os desafios não significa acertar todas as flags. O tempo por desafio é calculado no servidor entre o início registrado e a entrega. As notas continuam separadas do ranking legado. O histórico enviado pelo navegador é telemetria não confiável: a validação de flags e o horário precisam ser conferidos no servidor.</p>
  </section>;
 }
