@@ -9,6 +9,7 @@ create table public.ctf1_official_rounds (
  title text not null default 'CTF 1 — Aula 7',
  class_ids uuid[] not null check(cardinality(class_ids) between 1 and 2),
  state text not null default 'draft' check(state in ('draft','running','ended','audited')),
+ mode text not null default 'test' check(mode in ('test','official')),
  duration_seconds integer not null default 3600 check(duration_seconds=3600),
  started_at timestamptz, ends_at timestamptz, closed_at timestamptz,
  created_by uuid not null references auth.users(id),
@@ -113,19 +114,20 @@ begin
 end; $$;
 revoke all on function app_private.ctf1_flag_value(uuid,uuid,smallint) from public,anon,authenticated;
 
-create function public.ctf1_staff_create_round(p_class_ids uuid[],p_title text default 'CTF 1 — Aula 7')
+create function public.ctf1_staff_create_round(p_class_ids uuid[],p_title text default 'CTF 1 — Aula 7',p_mode text default 'test')
 returns uuid language plpgsql security definer set search_path='' as $$
 declare rid uuid; n integer;
 begin
  perform app_private.require_staff();
+ if p_mode <> 'test' then raise exception 'Modo oficial bloqueado ate homologacao de isolamento da VM';end if;
  if p_class_ids is null or cardinality(p_class_ids) not between 1 and 2
     or (select count(distinct x) from unnest(p_class_ids) x)<>cardinality(p_class_ids)
     or (select count(*) from public.classes where id=any(p_class_ids))<>cardinality(p_class_ids)
  then raise exception 'Selecione uma ou duas turmas válidas' using errcode='22023';end if;
  if char_length(btrim(coalesce(p_title,''))) not between 5 and 100 then
    raise exception 'Título inválido' using errcode='22023';end if;
- insert into public.ctf1_official_rounds(class_ids,title,created_by)
- values(p_class_ids,btrim(p_title),auth.uid()) returning id into rid;
+ insert into public.ctf1_official_rounds(class_ids,title,created_by,mode)
+ values(p_class_ids,btrim(p_title),auth.uid(),p_mode) returning id into rid;
  insert into app_private.ctf1_official_secrets(round_id,secret)
  values(rid,extensions.gen_random_bytes(32));
  insert into public.ctf1_official_participations(round_id,team_id)
@@ -176,8 +178,8 @@ begin
  -- Team token identifies the row; caller cannot request someone else's team.
  return coalesce((select jsonb_agg(jsonb_build_object(
  'round_id',r.id,'title',r.title,
- 'state',case when r.state='running' and clock_timestamp()>=r.ends_at then 'ended' else r.state end,
- 'started_at',r.started_at,'ends_at',r.ends_at,
+ 'state',case when r.state='running' and clock_timestamp()>=r.ends_at then 'ended' else r.state end,'mode',r.mode,
+ 'started_at',r.started_at,'ends_at',r.ends_at,'mode',r.mode,
  'server_now',clock_timestamp(),'excluded',p.excluded_at is not null)
  order by r.created_at desc)
  from public.ctf1_official_participations p
@@ -309,7 +311,7 @@ returns jsonb language plpgsql stable security definer set search_path='' as $$
 begin
  perform app_private.require_staff();
  return coalesce((select jsonb_agg(jsonb_build_object(
- 'id',r.id,'title',r.title,'state',
+ 'id',r.id,'title',r.title,'state','mode',r.mode,
  case when r.state='running' and clock_timestamp()>=r.ends_at then 'ended' else r.state end,
  'class_ids',r.class_ids,'started_at',r.started_at,'ends_at',r.ends_at,
  'created_at',r.created_at,'teams',(
@@ -378,8 +380,32 @@ begin
    from (select * from public.ctf1_official_audit
     where round_id=p_round and team_id=p_team order by at limit 1000) a), '[]'::jsonb));
 end $$;
+-- Test-mode fixture only: browser VM needs per-team real evidence. The browser
+-- receives the flags to embed in its local image, therefore this is NOT a
+-- cheating-resistant competition design. Official-mode start remains blocked.
+create function public.ctf1_student_fixture(p_token text,p_round uuid)
+returns jsonb language plpgsql security definer set search_path='' as $
+declare tid uuid:=app_private.team_for_token(p_token);
+ r public.ctf1_official_rounds; p public.ctf1_official_participations;
+begin
+ select * into r from public.ctf1_official_rounds where id=p_round;
+ select * into p from public.ctf1_official_participations
+ where round_id=p_round and team_id=tid;
+ if r.id is null or p.id is null or p.excluded_at is not null or r.mode<>'test'
+    or r.state<>'running' or clock_timestamp()>=r.ends_at then
+   raise exception 'Laboratório de teste indisponível para esta dupla' using errcode='42501';
+ end if;
+ return jsonb_build_object('round_id',p_round,'team_id',tid,'mode','test',
+   'first_flag',app_private.ctf1_flag_value(p_round,tid,1::smallint),
+   'second_flag',app_private.ctf1_flag_value(p_round,tid,2::smallint),
+   'third_flag',app_private.ctf1_flag_value(p_round,tid,3::smallint),
+   'ends_at',r.ends_at,'server_now',clock_timestamp());
+end $;
+revoke all on function public.ctf1_student_fixture(text,uuid) from public,anon,authenticated;
+grant execute on function public.ctf1_student_fixture(text,uuid) to anon,authenticated;
+
 -- Restrict all functions to their intended roles.
-revoke all on function public.ctf1_staff_create_round(uuid[],text),
+revoke all on function public.ctf1_staff_create_round(uuid[],text,text),
  public.ctf1_staff_start_round(uuid),public.ctf1_staff_end_round(uuid),
  public.ctf1_student_status(text),
  public.ctf1_student_submit_flag(text,uuid,smallint,text),
