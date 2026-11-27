@@ -27,7 +27,7 @@ begin
   'mission_opened_at',(
     select min(a.at) from public.ctf1_official_audit a
     where a.round_id=r.id and a.team_id=t.id and a.kind='terminal_event'
-      and lower(btrim(a.detail->>'command')) ~ '^cat[[:space:]]+(\\./)?missao[.]txt([[:space:]]|$)'),
+      and lower(btrim(a.detail->>'command')) ~ '^cat[[:space:]]+([.]/)?missao[.]txt([[:space:]]|$)'),
   'solved',coalesce((
     select jsonb_agg(q.challenge_no order by q.challenge_no) from (
      select distinct challenge_no from public.ctf1_official_submissions
