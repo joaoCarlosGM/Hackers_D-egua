@@ -79,3 +79,14 @@ A criação de rodada possui `mode='test'`. **O servidor bloqueia o modo `offici
 ### Checklist de aceite para 7 e 9 duplas
 
 Em **dois ensaios diferentes**, confira cada dupla: autenticação bem-sucedida, início no mesmo relógio de servidor, VM v86 inicializa sem falhar, três cenários e 50 .enc presentes, MD5 e AES/PBKDF2 executam, flags únicas validadas, write-up salva e volta após recarregar, auditoria de cada dupla e notas limitadas a 200. Observe consumo de RAM e CPU por computador e a taxa de erros HTTP do Supabase. Só então marcar teste real 7+9 como aprovado.
+
+
+## Regra operacional final — rodada por turma (27/11/2026)
+
+- Cada rodada pertence a **exatamente uma turma**: Poraquê **ou** Pitiú. Nunca juntar as turmas na mesma rodada.
+- Ao criar o rascunho, inscrever automaticamente **todas as duplas ativas da turma**. Não solicitar seleção manual de duplas para a rodada normal.
+- Cada dupla entra com **seu código e sua credencial privada já existentes**, a partir de **um único computador por dupla**. A dupla deve fazer um único login e compartilhar o computador entre os dois membros. A aplicação ainda não impõe tecnicamente exclusividade de dispositivo; isso exige controle adicional de sessão concorrente.
+- Ao iniciar a rodada da turma, todos os participantes daquela turma recebem o **mesmo intervalo de 60 minutos**, com início e fim persistidos no servidor; a outra turma permanece independente.
+- Para ensaios, é possível criar novas rodadas por turma em qualquer ocasião, sem reutilizar nem zerar o cronômetro de uma rodada anterior.
+- A versão de ensaio não publica notas no ranking e mantém o modo oficial bloqueado pela limitação de segurança da VM no navegador.
+- A quantidade é dinâmica: usar as duplas ativas de cada turma no instante de criação, não números fixos de 7 ou 9.
