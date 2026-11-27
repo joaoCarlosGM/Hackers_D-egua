@@ -172,7 +172,7 @@ try{
   window.__cryptoBridgeError="";
   window.__vm.add_listener("serial0-output-byte",byte=>{
    protocol=(protocol+String.fromCharCode(byte)).slice(-2500);
-   const match=/\\nHPDE_CRYPT_REQ:([A-Za-z0-9+/=]+):([A-Za-z0-9+/=]+)\\n$/.exec(protocol);
+   const match=/\r?\nHPDE_CRYPT_REQ:([A-Za-z0-9+/=]+):([A-Za-z0-9+/=]+)\r?\n$/.exec(protocol);
    if(!match)return;
    protocol="";
    void (async()=>{
