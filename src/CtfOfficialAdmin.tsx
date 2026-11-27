@@ -147,6 +147,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
    <summary>Preparar CTF para a próxima turma (não inicia automaticamente)</summary>
    <div className="ctf-official-form">
     <label>Título<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={100}/></label>
+    <p className="ctf-official-footnote">A classificação oficial identifica a avaliação e a preserva no histórico. O ambiente técnico ainda utiliza o laboratório Linux no navegador; não é uma VM isolada à prova de consulta das respostas.</p>
     <fieldset><legend>Tipo de atividade</legend>
      <label><input type="radio" name="ctf-assessment-kind" checked={newAssessmentKind==="official"} onChange={()=>setNewAssessmentKind("official")}/> CTF oficial — atividade avaliativa</label>
      <label><input type="radio" name="ctf-assessment-kind" checked={newAssessmentKind==="test"} onChange={()=>setNewAssessmentKind("test")}/> CTF teste — ensaio ou demonstração</label>
