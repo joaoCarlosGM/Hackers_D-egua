@@ -139,6 +139,18 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
       if(!window.confirm("Iniciar agora o CTF por 60 minutos para todas as duplas selecionadas? O relógio não será reiniciado."))return;
       void action(async()=>{await rpc("ctf1_staff_start_round",{p_round:selected});setNotice("Rodada iniciada para as duplas.");});
     }}>Iniciar CTF</button>}
+    {display.state==="running"&&rounds.some(r=>r.id===display.id&&r.mode==="test")&&
+     <button type="button" disabled={busy||!display.ends_at||Date.now()+timeDelta>=Date.parse(display.ends_at)} title="Acrescentar 10 minutos ao horário final, sem reiniciar o Linux" onClick={()=>{
+      if(!window.confirm("Acrescentar 10 minutos ao CTF desta turma? A rodada e os terminais continuam em andamento. Esta ação fica registrada na auditoria."))return;
+      const roundId=display.id;
+      void action(async()=>{
+       const change=await rpc<{minutes_added:number;new_ends_at:string}>("ctf1_staff_extend_round_10m",{p_round:roundId});
+       await refresh(roundId);
+       setNotice("Mais 10 minutos concedidos. Novo encerramento: "+
+        new Date(change.new_ends_at).toLocaleTimeString("pt-BR")+
+        ". Terminais, write-ups e auditoria preservados.");
+      });
+     }}>+10 minutos</button>}
     {display.state==="running"&&<button disabled={busy} onClick={()=>{
       if(!window.confirm("Encerrar antecipadamente a rodada? Novas flags e write-ups serão bloqueados."))return;
       void action(async()=>{await rpc("ctf1_staff_end_round",{p_round:selected});setNotice("Rodada encerrada.");});
