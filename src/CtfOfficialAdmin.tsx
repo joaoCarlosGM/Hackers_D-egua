@@ -3,7 +3,7 @@ import { rpc, type Class } from "./api";
 import { calculateOfficialCtf1Total, OFFICIAL_CTF1_CAPS, type OfficialCtf1Scores } from "./ctfOfficialScoring";
 import "./ctf-official-admin.css";
 
-type Round = { id:string; title:string; state:string; class_ids?:string[]; started_at:string|null; ends_at:string|null; created_at?:string;teams?:number };
+type Round = { id:string; title:string; state:string; mode?:"test"|"official"; class_ids?:string[]; started_at:string|null; ends_at:string|null; created_at?:string;teams?:number };
 type Team = { team_id:string; public_name:string; class_id:string; status:string; excluded_at:string|null; score:OfficialCtf1Scores|null; audited_at:string|null; last_submission:string|null; first_activity_at:string|null; last_activity_at:string|null; mission_opened_at:string|null; solved:number[]; writeups:number[]; delivered?:number[]; correct?:number[]; challenge_times?:{challenge:number;seconds:number|null;started_at:string|null;submitted_at:string;flag_accepted:boolean|null}[];total_seconds?:number|null };
 type Dashboard={round:Round&{server_now:string;duration_seconds:number};teams:Team[]};
 type Audit={team_id:string;round_id:string;score:OfficialCtf1Scores|null;score_reason:string|null;audited_at:string|null;excluded_at:string|null;excluded_reason:string|null;submissions:{challenge:number;accepted:boolean;submitted_at:string}[];writeups:Record<string,Record<string,string>>;events:{at:string;kind:string;detail:unknown}[]};
