@@ -164,6 +164,45 @@ try{
  }
  const final=await execute("find /opt/evidencias -name '*.enc' | wc -l; sha256sum /opt/evidencias/evidencia_37.enc; cat /home/aluno/missao.txt","HPDE_REAL_SCENARIO_CHECK");
  const toolOutput=await execute("hashid /opt/evidencias/senha_cofre.md5; hashid -m /opt/evidencias/senha_cofre.md5; openssl version","HPDE_CRYPTO_TOOLS");
+
+ // Emulate the same explicit guest-to-browser protocol used by React.
+ // AES/PBKDF2 operations are performed by real browser Web Crypto.
+ await page.evaluate(()=>{
+  let protocol="";
+  window.__cryptoBridgeError="";
+  window.__vm.add_listener("serial0-output-byte",byte=>{
+   protocol=(protocol+String.fromCharCode(byte)).slice(-2500);
+   const match=/\\nHPDE_CRYPT_REQ:([A-Za-z0-9+/=]+):([A-Za-z0-9+/=]+)\\n$/.exec(protocol);
+   if(!match)return;
+   protocol="";
+   void (async()=>{
+    try{
+     const decode=s=>Uint8Array.from(atob(s),ch=>ch.charCodeAt(0));
+     const file=decode(match[1]);
+     const pw=decode(match[2]);
+     if(String.fromCharCode(...file.slice(0,8))!=="Salted__")throw Error("Missing OpenSSL salt header");
+     const km=await crypto.subtle.importKey("raw",pw,"PBKDF2",false,["deriveBits"]);
+     const bits=new Uint8Array(await crypto.subtle.deriveBits({
+      name:"PBKDF2",hash:"SHA-256",salt:file.slice(8,16),iterations:10000
+     },km,384));
+     const key=await crypto.subtle.importKey("raw",bits.slice(0,32),"AES-CBC",false,["decrypt"]);
+     const plain=new Uint8Array(await crypto.subtle.decrypt({
+      name:"AES-CBC",iv:bits.slice(32,48)
+     },key,file.slice(16)));
+     const result=btoa(String.fromCharCode(...plain));
+     window.__vm.serial0_send("HPDE_CRYPT_OK:"+result+"\\n");
+    }catch(e){
+     window.__cryptoBridgeError=String(e);
+     window.__vm.serial0_send("HPDE_CRYPT_ERR\\n");
+    }
+   })();
+  });
+ });
+ const decrypted=await execute("openssl enc -d -aes-256-cbc -pbkdf2 -in /opt/evidencias/evidencia_37.enc -pass pass:paidegua2026","HPDE_AES_DECRYPTED");
+ if(!decrypted.includes("FLAG{cr1pt0_sh4256_p41_d3gu4_m0d1}"))
+  throw Error("The guest-compatible openssl command did not really decrypt AES: "+decrypted.slice(-1100));
+ console.log("PASS: guest openssl command produced AES plaintext via browser Web Crypto.");
+
  if(!toolOutput.includes("Possivel MD5")||!toolOutput.includes("Hashcat: 0")||
     !toolOutput.includes("OpenSSL compat"))
   throw Error("Hash identifier or OpenSSL-compatible command not operational: "+toolOutput.slice(-1000));
