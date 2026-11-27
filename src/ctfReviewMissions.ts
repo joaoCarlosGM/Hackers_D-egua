@@ -66,7 +66,7 @@ export const reviewMissions:ReviewMission[] = [
  ],
  studentQuestion:"Qual a diferença entre obter a senha de um hash MD5 e decifrar um arquivo protegido por AES?",
  closing:"O write-up deve explicar a seleção pelo SHA-256, o teste do dicionário e a descriptografia.",
- caveat:"A revisão Buildroot contém um comando john didático (comparação real com md5sum), não John the Ripper oficial. Se openssl não estiver disponível na imagem Linux, use o script de laboratório em Kali para descriptografar; não simularemos sucesso como se AES tivesse sido executado."
+ caveat:"Nesta VM, john e hashid são utilitários didáticos, não os programas oficiais. O comando openssl aceita apenas descriptografia AES-256-CBC/PBKDF2 e usa a Web Crypto API real do navegador, não o binário OpenSSL. Para as ferramentas oficiais use o Pacote Kali em outro Linux."
  }
 ];
 
