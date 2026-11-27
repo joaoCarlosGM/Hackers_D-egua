@@ -287,6 +287,43 @@ select test_ctf1.ok((select state='running' and ends_at-started_at=interval '60 
  where id=(select v::uuid from test_ctf1.state where k='nine')),
  'second class independently gets exactly one hour');
 
+-- Extensions are staff-only, atomic and affect only the deadline.
+set local role anon;
+select test_ctf1.denied($q$select public.ctf1_staff_extend_round_10m(
+ (select v::uuid from test_ctf1.state where k='nine'))$q$,
+ 'student cannot extend the competition');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000192',true);
+select test_ctf1.denied($q$select public.ctf1_staff_extend_round_10m(
+ (select v::uuid from test_ctf1.state where k='nine'))$q$,
+ 'non-staff cannot grant extra time');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
+select test_ctf1.ok((select (public.ctf1_staff_extend_round_10m(
+ (select v::uuid from test_ctf1.state where k='nine'))->>'minutes_added')::integer=10),
+ 'teacher can grant ten minutes');
+reset role;
+select test_ctf1.ok((select state='running' and duration_seconds=3600
+ and ends_at-started_at=interval '70 minutes'
+ from public.ctf1_official_rounds
+ where id=(select v::uuid from test_ctf1.state where k='nine')),
+ 'extension changes deadline, not timer origin, state or duration config');
+select test_ctf1.ok((select count(*)=1 and bool_and((detail->>'minutes')::integer=10)
+ from public.ctf1_official_audit
+ where round_id=(select v::uuid from test_ctf1.state where k='nine')
+ and kind='round_extend'),
+ 'teacher extension is stored in audit with ten minutes');
+select test_ctf1.ok((select ends_at-started_at=interval '60 minutes'
+ from public.ctf1_official_rounds
+ where id=(select v::uuid from test_ctf1.state where k='seven')),
+ 'the other class deadline remains unchanged');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
+select test_ctf1.denied($q$select public.ctf1_staff_extend_round_10m(
+ (select v::uuid from test_ctf1.state where k='seven'))$q$,
+ 'ended round cannot be extended');
+reset role;
+
+
 
 -- Discard the previously started Poraque rehearsal; do not delete any
 -- participation, submission or audit row. Pitiu must remain independent.
