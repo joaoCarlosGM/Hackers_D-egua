@@ -5,7 +5,7 @@ import ClassManagement from "./ClassManagement";
 import AdminNavigation, { type AdminSection } from "./AdminNavigation";
 import CtfReviewBrowser from "./CtfReviewBrowser";
 import CtfReviewAudit from "./CtfReviewAudit";
-import CtfAuditedScoresPreview from "./CtfAuditedScoresPreview";
+import CtfAuditedScoresPreview, { type AuditedCtfSuggestion } from "./CtfAuditedScoresPreview";
 import CtfOfficialAdmin from "./CtfOfficialAdmin";
 import TeamManagement from "./TeamManagement";
 import AdminAccessManagement from "./AdminAccessManagement";
@@ -147,6 +147,7 @@ export default function Admin({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ctfSuggestion, setCtfSuggestion] = useState<AuditedCtfSuggestion | null>(null);
   const [data, setData] = useState<Data>(empty);
   const [editing, setEditing] = useState<Act | null>(null);
   const [questions, setQuestions] = useState<DraftQuestion[]>([newQuestion()]);
@@ -1551,9 +1552,10 @@ export default function Admin({
               {section === "ctf" && role !== "admin" && (
                 <p role="alert" className="card">Somente administradores podem ajustar a pontuação do CTF.</p>
               )}
-              {section === "ctf" && role === "admin" && <CtfAuditedScoresPreview />}
+              {section === "ctf" && role === "admin" && <CtfAuditedScoresPreview onUseSuggestion={(value) => {setCtfSuggestion(value);setNotice("Sugestão carregada. Confira os valores e o tempo antes de registrar.");}} />}
               {section === "ctf" && role === "admin" && (
                 <form
+                  key={ctfSuggestion ? `${ctfSuggestion.roundId}:${ctfSuggestion.teamId}` : "manual"}
                   className="card"
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -1564,6 +1566,10 @@ export default function Admin({
                       const elapsedSeconds = Number(f.get("minutes")) * 60 + Number(f.get("seconds"));
                       if (!Number.isInteger(elapsedSeconds) || elapsedSeconds <= 0 || elapsedSeconds > 86400)
                         throw new Error("Informe o tempo real de resolução do CTF.");
+                      if(ctfSuggestion&&(
+                        String(f.get("team"))!==ctfSuggestion.teamId||Number(f.get("module"))!==1
+                      ))throw new Error("A sugestão auditada corresponde somente à dupla selecionada e ao Módulo 1. Remova-a para lançar outro resultado.");
+                      if(ctfSuggestion&&!window.confirm(`Confirmar lançamento oficial de ${String(f.get("points"))} pontos para ${ctfSuggestion.teamName}, com ${elapsedSeconds} segundos? Esta ação altera o ranking.`))return;
                       await rpc("record_module_ctf", {
                         p_event_id: eventId,
                         p_team_id: f.get("team"),
@@ -1573,17 +1579,20 @@ export default function Admin({
                         p_reason: f.get("reason"),
                       });
                       form.reset();
+                      setCtfSuggestion(null);
                       setNotice(
                         "Resultado CTF do módulo registrado com tempo para desempate. Nenhuma nota pedagógica foi alterada.",
                       );
                     });
                   }}
                 >
-                  <h2>Registrar CTF por módulo</h2>
+                  <h2>Registrar pontuação oficial por módulo</h2>
+                  {ctfSuggestion&&<p role="status"><strong>Pré-preenchido da auditoria:</strong> {ctfSuggestion.teamName} · {ctfSuggestion.roundTitle} · {ctfSuggestion.score}/200 pontos. Revise o tempo, a pontuação e a justificativa antes de confirmar.</p>}
+                  {ctfSuggestion&&<button type="button" onClick={()=>setCtfSuggestion(null)}>Remover sugestão e preencher manualmente</button>}
                    <p>A prévia acima mostra somente notas auditadas da competição. O lançamento abaixo é uma operação administrativa independente; não ocorre automaticamente.</p>
                   <p className="muted">Cada módulo tem um CTF. O tempo é usado somente no desempate, sem acrescentar ou retirar pontos.</p>
                   <label>Módulo do CTF
-                    <select name="module" required defaultValue="">
+                    <select name="module" required defaultValue={ctfSuggestion?"1":""}>
                       <option value="" disabled>Selecione</option>
                       <option value="1">Módulo 1 · máximo 200 pontos</option>
                       <option value="2">Módulo 2 · máximo 250 pontos</option>
@@ -1592,7 +1601,7 @@ export default function Admin({
                   </label>
                   <label>
                     Dupla
-                    <select name="team" required>
+                    <select name="team" required defaultValue={ctfSuggestion?.teamId??""}>
                       <option value="">Selecione</option>
                       {visibleTeams.map((t) => (
                         <option key={t.id} value={t.id}>
@@ -1610,19 +1619,21 @@ export default function Admin({
                       required
                       min={0}
                       max={350}
+                      defaultValue={ctfSuggestion?.score}
                     />
                   </label>
                   <div className="grid">
                     <label>Tempo de resolução — minutos
-                      <input name="minutes" type="number" min={0} max={1440} step={1} required defaultValue={0} />
+                      <input name="minutes" type="number" min={0} max={1440} step={1} required defaultValue={ctfSuggestion?.elapsedSeconds!==null&&ctfSuggestion?.elapsedSeconds!==undefined?Math.floor(ctfSuggestion.elapsedSeconds/60):0} />
                     </label>
                     <label>Tempo de resolução — segundos
-                      <input name="seconds" type="number" min={0} max={59} step={1} required defaultValue={0} />
+                      <input name="seconds" type="number" min={0} max={59} step={1} required defaultValue={ctfSuggestion?.elapsedSeconds!==null&&ctfSuggestion?.elapsedSeconds!==undefined?ctfSuggestion.elapsedSeconds%60:0} />
                     </label>
                   </div>
+                  {ctfSuggestion?.elapsedSeconds===null&&<p className="muted">Tempo não comprovado: faltam flags aceitas para os três desafios. Informe manualmente o tempo verificado pelo professor.</p>}
                   <label>
                     Justificativa
-                    <input name="reason" required maxLength={500} />
+                    <input name="reason" required maxLength={500} defaultValue={ctfSuggestion?.reason??""} />
                   </label>
                   <button disabled={busy}>Registrar resultado do CTF</button>
                 </form>
