@@ -62,3 +62,20 @@ As notas de flags **não** precisam ser automaticamente máximas: o professor po
 ## Observações sobre o HTML anexado
 
 O HTML é uma prévia independente que simula comandos (não executa Linux real), usa duplas fictícias e persiste dados em `localStorage`. Aproveitar o layout, componentes, cores, tabela, relógio, cards de objetivos e auditoria — **não** seu motor de estado, flags, comandos simulados, pontuação nem armazenamento. Seu cenário "Operação DNS Fantasma" deve ser substituído pelos três desafios da Aula 7.
+
+
+## Ensaio antes da competição
+
+A criação de rodada possui `mode='test'`. **O servidor bloqueia o modo `official`** enquanto as evidências e flags forem entregues a uma VM executada no navegador do participante: nesse caso o participante consegue inspecioná-las com ferramentas de desenvolvimento, mesmo com validação por HMAC no servidor. Use somente o modo de teste para homologar o fluxo funcional, não para publicar pontos.
+
+- O professor pode criar **quantas novas rodadas** de 60 minutos precisar. Uma rodada iniciada não é reiniciável e encerrá-la não afeta a próxima.
+- Em `#admin/ctf-oficial`, selecione a turma e **exatamente as duplas inscritas**. Exemplo: escolha 7 para o primeiro ensaio, encerre; depois selecione 9 para o segundo, em outra rodada.
+- Cada dupla usa suas credenciais em `#ctf-oficial` e acessa somente a rodada à qual foi incluída; cada VM v86 roda no computador da dupla.
+- O DB smoke test testa limites e isolamento de rodadas de 7 e 9 duplas; **isso não substitui teste de carga real de 7 ou 9 navegadores/Live Boots simultâneos**.
+- Flags, evidências e write-ups de ensaio são salvos em tabelas separadas; não publicar em `ctf_score_events` e nunca alterar o ranking histórico automaticamente.
+- O professor pode excluir a participação da dupla da rodada com motivo e restaurá-la. Não excluir o cadastro nem destruir o histórico.
+- Para a competição pontuada definitiva, um backend de laboratório remoto isolado ou outro mecanismo de provisionamento sem segredos no cliente é pré-requisito de segurança.
+
+### Checklist de aceite para 7 e 9 duplas
+
+Em **dois ensaios diferentes**, confira cada dupla: autenticação bem-sucedida, início no mesmo relógio de servidor, VM v86 inicializa sem falhar, três cenários e 50 .enc presentes, MD5 e AES/PBKDF2 executam, flags únicas validadas, write-up salva e volta após recarregar, auditoria de cada dupla e notas limitadas a 200. Observe consumo de RAM e CPU por computador e a taxa de erros HTTP do Supabase. Só então marcar teste real 7+9 como aprovado.
