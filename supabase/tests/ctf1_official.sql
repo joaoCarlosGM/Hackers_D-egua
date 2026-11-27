@@ -312,10 +312,11 @@ select test_ctf1.ok((select count(*)=1 and bool_and((detail->>'minutes')::intege
  where round_id=(select v::uuid from test_ctf1.state where k='nine')
  and kind='round_extend'),
  'teacher extension is stored in audit with ten minutes');
-select test_ctf1.ok((select ends_at-started_at=interval '60 minutes'
+select test_ctf1.ok((select state='ended'
+ and ends_at<=started_at+interval '60 minutes'
  from public.ctf1_official_rounds
  where id=(select v::uuid from test_ctf1.state where k='seven')),
- 'the other class deadline remains unchanged');
+ 'other class remains ended and does not receive extra time');
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
 select test_ctf1.denied($q$select public.ctf1_staff_extend_round_10m(
