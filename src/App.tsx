@@ -93,6 +93,7 @@ export default function App() {
                     : route === "admin/chamada" ? "chamada"
                     : route === "admin/revisao-ctf" ? "revisao-ctf"
                     : route === "admin/auditoria-ctf" ? "auditoria-ctf"
+                    : route === "admin/ctf-oficial" ? "ctf-oficial"
                     : route === "admin/ctf" ? "ctf"
                     : route === "admin/usuarios" ? "usuarios"
                     : "overview"
