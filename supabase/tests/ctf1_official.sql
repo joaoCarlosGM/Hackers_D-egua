@@ -343,15 +343,21 @@ select test_ctf1.ok((select assessment_kind='official' and mode='test'
  id uuid,title text,state text,mode text,assessment_kind text)
  where id=(select v::uuid from test_ctf1.state where k='seven')),
  'staff round list differentiates pedagogical label and execution engine');
+select test_ctf1.denied($q$select public.ctf1_staff_discard_round(
+ (select v::uuid from test_ctf1.state where k='seven'),
+ 'Nao descartar prova oficial concluida')$q$,
+ 'official-labeled CTF cannot be discarded');
+select public.ctf1_staff_classify_round(
+ (select v::uuid from test_ctf1.state where k='seven'),'test');
 select test_ctf1.ok((select (public.ctf1_staff_create_labeled_round(
  array[(select id from public.classes where slug='pitiu')],
  'Nova competição Pitiu', 'official')) is not null),
  'teacher creates a separate official-labeled draft using existing VM');
 reset role;
-select test_ctf1.ok((select count(*)=1 from public.ctf1_official_audit
+select test_ctf1.ok((select count(*)=2 from public.ctf1_official_audit
  where round_id=(select v::uuid from test_ctf1.state where k='seven')
  and kind='round_classification'),
- 'classification change keeps audit log');
+ 'classification changes are audited and preserve previous history');
 set local role anon;
 select test_ctf1.denied($q$select public.ctf1_staff_create_labeled_round(
  array[(select id from public.classes where slug='pitiu')],
