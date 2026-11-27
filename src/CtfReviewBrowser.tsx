@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { decryptAula07Ciphertext, extractAula07CryptoRequest } from "./ctfReviewCryptoBridge";
+import { reviewHashidScript, reviewOpensslCompatScript } from "./ctfReviewGuestScripts";
 import { rpc } from "./api";
 import { explainReviewCommand, reviewMissions } from "./ctfReviewMissions";
 import "./ctf-review-browser.css";
@@ -55,6 +57,12 @@ const initCommands=(bundle:EncryptedBundle)=>[
  "i=1; while [ $i -le 180 ]; do printf 'Nov 27 14:20:%02d servidor-ufpa sshd[510%d]: Failed password for root from 185.220.101.42 port 6012 ssh2\\n' $((i%60)) $i >> /var/log/auth_simulado.log; i=$((i+1)); done",
  "printf '%s\\n' "+reviewWordlist.map(quote).join(" ")+" > /opt/evidencias/dicionario_paraense.txt",
  "printf '%s\\n' "+reviewJohnScript.split("\n").map(quote).join(" ")+" > /tmp/ctf-bin/john; chmod +x /tmp/ctf-bin/john; export PATH=/tmp/ctf-bin:$PATH",
+ ...Array.from({length:Math.ceil(reviewHashidScript.split("\n").length/5)},(_,i)=>
+ "printf '%s\\n' "+reviewHashidScript.split("\n").slice(i*5,i*5+5).map(quote).join(" ")+(i===0?" > ":" >> ")+"/tmp/ctf-bin/hashid"),
+ "chmod +x /tmp/ctf-bin/hashid",
+ ...Array.from({length:Math.ceil(reviewOpensslCompatScript.split("\n").length/5)},(_,i)=>
+ "printf '%s\\n' "+reviewOpensslCompatScript.split("\n").slice(i*5,i*5+5).map(quote).join(" ")+(i===0?" > ":" >> ")+"/tmp/ctf-bin/openssl"),
+ "chmod +x /tmp/ctf-bin/openssl",
  "printf '%s' 'paidegua2026' | md5sum | cut -d ' ' -f 1 > /opt/evidencias/senha_cofre.md5",
  ...Array.from({length:10},(_,i)=>bundle.files.slice(i*5,i*5+5).map(f=>
   "printf '%s' "+quote(f.base64)+" | base64 -d > /opt/evidencias/"+f.name
@@ -62,7 +70,7 @@ const initCommands=(bundle:EncryptedBundle)=>[
  ...Array.from({length:Math.ceil(reviewMissionLines.length/6)},(_,i)=>
   "printf '%s\\n' "+reviewMissionLines.slice(i*6,i*6+6).map(quote).join(" ")+
    (i===0?" > ":" >> ")+"/home/aluno/missao.txt"),
- "test -f /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt && ls -l /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt | grep -q '^----------' && test \"$(grep -c 'Failed password' /var/log/auth_simulado.log)\" -eq 275 && test \"$(find /opt/evidencias -name '*.enc' | wc -l)\" -eq 50 && test -x /tmp/ctf-bin/john && test -s /opt/evidencias/dicionario_paraense.txt && /tmp/ctf-bin/john --format=raw-md5 --wordlist=/opt/evidencias/dicionario_paraense.txt /opt/evidencias/senha_cofre.md5 | grep -q 'paidegua2026 (raw-md5)' && sha256sum /opt/evidencias/evidencia_37.enc | grep -q '3d3f540b1656b4f48c5db9e1fad13883c1b59ef7266c43879673ac4d332fe4b2' && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
+ "test -f /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt && ls -l /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt | grep -q '^----------' && test \"$(grep -c 'Failed password' /var/log/auth_simulado.log)\" -eq 275 && test \"$(find /opt/evidencias -name '*.enc' | wc -l)\" -eq 50 && test -x /tmp/ctf-bin/john && test -x /tmp/ctf-bin/hashid && test -x /tmp/ctf-bin/openssl && test -s /opt/evidencias/dicionario_paraense.txt && /tmp/ctf-bin/john --format=raw-md5 --wordlist=/opt/evidencias/dicionario_paraense.txt /opt/evidencias/senha_cofre.md5 | grep -q 'paidegua2026 (raw-md5)' && sha256sum /opt/evidencias/evidencia_37.enc | grep -q '3d3f540b1656b4f48c5db9e1fad13883c1b59ef7266c43879673ac4d332fe4b2' && cd /home/aluno && printf '\\nHPDE_LAB_PRONTO\\n' || printf '\\nHPDE_LAB_FALHOU\\n'"
 ];
 let scriptPromise:Promise<void>|undefined;
 let terminalPromise:Promise<void>|undefined;
@@ -141,6 +149,7 @@ export default function CtfReviewBrowser(){
  const writeupEditing=useRef(false);
  const terminal=useRef<XtermHandle|null>(null),fitAddon=useRef<XtermFit|null>(null);
  const termResize=useRef<ResizeObserver|null>(null);
+ const protocolPending=useRef(""),protocolPayload=useRef<string|null>(null);
  const terminalInput=useRef(""),termSubscription=useRef<{dispose:()=>void}|null>(null);
  const bootTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const script=useRef<string[]>([]),stage=useRef(-1),tail=useRef(""),out=useRef("");
@@ -364,6 +373,7 @@ export default function CtfReviewBrowser(){
    labSeed.current=Math.random().toString(16).slice(2,8).toUpperCase();
    const bundle=await loadAula07Evidence();
    script.current=initCommands(bundle);
+   protocolPending.current="";protocolPayload.current=null;
    stage.current=-1;tail.current="";setupValid.current=false;stageDiagnostics.current="";stageStartedAt.current=Date.now();
     if(stageWatchdog.current)clearInterval(stageWatchdog.current);
     stageWatchdog.current=setInterval(()=>{
@@ -437,7 +447,30 @@ export default function CtfReviewBrowser(){
        }
        return;
      }
-     terminal.current?.write(char);out.current+=char;if(out.current.length>2000){record("output",out.current);out.current="";}
+     // Hide guest-to-browser cryptography protocol from terminal and audit.
+     const protocolPrefix="\nHPDE_CRYPT_REQ:";
+     if(protocolPayload.current!==null){
+      if(char==="\n"){
+       const request=extractAula07CryptoRequest("HPDE_CRYPT_REQ:"+protocolPayload.current);
+       protocolPayload.current=null;
+       if(request)void decryptAula07Ciphertext(request.ciphertext64,request.password64).then(result=>{
+        if(!mounted.current||machine.current!==vm||!readyRef.current)return;
+        vm.serial0_send(result.ok?"HPDE_CRYPT_OK:"+result.base64+"\n":"HPDE_CRYPT_ERR\n");
+       });else vm.serial0_send("HPDE_CRYPT_ERR\n");
+      }else if(protocolPayload.current.length<10000)protocolPayload.current+=char;
+      else{protocolPayload.current=null;vm.serial0_send("HPDE_CRYPT_ERR\n");}
+      return;
+     }
+     protocolPending.current+=char;
+     while(protocolPending.current&&!protocolPrefix.startsWith(protocolPending.current)){
+      const visible=protocolPending.current[0];
+      terminal.current?.write(visible);out.current+=visible;
+      protocolPending.current=protocolPending.current.slice(1);
+     }
+     if(protocolPending.current===protocolPrefix){
+      protocolPending.current="";protocolPayload.current="";return;
+     }
+     if(out.current.length>2000){record("output",out.current);out.current="";}
    });
   }catch(e){if(bootTimer.current)clearTimeout(bootTimer.current);if(stageWatchdog.current)clearInterval(stageWatchdog.current);stageWatchdog.current=null;setError((e as Error).message);record("error",(e as Error).message);setStatus("Falha ao iniciar o Linux — encerre ou descarte para tentar outra vez");}
   finally{setBusy(false);}
