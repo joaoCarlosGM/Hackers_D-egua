@@ -334,10 +334,6 @@ select test_ctf1.denied($q$select public.ctf1_staff_classify_round(
  'running CTF classification cannot be changed mid-round');
 select public.ctf1_staff_classify_round(
  (select v::uuid from test_ctf1.state where k='seven'),'official');
-select test_ctf1.ok((select mode='test' and assessment_kind='official'
- from public.ctf1_official_rounds
- where id=(select v::uuid from test_ctf1.state where k='seven')),
- 'completed competition can be marked official without changing VM mode');
 select test_ctf1.ok((select assessment_kind='official' and mode='test'
  from jsonb_to_recordset(public.ctf1_staff_list_rounds()) as x(
  id uuid,title text,state text,mode text,assessment_kind text)
