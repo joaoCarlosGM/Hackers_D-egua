@@ -201,9 +201,10 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
    <summary>Duplas que iniciaram o laboratório <span>{investigating.length} duplas</span></summary>
    <p className="ctf-official-footnote">Atualização a cada 5 segundos. <code>cat missao.txt</code> é identificado quando o comando completo foi registrado. Atividade registrada não garante conexão ativa neste instante.</p>
    {investigating.length===0?<p>Aguardando os primeiros comandos das duplas.</p>:<div className="ctf-official-table-wrap"><table>
-    <thead><tr><th>Dupla</th><th>Primeira atividade</th><th>Missão</th><th>Última atividade</th><th>Ação</th></tr></thead>
+    <thead><tr><th>Dupla</th><th>Desafio atual</th><th>Primeira atividade</th><th>Missão</th><th>Última atividade</th><th>Ação</th></tr></thead>
     <tbody>{investigating.map(t=><tr key={t.team_id}>
      <td><strong>{t.public_name}</strong></td>
+     <td>{nextChallenge(t.delivered)===null?"Todos entregues":`Desafio ${nextChallenge(t.delivered)}`}</td>
      <td>{new Date(t.first_activity_at!).toLocaleTimeString("pt-BR")}</td>
      <td>{t.mission_opened_at?"missao.txt consultado":"Terminal em uso"}</td>
      <td>{new Date(t.last_activity_at!).toLocaleTimeString("pt-BR")}</td>
@@ -212,7 +213,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
    </table></div>}
   </details>
   <div className={teamSelected?"ctf-official-grid":"ctf-official-grid ctf-official-grid--single"}><details className="ctf-official-panel ctf-official-collapsible" open>
-   <summary>Progresso por dupla <span>{selectedRound.teams.length} duplas</span></summary>
+   <summary>Progresso por dupla <span>{selectedRound.teams.length} duplas · sincronizado com entregas no Supabase</span></summary>
    <div className="ctf-official-table-wrap"><table><thead><tr><th>Dupla</th><th>Turma</th><th>Desafio atual</th><th>Flags corretas</th><th>Entregues</th><th>Tempo total</th><th>Atividade</th><th>Avaliação</th><th>Ação</th></tr></thead><tbody>
    {selectedRound.teams.map(t=><tr key={t.team_id}>
     <td><strong>{t.public_name}</strong>{t.excluded_at&&<small> · Participação excluída</small>}</td>
