@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { rpc, type Class } from "./api";
+import { splitCtfRounds, ctfRoundLabel } from "./ctfRoundHistory";
 import { calculateOfficialCtf1Total, OFFICIAL_CTF1_CAPS, type OfficialCtf1Scores } from "./ctfOfficialScoring";
 import "./ctf-official-admin.css";
 
@@ -31,6 +32,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
  const [scores,setScores]=useState<OfficialCtf1Scores>(zeroScores);
  const [reason,setReason]=useState("");
  const [title,setTitle]=useState("CTF 1 — Aula 7");
+ const [historyOpen,setHistoryOpen]=useState(false);
  const [classId,setClassId]=useState("");
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
@@ -62,6 +64,12 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
   setAudit(data);setScores(data.score??{...zeroScores});setReason(data.score_reason??"");
  },[]);
  useEffect(()=>{void load().catch((e:Error)=>setError(e.message));},[load]);
+ useEffect(()=>{
+  // Suggested next group only; do not create or start rounds implicitly.
+  if(classId)return;
+  const next=classes.find(c=>c.slug==="pitiu"&&c.status==="active");
+  if(next){setClassId(next.id);setTitle("CTF 1 — Pitiú · próxima turma");}
+ },[classes,classId]);
  useEffect(()=>{void refresh(selected).catch((e:Error)=>setError(e.message));},[selected,refresh]);
  useEffect(()=>{const timer=setInterval(()=>{
   setClock(Date.now());
@@ -94,6 +102,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
   catch(e){setError((e as Error).message);}
   finally{setBusy(false);}
  }
+ const {history:historicalRounds,upcoming:currentRounds}=splitCtfRounds(rounds,clock+timeDelta);
  const display=selectedRound?.round;
  const formatted=display?leftTime(display,clock+timeDelta):"00:00";
  return <section className="ctf-official-admin" aria-label="CTF 1 oficial, painel do professor">
@@ -106,14 +115,33 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
   {error&&<p className="ctf-official-error" role="alert">{error}</p>}
   {notice&&<p className="ctf-official-success" role="status">{notice}</p>}
   {!ready&&<p>Verificando disponibilidade das RPCs do CTF oficial…</p>}
-  {ready&&<div className="ctf-official-toolbar">
-   <label>Rodada <select value={selected} onChange={e=>{setSelected(e.target.value);setTeamSelected("");setAudit(null);setDiscardTarget("");setDiscardReason("");}}>
-    <option value="">Selecionar rodada</option>{rounds.map(r=><option key={r.id} value={r.id}>{r.title} · {r.state}</option>)}
-   </select></label>
-   <button disabled={busy} onClick={()=>void action(async()=>{await load();if(selected)await refresh(selected);})}>Atualizar</button>
-  </div>}
-  <details className="ctf-official-new">
-   <summary>Preparar nova rodada (não inicia automaticamente)</summary>
+  {ready&&<>
+   <div className="ctf-official-toolbar">
+    <label>Rodada <select value={selected} onChange={e=>{setSelected(e.target.value);setTeamSelected("");setAudit(null);setDiscardTarget("");setDiscardReason("");}}>
+     <option value="">Selecionar rodada</option>
+     {currentRounds.length>0&&<optgroup label="Preparadas ou em andamento">{currentRounds.map(r=><option key={r.id} value={r.id}>{r.title} · {ctfRoundLabel(r,clock+timeDelta)}</option>)}</optgroup>}
+     {historicalRounds.length>0&&<optgroup label="Histórico de CTFs">{historicalRounds.map(r=><option key={r.id} value={r.id}>{r.title} · finalizado</option>)}</optgroup>}
+    </select></label>
+    <button disabled={busy} onClick={()=>void action(async()=>{await load();if(selected)await refresh(selected);})}>Atualizar</button>
+   </div>
+   <details className="ctf-official-history" open={historyOpen} onToggle={e=>setHistoryOpen(e.currentTarget.open)}>
+    <summary>Histórico de CTFs — atividades anteriores <span>({historicalRounds.length})</span></summary>
+    <p>As rodadas finalizadas permanecem arquivadas por turma, com flags, write-ups, tempos e histórico de comandos para consulta e avaliação. Elas não são reiniciadas ao criar outra rodada.</p>
+    {historicalRounds.length===0?<p>Nenhuma rodada concluída.</p>:<div className="ctf-official-table-wrap">
+     <table><thead><tr><th>Atividade</th><th>Turma</th><th>Início</th><th>Encerramento</th><th>Duplas</th><th>Consulta</th></tr></thead>
+      <tbody>{historicalRounds.map(r=><tr key={r.id}>
+       <td><strong>{r.title}</strong></td>
+       <td>{classes.filter(c=>r.class_ids?.includes(c.id)).map(c=>c.name).join(", ")||"—"}</td>
+       <td>{r.started_at?new Date(r.started_at).toLocaleString("pt-BR"):"—"}</td>
+       <td>{r.ends_at?new Date(r.ends_at).toLocaleString("pt-BR"):"—"}</td>
+       <td>{r.teams??0}</td>
+       <td><button type="button" disabled={busy} onClick={()=>{setSelected(r.id);closeAudit();setHistoryOpen(true);}}>Ver resultados e auditoria</button></td>
+      </tr>)}</tbody></table>
+    </div>}
+   </details>
+  </>}
+  <details className="ctf-official-new" open>
+   <summary>Preparar CTF para a próxima turma (não inicia automaticamente)</summary>
    <div className="ctf-official-form">
     <label>Título<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={100}/></label>
     <fieldset><legend>Turma da rodada — selecione apenas uma</legend>
@@ -123,17 +151,19 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
       {c.name} · todas as duplas ativas desta turma
      </label>)}
     </fieldset>
-    <p>A rodada inscreve automaticamente as duplas ativas da turma escolhida. Cada dupla usa suas credenciais atuais em um único computador.</p>
+    <p><strong>Independente do CTF da tarde.</strong> Esta operação cria um novo identificador de rodada e inscreve apenas as duplas ativas da turma escolhida. As rodadas anteriores, notas, write-ups, flags e comandos permanecem disponíveis no histórico.</p>
     <button disabled={busy||!classId} onClick={()=>void action(async()=>{
+      const classroom=classes.find(c=>c.id===classId);
+      if(!classroom)throw Error("Selecione uma turma ativa para o novo CTF.");
       const id=await rpc<string>("ctf1_staff_create_round",{p_class_ids:[classId],p_title:title,p_mode:"test",p_team_ids:null});
-      setSelected(id);setNotice("Rodada criada em rascunho. Nenhuma dupla foi iniciada.");await refresh(id);
-    })}>Criar rascunho</button>
+      setSelected(id);setNotice("CTF independente criado para "+classroom.name+" como rascunho. O CTF anterior e suas auditorias permanecem preservados.");await refresh(id);
+    })}>Criar novo CTF em rascunho</button>
    </div>
   </details>
   {display&&<section className="ctf-official-hero">
    <div><span className="ctf-official-tag">CTF 01 · REDES & LINUX</span><h3>{display.title}</h3>
     <p>O Rastro Trancado · O Invasor Insistente · A Impressão Digital, Quebra de MD5 e o Cofre</p>
-    <small>Uma hora por rodada · 200 pontos máximos · servidor controla o horário</small></div>
+    <small>Uma hora por rodada · 200 pontos máximos · servidor controla o horário</small>{historicalRounds.some(r=>r.id===display.id)&&<p><strong>Atividade anterior: resultados e auditoria preservados.</strong> A nova turma usa outra rodada.</p>}</div>
    <div className="ctf-official-actions">
     {display.state==="draft"&&<button disabled={busy} onClick={()=>{
       if(!window.confirm("Iniciar agora o CTF por 60 minutos para todas as duplas selecionadas? O relógio não será reiniciado."))return;
