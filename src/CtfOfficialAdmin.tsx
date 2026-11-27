@@ -153,7 +153,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
      <details><summary>Eventos de auditoria</summary><div className="ctf-official-scroll">
       {audit.events.map((event,i)=><p key={i}><b>{event.kind}</b> · {new Date(event.at).toLocaleString("pt-BR")} · {JSON.stringify(event.detail)}</p>)}
      </div></details>
-     <fieldset><legend>Definir nota (máx. 200 pontos)</legend>
+     <fieldset><legend>Sugerir pontuação para lançamento (máx. 200 pontos)</legend>
       {(Object.keys(OFFICIAL_CTF1_CAPS) as (keyof OfficialCtf1Scores)[]).map(key=><label key={key}>
        {labels[key]} (máx. {OFFICIAL_CTF1_CAPS[key]})
        <input type="number" min={0} max={OFFICIAL_CTF1_CAPS[key]} step={1} value={scores[key]}
@@ -164,8 +164,8 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
       <button disabled={busy||!!currentTeam.excluded_at||reason.trim().length<10} onClick={()=>void action(async()=>{
        const amount=calculateOfficialCtf1Total(scores);
        await rpc("ctf1_staff_grade",{p_round:selected,p_team:currentTeam.team_id,p_score:scores,p_reason:reason});
-       setNotice(`Avaliação auditada: ${amount}/200. Ainda não publicada no ranking.`);
-      })}>Salvar avaliação</button>
+       setNotice(`Sugestão de ${amount}/200 salva na auditoria. Acesse CTF Pontuação para conferir o tempo e registrar oficialmente.`);
+      })}>Salvar sugestão da auditoria</button>
      </fieldset>
      <div className="ctf-official-danger">
       {!currentTeam.excluded_at?<button disabled={busy} onClick={()=>{

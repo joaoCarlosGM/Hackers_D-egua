@@ -15,7 +15,7 @@ describe("administrative module navigation", () => {
       Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")),
     );
     expect(within(navigation).getByRole("link", { name: /Pontuação/ }).getAttribute("href")).toBe("#admin/ctf");
-    expect(within(navigation).getByRole("link", { name: /Rodadas/ }).getAttribute("href")).toBe("#admin/ctf-oficial");
+    expect(within(navigation).getByRole("link", { name: /CTF Oficial/ }).getAttribute("href")).toBe("#admin/ctf-oficial");
 
     expect(links.some(link => link.getAttribute("href") === "#admin/ctf-oficial")).toBe(true);
     expect(links.some(link => link.getAttribute("href") === "#admin/revisao-ctf")).toBe(true);
@@ -27,6 +27,9 @@ describe("administrative module navigation", () => {
     expect(links.some(link => link.getAttribute("href") === "#admin/ctf")).toBe(true);
     expect(within(navigation).getByRole("link", { name: /Usuários/ }).getAttribute("href")).toBe("#admin/usuarios");
     expect(within(navigation).getByRole("link", { name: /Chamada/ }).getAttribute("href")).toBe("#admin/chamada");
+    expect(within(navigation).getByRole("link", { name: /Revisão CTF/ }).getAttribute("href")).toBe("#admin/revisao-ctf");
+    expect(within(navigation).getByRole("link", { name: /CTF Oficial/ }).getAttribute("href")).toBe("#admin/ctf-oficial");
+    expect(within(navigation).getByRole("link", { name: /CTF Pontuação/ }).getAttribute("href")).toBe("#admin/ctf");
     expect(screen.getByText("Resumo pedagógico")).toBeTruthy();
   });
   it("hides the points entry for teachers but keeps the public ranking shortcut", () => {
