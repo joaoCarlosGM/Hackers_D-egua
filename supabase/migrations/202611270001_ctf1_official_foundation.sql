@@ -438,7 +438,7 @@ revoke all on function public.ctf1_staff_create_round(uuid[],text,text,uuid[]),
  public.ctf1_staff_exclude(uuid,uuid,text),public.ctf1_staff_restore(uuid,uuid,text),
  public.ctf1_staff_grade(uuid,uuid,jsonb,text)
  from public,anon,authenticated;
-grant execute on function public.ctf1_staff_create_round(uuid[],text),
+grant execute on function public.ctf1_staff_create_round(uuid[],text,text,uuid[]),
  public.ctf1_staff_start_round(uuid),public.ctf1_staff_end_round(uuid),
  public.ctf1_staff_exclude(uuid,uuid,text),public.ctf1_staff_restore(uuid,uuid,text),
  public.ctf1_staff_grade(uuid,uuid,jsonb,text) to authenticated;
@@ -450,7 +450,8 @@ grant execute on function public.ctf1_staff_list_rounds(),
  to authenticated;
 grant execute on function public.ctf1_student_status(text),
  public.ctf1_student_submit_flag(text,uuid,smallint,text),
- public.ctf1_student_save_writeup(text,uuid,smallint,jsonb) to anon,authenticated;
+ public.ctf1_student_save_writeup(text,uuid,smallint,jsonb),
+ public.ctf1_student_fixture(text,uuid),public.ctf1_student_progress(text,uuid) to anon,authenticated;
 
 notify pgrst,'reload schema';
 commit;
