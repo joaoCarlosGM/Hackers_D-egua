@@ -23,7 +23,7 @@ openssl enc -d -aes-256-cbc -pbkdf2 -in evidencias/evidencia_37.enc -pass pass:S
 
 Troque `SENHA_RECUPERADA` pela senha encontrada, sem publicar a resposta aos alunos.
 
-**Limite:** a imagem Linux Buildroot não inclui, por padrão, o executável John the Ripper nem OpenSSL. O comando `john` disponível na revisão é uma *implementação didática* que testa cada candidata por `md5sum`, não o programa oficial. Não apresentá-lo como John original. A descriptografia AES com `openssl enc -d -aes-256-cbc -pbkdf2` deve ser feita em um Linux/Kali com OpenSSL enquanto não houver uma imagem browser Linux com a ferramenta real. Não fingir descriptografia no terminal nem fornecer a flag sem decifrar.
+**Limites e implementação:** a imagem Linux Buildroot não inclui os executáveis oficiais OpenSSL, hashID (Python) nem John the Ripper. O `john` é uma implementação didática de dicionário MD5 com `md5sum`. O `hashid` do laboratório apenas reconhece candidatos MD5, SHA-1 e SHA-256 pelo comprimento hexadecimal — isso não prova o algoritmo. O `openssl` aceita especificamente `enc -d -aes-256-cbc -pbkdf2 -in ... -pass pass:...`: um script da VM comunica os bytes ao navegador, onde a Web Crypto API executa descriptografia AES-256-CBC com PBKDF2-SHA256 e 10.000 iterações **reais** e devolve o texto ao Linux; não é o binário OpenSSL oficial. O protocolo não envia senha nem dados para servidores externos. Outros subcomandos OpenSSL não são suportados. Para programas completos, utilize o Pacote Kali e execute em Linux separado.
 
 ## Write-up e auditoria
 
@@ -32,3 +32,16 @@ O write-up é aberto **somente pelo botão no topo do terminal**; não há formu
 ## Separação da competição oficial
 
 As flags e os arquivos gerados nesta revisão do professor são dados estáticos de demonstração presentes nos assets públicos do GitHub Pages. **Nunca reutilize essas flags como prova no CTF pontuado dos alunos.** O CTF real exige flags por dupla, validação e logs no servidor/sandbox seguro; o navegador não é origem confiável para pontuação.
+
+
+### Comandos da terceira missão na revisão
+
+```sh
+hashid /opt/evidencias/senha_cofre.md5
+hashid -m /opt/evidencias/senha_cofre.md5
+john --format=raw-md5 --wordlist=/opt/evidencias/dicionario_paraense.txt /opt/evidencias/senha_cofre.md5
+openssl version
+openssl enc -d -aes-256-cbc -pbkdf2 -in /opt/evidencias/ARQUIVO_ENCONTRADO.enc -pass pass:SENHA_DESCOBERTA
+```
+
+Os nomes `ARQUIVO_ENCONTRADO` e `SENHA_DESCOBERTA` são substituídos pelos achados dos estudantes. Não publicar o gabarito nem reutilizar essas flags estáticas no CTF pontuado.
