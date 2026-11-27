@@ -451,7 +451,7 @@ export default function CtfReviewBrowser(){
      const protocolPrefix="\nHPDE_CRYPT_REQ:";
      if(protocolPayload.current!==null){
       if(char==="\n"){
-       const request=extractAula07CryptoRequest("HPDE_CRYPT_REQ:"+protocolPayload.current);
+       const request=extractAula07CryptoRequest("HPDE_CRYPT_REQ:"+protocolPayload.current.replace(/\r$/,""));
        protocolPayload.current=null;
        if(request)void decryptAula07Ciphertext(request.ciphertext64,request.password64).then(result=>{
         if(!mounted.current||machine.current!==vm||!readyRef.current)return;
