@@ -61,7 +61,7 @@ begin
  on conflict(round_id,team_id,challenge_no)
  do update set content=excluded.content,saved_at=clock_timestamp();
  insert into public.ctf1_official_audit(round_id,team_id,kind,detail)
- values(p_round,tid,'challenge_completed',jsonb_build_object('challenge_no',p_challenge));
+ values(p_round,tid,'writeup_saved',jsonb_build_object('challenge_no',p_challenge,'completed',true));
  completed:=array_append(completed,p_challenge);
  return jsonb_build_object('accepted',true,'completed',to_jsonb(completed),
    'next_challenge',case when p_challenge=3 then null else p_challenge+1 end);
