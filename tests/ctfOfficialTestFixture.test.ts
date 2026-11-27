@@ -32,6 +32,15 @@ describe("CTF student test Linux variant",()=>{
   expect(a.join("\n")).not.toBe(b.join("\n"));
   expect(a.join("\n")).toContain("dicionario_paraense.txt");
  });
+ it("explains importKey failure before starting Linux when Web Crypto is unavailable",async()=>{
+  Object.defineProperty(globalThis,"crypto",{configurable:true,value:{getRandomValues: webcrypto.getRandomValues.bind(webcrypto)}});
+  try{
+   await expect(generateCtf1TestCommands(template,bundle)).rejects.toThrow(/Web Crypto \(importKey\) indisponível/);
+   await expect(generateCtf1TestCommands(template,bundle)).rejects.toThrow(/HTTPS/);
+  }finally{
+   Object.defineProperty(globalThis,"crypto",{configurable:true,value:webcrypto});
+  }
+ });
  it("rejects fixtures not issued for test mode",async()=>{
   Object.defineProperty(globalThis,"crypto",{configurable:true,value:webcrypto});
   await expect(generateCtf1TestCommands({...template,mode:"official" as "test"},bundle)).rejects.toThrow();
