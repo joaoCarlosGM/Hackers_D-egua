@@ -136,7 +136,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
   </section>}
   {selectedRound&&<><div className="ctf-official-kpis">
    <div><small>Duplas na rodada</small><strong>{selectedRound.teams.filter(t=>!t.excluded_at).length}</strong></div>
-   <div><small>Três desafios concluídos</small><strong>{selectedRound.teams.filter(t=>t.solved.length===3&&!t.excluded_at).length}</strong></div>
+   <div><small>Três desafios concluídos</small><strong>{selectedRound.teams.filter(t=>[1,2,3].every(n=>t.solved.includes(n)&&t.writeups.includes(n))&&!t.excluded_at).length}</strong></div>
    <div><small>Iniciaram o laboratório</small><strong>{investigating.length}</strong><small>Atividade registrada no terminal</small></div>
    <div><small>Auditorias avaliadas</small><strong>{selectedRound.teams.filter(t=>t.audited_at&&!t.excluded_at).length}</strong></div>
   </div>
@@ -156,11 +156,11 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
   </section>
   <div className={teamSelected?"ctf-official-grid":"ctf-official-grid ctf-official-grid--single"}><section className="ctf-official-panel">
    <h3>Progresso por dupla</h3>
-   <div className="ctf-official-table-wrap"><table><thead><tr><th>Dupla</th><th>Turma</th><th>Missões</th><th>Write-ups</th><th>Atividade</th><th>Avaliação</th><th>Ação</th></tr></thead><tbody>
+   <div className="ctf-official-table-wrap"><table><thead><tr><th>Dupla</th><th>Turma</th><th>Desafio atual</th><th>Missões</th><th>Write-ups</th><th>Atividade</th><th>Avaliação</th><th>Ação</th></tr></thead><tbody>
    {selectedRound.teams.map(t=><tr key={t.team_id}>
     <td><strong>{t.public_name}</strong>{t.excluded_at&&<small> · Participação excluída</small>}</td>
     <td>{classes.find(c=>c.id===t.class_id)?.name??"—"}</td>
-    <td>{t.solved.length}/3</td><td>{t.writeups.length}/3</td><td>{t.mission_opened_at?"Missão lida":t.first_activity_at?"Investigando":"Aguardando"}</td>
+    <td>{[1,2,3].every(n=>t.solved.includes(n)&&t.writeups.includes(n))?"Concluído":`Desafio ${[1,2,3].find(n=>!(t.solved.includes(n)&&t.writeups.includes(n)))??1}`}</td><td>{t.solved.length}/3</td><td>{t.writeups.length}/3</td><td>{t.mission_opened_at?"Missão lida":t.first_activity_at?"Investigando":"Aguardando"}</td>
     <td>{t.audited_at?"Avaliada":"Pendente"}</td>
     <td><button disabled={busy} onClick={()=>{setTeamSelected(t.team_id);setAudit(null);void refreshAudit(selected,t.team_id).catch(e=>setError((e as Error).message));}}>Auditar</button></td>
    </tr>)}</tbody></table></div>
