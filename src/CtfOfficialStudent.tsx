@@ -21,7 +21,6 @@ export default function CtfOfficialStudent({token,name}:Props){
  const [offset,setOffset]=useState(0),[active,setActive]=useState(false);
  const [challenge,setChallenge]=useState(0),[flag,setFlag]=useState("");
  const [finished,setFinished]=useState(false);
- const [solved,setSolved]=useState<number[]>([]);
  const [completed,setCompleted]=useState<number[]>([]);
  const [writeupOpen,setWriteupOpen]=useState(false);
  const [writeups,setWriteups]=useState<Record<number,W>>({});
@@ -41,7 +40,6 @@ export default function CtfOfficialStudent({token,name}:Props){
    .then(result=>{
     if(!mounted.current)return;
     const accepted=(result.solved??[]).map(n=>n-1).filter(n=>n>=0&&n<3);
-    setSolved(accepted);
     const drafts:Record<number,W>={};
     for(const [key,value] of Object.entries(result.writeups??{})){
      const k=Number(key)-1;if(k>=0&&k<3)drafts[k]=value;
@@ -220,7 +218,7 @@ export default function CtfOfficialStudent({token,name}:Props){
     {p_token:token,p_round:selected,p_challenge:target+1,p_flag:flag.trim(),p_content:current});
    if(!result.accepted){setError("Flag incorreta. Revise a investigação antes de entregar.");return;}
    const done=(result.completed??[]).map(n=>n-1);
-   setCompleted(done);setSolved(done);
+   setCompleted(done);
    setWriteupOpen(false);editing.current=false;setFlag("");
    setSaveState("Write-up entregue e bloqueado para edição");
    if(result.next_challenge){setChallenge(result.next_challenge-1);setStatus("Desafio "+(target+1)+" concluído. Avance para o desafio "+result.next_challenge+".");}
