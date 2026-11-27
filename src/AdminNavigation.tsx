@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import "./admin-navigation.css";
 
-export type AdminSection = "overview" | "atividades" | "turmas" | "duplas" | "notas" | "chamada" | "ctf" | "revisao-ctf" | "auditoria-ctf" | "usuarios" | "calculadora";
+export type AdminSection = "overview" | "atividades" | "turmas" | "duplas" | "notas" | "chamada" | "ctf" | "revisao-ctf" | "auditoria-ctf" | "ctf-oficial" | "usuarios" | "calculadora";
 
 const modules: {
   id: AdminSection;
@@ -20,6 +20,7 @@ const modules: {
   { id: "chamada", label: "Chamada e presença", short: "Chamada", subtitle: "Registre presenças por aluno e aula, com histórico privado por turma.", symbol: "06", href: "#admin/chamada" },
   { id: "revisao-ctf", label: "Revisão Pré-CTF", short: "Revisão CTF", subtitle: "Demonstre Linux real emulado no navegador. Sem pontuação; histórico no Supabase.", symbol: "07R", href: "#admin/revisao-ctf" },
   { id: "auditoria-ctf", label: "Auditoria CTF", short: "Auditoria", subtitle: "Consulte e descarte demonstrações do terminal do professor; independente do CTF oficial.", symbol: "07A", href: "#admin/auditoria-ctf" },
+  { id: "ctf-oficial", label: "CTF 1 oficial", short: "CTF oficial", subtitle: "Rodadas de 60 minutos, duplas reais e auditoria de até 200 pontos.", symbol: "07O", href: "#admin/ctf-oficial" },
   { id: "ctf", label: "Pontuação CTF", short: "CTF", subtitle: "Registre pontos auditados e acompanhe a classificação pública.", symbol: "07", href: "#admin/ctf", adminOnly: true },
   { id: "usuarios", label: "Usuários e permissões", short: "Usuários", subtitle: "Autorize contas do Supabase Auth como professor ou administrador.", symbol: "08", href: "#admin/usuarios", adminOnly: true },
   { id: "calculadora", label: "Calculadora de pontos", short: "Calculadora", subtitle: "Simule o desempenho e os pontos. Acesso restrito a administradores.", symbol: "09", href: "#admin/calculadora", adminOnly: true },
