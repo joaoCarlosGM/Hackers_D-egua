@@ -42,7 +42,7 @@ begin
    raise exception 'Desafio já entregue; não pode ser resolvido novamente' using errcode='23505';
  end if;
  if p_challenge<>coalesce((select min(n) from generate_series(1,3) n
-   where not n=any(completed)),4)
+   where not (n=any(completed))),4)
  then raise exception 'Conclua o desafio anterior primeiro' using errcode='42501'; end if;
  if not app_private.allow_request('ctf1:flag:'||tid::text||':'||p_round::text,20,300)
  then raise exception 'Tentativas em excesso. Aguarde.' using errcode='42901';end if;
