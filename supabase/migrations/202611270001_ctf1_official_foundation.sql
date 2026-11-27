@@ -114,9 +114,9 @@ begin
 end; $$;
 revoke all on function app_private.ctf1_flag_value(uuid,uuid,smallint) from public,anon,authenticated;
 
-create function public.ctf1_staff_create_round(p_class_ids uuid[],p_title text default 'CTF 1 — Aula 7',p_mode text default 'test')
+create function public.ctf1_staff_create_round(p_class_ids uuid[],p_title text default 'CTF 1 — Aula 7',p_mode text default 'test',p_team_ids uuid[] default null)
 returns uuid language plpgsql security definer set search_path='' as $$
-declare rid uuid; n integer;
+declare rid uuid; n integer; team_total integer;
 begin
  perform app_private.require_staff();
  if p_mode <> 'test' then raise exception 'Modo oficial bloqueado ate homologacao de isolamento da VM';end if;
@@ -124,6 +124,13 @@ begin
     or (select count(distinct x) from unnest(p_class_ids) x)<>cardinality(p_class_ids)
     or (select count(*) from public.classes where id=any(p_class_ids))<>cardinality(p_class_ids)
  then raise exception 'Selecione uma ou duas turmas válidas' using errcode='22023';end if;
+ if p_team_ids is not null then
+  team_total:=cardinality(p_team_ids);
+  if team_total not between 1 and 30 or
+   (select count(distinct x) from unnest(p_team_ids) x)<>team_total or
+   (select count(*) from public.teams t where t.id=any(p_team_ids) and t.status='active' and t.class_id=any(p_class_ids))<>team_total
+  then raise exception 'Selecione 1 a 30 duplas ativas das turmas escolhidas' using errcode='22023';end if;
+ end if;
  if char_length(btrim(coalesce(p_title,''))) not between 5 and 100 then
    raise exception 'Título inválido' using errcode='22023';end if;
  insert into public.ctf1_official_rounds(class_ids,title,created_by,mode)
@@ -132,7 +139,7 @@ begin
  values(rid,extensions.gen_random_bytes(32));
  insert into public.ctf1_official_participations(round_id,team_id)
  select rid,t.id from public.teams t
- where t.class_id=any(p_class_ids) and t.status='active';
+ where t.class_id=any(p_class_ids) and t.status='active' and (p_team_ids is null or t.id=any(p_team_ids));
  get diagnostics n=row_count;
  if n=0 then raise exception 'Nenhuma dupla ativa selecionada' using errcode='22023';end if;
  return rid;
@@ -423,7 +430,7 @@ revoke all on function public.ctf1_student_progress(text,uuid) from public,anon,
 grant execute on function public.ctf1_student_progress(text,uuid) to anon,authenticated;
 
 -- Restrict all functions to their intended roles.
-revoke all on function public.ctf1_staff_create_round(uuid[],text,text),
+revoke all on function public.ctf1_staff_create_round(uuid[],text,text,uuid[]),
  public.ctf1_staff_start_round(uuid),public.ctf1_staff_end_round(uuid),
  public.ctf1_student_status(text),
  public.ctf1_student_submit_flag(text,uuid,smallint,text),
