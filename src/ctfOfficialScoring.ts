@@ -50,7 +50,7 @@ export function officialCtf1RemainingSeconds(
   if (endedAt) {
     const end = Date.parse(endedAt);
     if (!Number.isFinite(end)) throw new Error("Encerramento inválido");
-    return Math.max(0, Math.floor((Math.min(end, now) - start < 0 ? 3600 : 0)));
+    return 0;
   }
   return Math.max(0, OFFICIAL_CTF1_DURATION_SECONDS - Math.max(0, Math.floor((now - start) / 1000)));
 }
