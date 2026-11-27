@@ -68,5 +68,8 @@ begin
 end $ctf$;
 revoke all on function public.ctf1_student_complete_challenge(text,uuid,smallint,text,jsonb) from public,anon,authenticated;
 grant execute on function public.ctf1_student_complete_challenge(text,uuid,smallint,text,jsonb) to anon,authenticated;
+-- Legacy split endpoints must no longer bypass sequential finalization.
+revoke execute on function public.ctf1_student_submit_flag(text,uuid,smallint,text) from anon,authenticated;
+revoke execute on function public.ctf1_student_save_writeup(text,uuid,smallint,jsonb) from anon,authenticated;
 notify pgrst,'reload schema';
 commit;
