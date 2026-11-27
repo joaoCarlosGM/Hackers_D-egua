@@ -18,3 +18,7 @@
 .ctf-official-history th{color:#a6c7d3}
 .ctf-official-history button{white-space:nowrap}
 .ctf-official-toolbar optgroup{color:#a5d5cb}
+
+.ctf-round-type{display:inline-block;margin-left:7px;font-size:10px;font-weight:800;letter-spacing:.035em;padding:4px 7px;border-radius:5px;color:#d9f7e9;background:#234e44;border:1px solid #397f6e;vertical-align:middle}
+.ctf-audit-inferred{font-size:11px;color:#f1c989;margin-left:9px;white-space:normal}
+.ctf-official-new fieldset>label{cursor:pointer}
