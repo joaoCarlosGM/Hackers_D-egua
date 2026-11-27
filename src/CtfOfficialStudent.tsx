@@ -33,6 +33,19 @@ export default function CtfOfficialStudent({token,name}:Props){
  const editor=useRef<HTMLDivElement>(null),input=useRef<HTMLTextAreaElement>(null);
  const inLine=useRef(""),commandHistory=useRef<string[]>([]);
  const inFlight=useRef(false);
+ useEffect(()=>{
+  if(!selected)return;
+  void rpc<{solved:number[];writeups:Record<string,W>}>("ctf1_student_progress",{p_token:token,p_round:selected})
+   .then(result=>{
+    if(!mounted.current)return;
+    setSolved((result.solved??[]).map(n=>n-1).filter(n=>n>=0&&n<3));
+    const drafts:Record<number,W>={};
+    for(const [key,value] of Object.entries(result.writeups??{})){
+     const k=Number(key)-1;if(k>=0&&k<3)drafts[k]=value;
+    }
+    setWriteups(drafts);
+   }).catch(()=>{});
+ },[selected,token]);
  const round=rounds.find(r=>r.round_id===selected);
  const endsAt=round?.ends_at?Date.parse(round.ends_at):0;
  const seconds=Math.max(0,Math.ceil((endsAt-clock-offset)/1000));
