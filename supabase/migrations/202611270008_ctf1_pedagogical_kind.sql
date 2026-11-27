@@ -91,6 +91,33 @@ begin
  where p.team_id=tid and r.state not in ('draft','discarded')),'[]'::jsonb);
 end $status$;
 
+-- Official-labeled rounds must never be discarded through the rehearsal control.
+create or replace function public.ctf1_staff_discard_round(p_round uuid,p_reason text)
+returns void language plpgsql security definer set search_path='' as $discard$
+declare r public.ctf1_official_rounds;
+begin
+ perform app_private.require_staff();
+ if length(btrim(coalesce(p_reason,''))) not between 10 and 500
+ then raise exception 'Informe um motivo entre 10 e 500 caracteres' using errcode='22023';end if;
+ select * into r from public.ctf1_official_rounds where id=p_round for update;
+ if r.id is null or r.mode<>'test' or r.assessment_kind<>'test'
+ or r.state='discarded' then
+  raise exception 'Somente CTFs classificados como teste podem ser descartados'
+  using errcode='42501';
+ end if;
+ if r.state not in ('draft','running','ended') then
+  raise exception 'Rodada auditada não pode ser descartada' using errcode='42501';
+ end if;
+ update public.ctf1_official_rounds
+ set state='discarded',discarded_at=clock_timestamp(),discarded_by=auth.uid(),
+ discarded_reason=btrim(p_reason),closed_at=coalesce(closed_at,clock_timestamp()),
+ ends_at=case when ends_at is not null then least(ends_at,clock_timestamp()) else null end
+ where id=p_round;
+ insert into public.ctf1_official_audit(round_id,staff_id,kind,detail)
+ values(p_round,auth.uid(),'round_discard',
+ jsonb_build_object('previous_state',r.state,'reason',btrim(p_reason)));
+end $discard$;
+
 revoke all on function public.ctf1_staff_create_labeled_round(uuid[],text,text),
  public.ctf1_staff_classify_round(uuid,text) from public,anon,authenticated;
 grant execute on function public.ctf1_staff_create_labeled_round(uuid[],text,text),
