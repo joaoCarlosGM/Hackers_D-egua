@@ -41,7 +41,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
   const list=await rpc<Round[]>("ctf1_staff_list_rounds");
   setRounds(list);
   setReady(true);
-  setSelected(prev=>prev||list[0]?.id||"");
+  setSelected(prev=>list.some(r=>r.id===prev)?prev:(list[0]?.id||""));
  },[]);
  const refresh=useCallback(async(id:string)=>{
   if(!id)return;
@@ -118,6 +118,18 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
       if(!window.confirm("Encerrar antecipadamente a rodada? Novas flags e write-ups serão bloqueados."))return;
       void action(async()=>{await rpc("ctf1_staff_end_round",{p_round:selected});setNotice("Rodada encerrada.");});
     }}>Encerrar rodada</button>}
+    {(display.state==="draft"||display.state==="running"||display.state==="ended")&&<button className="ctf-official-discard" disabled={busy} onClick={()=>{
+      const motive=window.prompt("Motivo para descartar esta rodada de TESTE (mínimo de 10 caracteres):");
+      if(!motive||motive.trim().length<10)return;
+      if(!window.confirm(`DESCARTAR a rodada ${display.title}? Ela será encerrada, desaparecerá das listas principais e NÃO poderá ser reutilizada. Evidências e auditoria serão preservadas.`))return;
+      void action(async()=>{
+       await rpc("ctf1_staff_discard_round",{p_round:selected,p_reason:motive.trim()});
+       setTeamSelected("");setAudit(null);setDashboard(null);
+       const remaining=await rpc<Round[]>("ctf1_staff_list_rounds");
+       setRounds(remaining);setSelected(remaining[0]?.id??"");
+       setNotice("Rodada de teste descartada. Histórico preservado. Você pode criar uma nova rodada para a turma.");
+      });
+    }}>Descartar rodada de teste</button>}
    </div>
   </section>}
   {selectedRound&&<><div className="ctf-official-kpis">
