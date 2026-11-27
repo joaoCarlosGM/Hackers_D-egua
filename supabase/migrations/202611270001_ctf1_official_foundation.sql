@@ -138,15 +138,16 @@ end $$;
 
 create function public.ctf1_staff_start_round(p_round uuid)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare r public.ctf1_official_rounds;
+declare r public.ctf1_official_rounds; v_now timestamptz;
 begin
  perform app_private.require_staff();
  select * into r from public.ctf1_official_rounds where id=p_round for update;
  if r.id is null or r.state<>'draft' then
   raise exception 'Rodada inexistente ou já iniciada' using errcode='22023';end if;
+ v_now:=clock_timestamp();
  update public.ctf1_official_rounds
- set state='running',started_at=clock_timestamp(),
-     ends_at=clock_timestamp()+interval '60 minutes'
+ set state='running',started_at=v_now,
+     ends_at=v_now+interval '60 minutes'
  where id=p_round returning * into r;
  insert into public.ctf1_official_audit(round_id,staff_id,kind)
  values(p_round,auth.uid(),'round_start');
