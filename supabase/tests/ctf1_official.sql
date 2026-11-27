@@ -148,39 +148,47 @@ select test_ctf1.ok((select count(*)=0 from public.ctf_score_events
   select ((v::jsonb)->>'team_id')::uuid from test_ctf1.state where k in ('team1','team2'))),
  'new CTF grading does not publish points into legacy ranking by accident');
 
--- 7 + 9 independent teams: enforce exact roster membership and two independent
--- 60-minute server clocks. This is an integration/concurrency-contract test,
--- not a benchmark of 16 simultaneous x86 virtual machines.
+-- Class-wide rehearsals: 7 active Poraque teams and 9 active Pitiu
+-- teams in the disposable database. Never permit a mixed-class round.
 reset role;
 insert into public.teams(class_id,public_name,credential_hash)
 select (select id from public.classes where slug='poraque'),
- 'CTF1 Carga Dupla '||to_char(n,'FM00'),
+ 'CTF1 Poraque Teste '||n,
  extensions.crypt('senha-descartavel',extensions.gen_salt('bf',10))
-from generate_series(1,16) n;
+from generate_series(1,5) n;
+insert into public.teams(class_id,public_name,credential_hash)
+select (select id from public.classes where slug='pitiu'),
+ 'CTF1 Pitiu Teste '||n,
+ extensions.crypt('senha-descartavel',extensions.gen_salt('bf',10))
+from generate_series(1,9) n;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
+select test_ctf1.denied($q$select public.ctf1_staff_create_round(
+ array[(select id from public.classes where slug='poraque'),(select id from public.classes where slug='pitiu')],
+ 'Dupla turma proibida')$q$, 'round cannot combine Poraque and Pitiu');
+select test_ctf1.denied($q$select public.ctf1_staff_create_round(
+ array[(select id from public.classes where slug='poraque')],
+ 'Roster manual proibido','test',
+ array[(select id from public.teams where public_name='CTF1 Poraque Teste 1')])$q$,
+ 'round cannot choose manual subset of a class');
 insert into test_ctf1.state values('seven',public.ctf1_staff_create_round(
  array[(select id from public.classes where slug='poraque')],
- 'Ensaio sete duplas','test',
- array(select id from public.teams where public_name like 'CTF1 Carga Dupla %'
-  order by public_name limit 7))::text);
+ 'Ensaio Turma Poraque')::text);
 insert into test_ctf1.state values('nine',public.ctf1_staff_create_round(
- array[(select id from public.classes where slug='poraque')],
- 'Ensaio nove duplas','test',
- array(select id from public.teams where public_name like 'CTF1 Carga Dupla %'
-  order by public_name offset 7 limit 9))::text);
+ array[(select id from public.classes where slug='pitiu')],
+ 'Ensaio Turma Pitiu')::text);
 reset role;
 select test_ctf1.ok((select count(*)=7 from public.ctf1_official_participations
  where round_id=(select v::uuid from test_ctf1.state where k='seven')),
- 'first trial has exactly seven registered pairs');
+ 'all seven active Poraque teams enrolled automatically');
 select test_ctf1.ok((select count(*)=9 from public.ctf1_official_participations
  where round_id=(select v::uuid from test_ctf1.state where k='nine')),
- 'second trial has exactly nine registered pairs');
+ 'all nine active Pitiu teams enrolled automatically');
 select test_ctf1.ok((select count(*)=0 from public.ctf1_official_participations a
  join public.ctf1_official_participations b on a.team_id=b.team_id
  where a.round_id=(select v::uuid from test_ctf1.state where k='seven')
  and b.round_id=(select v::uuid from test_ctf1.state where k='nine')),
- 'the seven-pair roster cannot leak into nine-pair roster');
+ 'class participants are not enrolled across class rounds');
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
 select public.ctf1_staff_start_round((select v::uuid from test_ctf1.state where k='seven'));
@@ -189,10 +197,10 @@ select public.ctf1_staff_start_round((select v::uuid from test_ctf1.state where 
 reset role;
 select test_ctf1.ok((select state='ended' from public.ctf1_official_rounds
  where id=(select v::uuid from test_ctf1.state where k='seven')),
- 'first rehearsal can be closed before another rehearsal');
+ 'first class rehearsal can be closed before next class');
 select test_ctf1.ok((select state='running' and ends_at-started_at=interval '60 minutes'
  from public.ctf1_official_rounds
  where id=(select v::uuid from test_ctf1.state where k='nine')),
- 'second rehearsal independently gets exactly one hour');
+ 'second class independently gets exactly one hour');
 
 rollback;
