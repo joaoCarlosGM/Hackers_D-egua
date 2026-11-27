@@ -89,20 +89,47 @@ select test_ctf1.ok((select (select v from test_ctf1.state where k='correct1') <
  'challenge flags differ between registered teams');
 
 set local role anon;
-select test_ctf1.ok((select (public.ctf1_student_submit_flag(
+-- Legacy flag/write-up endpoints must not bypass the sequential contract.
+select test_ctf1.denied($q$select public.ctf1_student_submit_flag(
+ (select (v::jsonb)->>'token' from test_ctf1.state where k='team1'),
+ (select v::uuid from test_ctf1.state where k='round'),1::smallint,
+ (select v from test_ctf1.state where k='correct1'))$q$,
+ 'legacy flag endpoint is blocked');
+select test_ctf1.denied($q$select public.ctf1_student_save_writeup(
+ (select (v::jsonb)->>'token' from test_ctf1.state where k='team1'),
+ (select v::uuid from test_ctf1.state where k='round'),1::smallint,
+ '{"command":"ls","reason":"Investigacao DAC","evidence":"Permissoes registradas"}'::jsonb)$q$,
+ 'legacy writeup endpoint is blocked');
+select test_ctf1.denied($q$select public.ctf1_student_complete_challenge(
+ (select (v::jsonb)->>'token' from test_ctf1.state where k='team1'),
+ (select v::uuid from test_ctf1.state where k='round'),2::smallint,
+ 'FLAG{unused}',
+ '{"command":"ls","reason":"Investigacao DAC","evidence":"Permissoes registradas"}'::jsonb)$q$,
+ 'cannot skip challenge 1');
+select test_ctf1.ok((select (public.ctf1_student_complete_challenge(
  (select (v::jsonb)->>'token' from test_ctf1.state where k='team2'),
  (select v::uuid from test_ctf1.state where k='round'),1::smallint,
- (select v from test_ctf1.state where k='correct1'))->>'accepted')::boolean=false),
+ (select v from test_ctf1.state where k='correct1'),
+ '{"command":"ls","reason":"Investigacao DAC","evidence":"Permissoes registradas"}'::jsonb)->>'accepted')::boolean=false),
  'team 2 cannot reuse team 1 flag');
-select test_ctf1.ok((select (public.ctf1_student_submit_flag(
+select test_ctf1.ok((select (public.ctf1_student_complete_challenge(
  (select (v::jsonb)->>'token' from test_ctf1.state where k='team1'),
  (select v::uuid from test_ctf1.state where k='round'),1::smallint,
- (select v from test_ctf1.state where k='correct1'))->>'accepted')::boolean=true),
- 'team 1 correct challenge 1 flag accepted by server');
-select public.ctf1_student_save_writeup(
+ (select v from test_ctf1.state where k='correct1'),
+ '{"command":"ls","reason":"Investigacao DAC","evidence":"Permissoes registradas"}'::jsonb)->>'accepted')::boolean=true),
+ 'team 1 completes challenge 1 with write-up atomically');
+select test_ctf1.denied($q$select public.ctf1_student_complete_challenge(
  (select (v::jsonb)->>'token' from test_ctf1.state where k='team1'),
  (select v::uuid from test_ctf1.state where k='round'),1::smallint,
- '{"command":"ls","reason":"Investigacao DAC","evidence":"Permissoes registradas"}'::jsonb);
+ (select v from test_ctf1.state where k='correct1'),
+ '{"command":"ls","reason":"Investigacao DAC","evidence":"Permissoes registradas"}'::jsonb)$q$,
+ 'cannot submit challenge 1 again');
+select test_ctf1.ok((select public.ctf1_student_append_challenge_commands(
+ (select (v::jsonb)->>'token' from test_ctf1.state where k='team1'),
+ (select v::uuid from test_ctf1.state where k='round'),2::smallint,
+ '["cat missao.txt","ls -la"]'::jsonb)=2),
+ 'new challenge command audit captures commands');
+
 reset role;
 select test_ctf1.ok((select count(*)=1 from public.ctf1_official_writeups
  where round_id=(select v::uuid from test_ctf1.state where k='round')
