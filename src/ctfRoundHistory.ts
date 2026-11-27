@@ -1,6 +1,6 @@
 /** Organize CTF rounds without moving or deleting any persisted student data. */
 export type CtfRoundSummary={
- id:string;title:string;state:string;mode?:"test"|"official";
+ id:string;title:string;state:string;mode?:"test"|"official";assessment_kind?:"test"|"official";
  class_ids?:string[];started_at:string|null;ends_at:string|null;created_at?:string;teams?:number;
 };
 export function splitCtfRounds(rounds:CtfRoundSummary[],now:number){
