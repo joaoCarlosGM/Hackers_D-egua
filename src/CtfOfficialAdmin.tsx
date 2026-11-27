@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { rpc, type Class } from "./api";
 import { splitCtfRounds, ctfRoundLabel } from "./ctfRoundHistory";
+import { classifyAuditCommands } from "./ctfAuditGrouping";
 import { calculateOfficialCtf1Total, OFFICIAL_CTF1_CAPS, type OfficialCtf1Scores } from "./ctfOfficialScoring";
 import "./ctf-official-admin.css";
 
-type Round = { id:string; title:string; state:string; mode?:"test"|"official"; class_ids?:string[]; started_at:string|null; ends_at:string|null; created_at?:string;teams?:number };
+type Round = { id:string; title:string; state:string; mode?:"test"|"official"; assessment_kind?:"test"|"official"; class_ids?:string[]; started_at:string|null; ends_at:string|null; created_at?:string;teams?:number };
 type Team = { team_id:string; public_name:string; class_id:string; status:string; excluded_at:string|null; score:OfficialCtf1Scores|null; audited_at:string|null; last_submission:string|null; first_activity_at:string|null; last_activity_at:string|null; mission_opened_at:string|null; solved:number[]; writeups:number[]; delivered?:number[]; correct?:number[]; challenge_times?:{challenge:number;seconds:number|null;started_at:string|null;submitted_at:string;flag_accepted:boolean|null}[];total_seconds?:number|null };
 type Dashboard={round:Round&{server_now:string;duration_seconds:number};teams:Team[]};
 type Audit={team_id:string;round_id:string;score:OfficialCtf1Scores|null;score_reason:string|null;audited_at:string|null;excluded_at:string|null;excluded_reason:string|null;submissions:{challenge:number;accepted:boolean;submitted_at:string}[];writeups:Record<string,Record<string,string>>;events:{at:string;kind:string;detail:unknown}[]};
@@ -33,6 +34,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
  const [reason,setReason]=useState("");
  const [title,setTitle]=useState("CTF 1 — Aula 7");
  const [historyOpen,setHistoryOpen]=useState(false);
+ const [newAssessmentKind,setNewAssessmentKind]=useState<"test"|"official">("official");
  const [classId,setClassId]=useState("");
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
@@ -78,6 +80,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
  const selectedRound=dashboard?.round.id===selected?dashboard:null;
  const currentTeam=useMemo(()=>selectedRound?.teams.find(t=>t.team_id===teamSelected),[selectedRound,teamSelected]);
  const investigating=useMemo(()=>selectedRound?.teams.filter(t=>!t.excluded_at&&!!t.first_activity_at)??[],[selectedRound]);
+ const groupedCommands=useMemo(()=>classifyAuditCommands(audit?.events??[]),[audit]);
  function closeAudit(){setTeamSelected("");setAudit(null);setScores({...zeroScores});setReason("");}
  async function discardRound(id:string){
   if(busy||!id||discardTarget!==id||discardReason.trim().length<10)return;
@@ -119,8 +122,8 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
    <div className="ctf-official-toolbar">
     <label>Rodada <select value={selected} onChange={e=>{setSelected(e.target.value);setTeamSelected("");setAudit(null);setDiscardTarget("");setDiscardReason("");}}>
      <option value="">Selecionar rodada</option>
-     {currentRounds.length>0&&<optgroup label="Preparadas ou em andamento">{currentRounds.map(r=><option key={r.id} value={r.id}>{r.title} · {ctfRoundLabel(r,clock+timeDelta)}</option>)}</optgroup>}
-     {historicalRounds.length>0&&<optgroup label="Histórico de CTFs">{historicalRounds.map(r=><option key={r.id} value={r.id}>{r.title} · finalizado</option>)}</optgroup>}
+     {currentRounds.length>0&&<optgroup label="Preparadas ou em andamento">{currentRounds.map(r=><option key={r.id} value={r.id}>{r.title} · {r.assessment_kind==="official"?"OFICIAL":"TESTE"} · {ctfRoundLabel(r,clock+timeDelta)}</option>)}</optgroup>}
+     {historicalRounds.length>0&&<optgroup label="Histórico de CTFs">{historicalRounds.map(r=><option key={r.id} value={r.id}>{r.title} · {r.assessment_kind==="official"?"OFICIAL":"TESTE"} · finalizado</option>)}</optgroup>}
     </select></label>
     <button disabled={busy} onClick={()=>void action(async()=>{await load();if(selected)await refresh(selected);})}>Atualizar</button>
    </div>
@@ -130,7 +133,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
     {historicalRounds.length===0?<p>Nenhuma rodada concluída.</p>:<div className="ctf-official-table-wrap">
      <table><thead><tr><th>Atividade</th><th>Turma</th><th>Início</th><th>Encerramento</th><th>Duplas</th><th>Consulta</th></tr></thead>
       <tbody>{historicalRounds.map(r=><tr key={r.id}>
-       <td><strong>{r.title}</strong></td>
+       <td><strong>{r.title}</strong> <span className="ctf-round-type">{r.assessment_kind==="official"?"CTF OFICIAL":"CTF TESTE"}</span></td>
        <td>{classes.filter(c=>r.class_ids?.includes(c.id)).map(c=>c.name).join(", ")||"—"}</td>
        <td>{r.started_at?new Date(r.started_at).toLocaleString("pt-BR"):"—"}</td>
        <td>{r.ends_at?new Date(r.ends_at).toLocaleString("pt-BR"):"—"}</td>
@@ -144,6 +147,10 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
    <summary>Preparar CTF para a próxima turma (não inicia automaticamente)</summary>
    <div className="ctf-official-form">
     <label>Título<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={100}/></label>
+    <fieldset><legend>Tipo de atividade</legend>
+     <label><input type="radio" name="ctf-assessment-kind" checked={newAssessmentKind==="official"} onChange={()=>setNewAssessmentKind("official")}/> CTF oficial — atividade avaliativa</label>
+     <label><input type="radio" name="ctf-assessment-kind" checked={newAssessmentKind==="test"} onChange={()=>setNewAssessmentKind("test")}/> CTF teste — ensaio ou demonstração</label>
+    </fieldset>
     <fieldset><legend>Turma da rodada — selecione apenas uma</legend>
      {classes.filter(c=>c.status==="active").map(c=><label key={c.id}>
       <input type="radio" name="ctf-round-class" checked={classId===c.id}
@@ -155,13 +162,13 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
     <button disabled={busy||!classId} onClick={()=>void action(async()=>{
       const classroom=classes.find(c=>c.id===classId);
       if(!classroom)throw Error("Selecione uma turma ativa para o novo CTF.");
-      const id=await rpc<string>("ctf1_staff_create_round",{p_class_ids:[classId],p_title:title,p_mode:"test",p_team_ids:null});
-      setSelected(id);setNotice("CTF independente criado para "+classroom.name+" como rascunho. O CTF anterior e suas auditorias permanecem preservados.");await refresh(id);
+      const id=await rpc<string>("ctf1_staff_create_labeled_round",{p_class_ids:[classId],p_title:title,p_assessment_kind:newAssessmentKind});
+      setSelected(id);setNotice("CTF "+(newAssessmentKind==="official"?"oficial":"teste")+" independente criado para "+classroom.name+" como rascunho. As auditorias anteriores foram preservadas.");await refresh(id);
     })}>Criar novo CTF em rascunho</button>
    </div>
   </details>
   {display&&<section className="ctf-official-hero">
-   <div><span className="ctf-official-tag">CTF 01 · REDES & LINUX</span><h3>{display.title}</h3>
+   <div><span className="ctf-official-tag">CTF 01 · REDES & LINUX</span> <span className="ctf-round-type">{rounds.find(r=>r.id===display.id)?.assessment_kind==="official"?"CTF OFICIAL":"CTF TESTE"}</span><h3>{display.title}</h3>
     <p>O Rastro Trancado · O Invasor Insistente · A Impressão Digital, Quebra de MD5 e o Cofre</p>
     <small>Uma hora por rodada · 200 pontos máximos · servidor controla o horário</small>{historicalRounds.some(r=>r.id===display.id)&&<p><strong>Atividade anterior: resultados e auditoria preservados.</strong> A nova turma usa outra rodada.</p>}</div>
    <div className="ctf-official-actions">
@@ -250,13 +257,14 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
        <pre>{JSON.stringify(audit.writeups[String(n)]??{},null,2)}</pre></div>)}
      </details>
      <details className="ctf-audit-history"><summary>Histórico de comandos por desafio</summary>
-      <p className="ctf-official-footnote">Somente comandos recebidos pelo servidor. Os comandos anteriores à classificação por desafio permanecem em "Sem classificação", sem atribuição presumida.</p>
+      <p className="ctf-official-footnote">Comandos preservados com seus horários originais. Para registros antigos identificados incorretamente como Desafio 1, a divisão é reconstituída pelos horários de entrega dos write-ups. "Intervalo estimado" não significa prova do desafio: confira os comandos próximos das transições.</p>
       {[1,2,3,0].map(n=>{
-       const entries=audit.events.filter(e=>e.kind==="terminal_event"&&(typeof e.detail==="object"&&e.detail!==null&&"challenge_no" in e.detail&&Number((e.detail as {challenge_no?:unknown}).challenge_no)===n || n===0&&!(typeof e.detail==="object"&&e.detail!==null&&"challenge_no" in e.detail)));
+       const entries=groupedCommands.filter(item=>item.challenge===n);
        return <details key={n} className="ctf-audit-command-group">
-        <summary>{n===0?"Sem classificação (histórico anterior)":"Desafio "+n} <span>{entries.length} comandos</span></summary>
+        <summary>{n===0?"Transição, pós-entrega ou classificação incerta":"Desafio "+n} <span>{entries.length} comandos</span></summary>
         {entries.length===0?<p>Nenhum comando registrado.</p>:<ol className="ctf-audit-command-list">
-         {entries.map((e,i)=><li key={i}><time>{new Date(e.at).toLocaleTimeString("pt-BR")}</time><code>{String((e.detail as {command?:unknown})?.command??"")}</code></li>)}
+         {entries.map((item,i)=><li key={i}><time>{new Date(item.event.at).toLocaleTimeString("pt-BR")}</time><code>{String((item.event.detail as {command?:unknown})?.command??"")}</code>
+           {item.method!=="original"&&<small className="ctf-audit-inferred"> · {item.method==="timeline"?"Intervalo estimado pela entrega":"Transição sem atribuição segura"}</small>}</li>)}
         </ol>}
        </details>;
       })}
