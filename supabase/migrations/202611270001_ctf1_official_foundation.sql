@@ -301,6 +301,82 @@ begin
  return total;
 end $$;
 
+
+-- Read-only staff dashboard APIs; no direct grant on sensitive tables.
+create function public.ctf1_staff_list_rounds()
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+begin
+ perform app_private.require_staff();
+ return coalesce((select jsonb_agg(jsonb_build_object(
+ 'id',r.id,'title',r.title,'state',
+ case when r.state='running' and clock_timestamp()>=r.ends_at then 'ended' else r.state end,
+ 'class_ids',r.class_ids,'started_at',r.started_at,'ends_at',r.ends_at,
+ 'created_at',r.created_at,'teams',(
+   select count(*) from public.ctf1_official_participations p
+   where p.round_id=r.id and p.excluded_at is null)
+ ) order by r.created_at desc)
+ from (select * from public.ctf1_official_rounds order by created_at desc limit 30) r),
+ '[]'::jsonb);
+end $$;
+
+create function public.ctf1_staff_dashboard(p_round uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare r public.ctf1_official_rounds; teams jsonb;
+begin
+ perform app_private.require_staff();
+ select * into r from public.ctf1_official_rounds where id=p_round;
+ if r.id is null then raise exception 'Rodada inexistente' using errcode='42501';end if;
+ select coalesce(jsonb_agg(jsonb_build_object(
+  'team_id',t.id,'public_name',t.public_name,'class_id',t.class_id,
+  'status',t.status,'excluded_at',p.excluded_at,'score',p.score,
+  'audited_at',p.audited_at,'last_submission',(
+   select max(s.submitted_at) from public.ctf1_official_submissions s
+   where s.round_id=r.id and s.team_id=t.id),
+  'solved',coalesce((
+   select jsonb_agg(q.challenge_no order by q.challenge_no) from (
+    select distinct challenge_no from public.ctf1_official_submissions
+    where round_id=r.id and team_id=t.id and accepted
+   ) q), '[]'::jsonb),
+  'writeups',coalesce((
+   select jsonb_agg(w.challenge_no order by w.challenge_no)
+   from public.ctf1_official_writeups w
+   where w.round_id=r.id and w.team_id=t.id), '[]'::jsonb)
+ ) order by t.public_name), '[]'::jsonb)
+ into teams from public.ctf1_official_participations p
+ join public.teams t on t.id=p.team_id
+ where p.round_id=r.id;
+ return jsonb_build_object('round',jsonb_build_object(
+  'id',r.id,'title',r.title,'state',
+  case when r.state='running' and clock_timestamp()>=r.ends_at then 'ended' else r.state end,
+  'started_at',r.started_at,'ends_at',r.ends_at,'server_now',clock_timestamp(),
+  'duration_seconds',r.duration_seconds),
+  'teams',teams);
+end $$;
+
+create function public.ctf1_staff_audit_team(p_round uuid,p_team uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare p public.ctf1_official_participations;
+begin
+ perform app_private.require_staff();
+ select * into p from public.ctf1_official_participations
+ where round_id=p_round and team_id=p_team;
+ if p.id is null then raise exception 'Dupla não pertence à rodada' using errcode='42501';end if;
+ return jsonb_build_object(
+  'team_id',p_team,'round_id',p_round,'score',p.score,
+  'score_reason',p.score_reason,'audited_at',p.audited_at,
+  'excluded_at',p.excluded_at,'excluded_reason',p.excluded_reason,
+  'submissions',coalesce((
+   select jsonb_agg(jsonb_build_object('challenge',challenge_no,
+    'accepted',accepted,'submitted_at',submitted_at) order by submitted_at)
+   from public.ctf1_official_submissions where round_id=p_round and team_id=p_team), '[]'::jsonb),
+  'writeups',coalesce((
+   select jsonb_object_agg(challenge_no::text,content)
+   from public.ctf1_official_writeups where round_id=p_round and team_id=p_team), '{}'::jsonb),
+  'events',coalesce((
+   select jsonb_agg(jsonb_build_object('kind',kind,'at',at,'detail',detail) order by at)
+   from (select * from public.ctf1_official_audit
+    where round_id=p_round and team_id=p_team order by at limit 1000) a), '[]'::jsonb));
+end $$;
 -- Restrict all functions to their intended roles.
 revoke all on function public.ctf1_staff_create_round(uuid[],text),
  public.ctf1_staff_start_round(uuid),public.ctf1_staff_end_round(uuid),
@@ -314,6 +390,12 @@ grant execute on function public.ctf1_staff_create_round(uuid[],text),
  public.ctf1_staff_start_round(uuid),public.ctf1_staff_end_round(uuid),
  public.ctf1_staff_exclude(uuid,uuid,text),public.ctf1_staff_restore(uuid,uuid,text),
  public.ctf1_staff_grade(uuid,uuid,jsonb,text) to authenticated;
+revoke all on function public.ctf1_staff_list_rounds(),
+ public.ctf1_staff_dashboard(uuid),public.ctf1_staff_audit_team(uuid,uuid)
+ from public,anon,authenticated;
+grant execute on function public.ctf1_staff_list_rounds(),
+ public.ctf1_staff_dashboard(uuid),public.ctf1_staff_audit_team(uuid,uuid)
+ to authenticated;
 grant execute on function public.ctf1_student_status(text),
  public.ctf1_student_submit_flag(text,uuid,smallint,text),
  public.ctf1_student_save_writeup(text,uuid,smallint,jsonb) to anon,authenticated;
