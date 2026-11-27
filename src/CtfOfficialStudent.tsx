@@ -244,7 +244,12 @@ export default function CtfOfficialStudent({token,name}:Props){
  return <section className="ctf-browser" aria-label="CTF oficial, laboratório da dupla">
   <div className="ctf-browser-head"><div><p>HACKERS PAI D'ÉGUA / CTF 01 · {round?.assessment_kind==="official"?"OFICIAL":"TESTE"}</p>
    <h2>Terminal da dupla · {name}</h2><small>Linux v86 real · três desafios da Aula 7 · credenciais existentes</small></div>
-   <div className="ctf-session-controls"><strong>{remaining}</strong>
+   <div className="ctf-session-controls">
+    <div className={`ctf-student-timer${running&&seconds<=300?" ctf-student-timer--urgent":""}`} role="timer" aria-label="Tempo restante para a rodada">
+     <span className="ctf-student-timer-label">Tempo restante</span>
+     <strong className="ctf-student-timer-value">{round?.state==="running"?remaining:"00:00"}</strong>
+     <small>{running?"Prazo controlado pelo professor":"Rodada não disponível"}</small>
+    </div>
     {active&&<button type="button" onClick={()=>{stop();setStatus("Sessão local encerrada; a rodada continua no servidor.");}}>Desligar meu Linux</button>}
    </div></div>
   {error&&<p className="error" role="alert">{error}</p>}<p role="status" className="ctf-browser-status">{status}</p>
