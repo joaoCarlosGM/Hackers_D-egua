@@ -9,9 +9,9 @@ type Kind="vm_boot"|"vm_ready"|"lab_setup"|"command"|"output"|"challenge"|"write
 type E={kind:Kind;detail:string};
 type W={command:string;reason:string;evidence:string};
 type Run={id:string;title:string;started_at:string;closed_at:string|null;writeup:Record<string,W>};
-type VM={add_listener:(name:string,fn:(byte:number)=>void)=>void;serial0_send:(command:string)=>void;stop:()=>void;destroy:()=>void};
-type XtermFit={fit:()=>void;dispose?:()=>void};
-type XtermHandle={
+export type VM={add_listener:(name:string,fn:(byte:number)=>void)=>void;serial0_send:(command:string)=>void;stop:()=>void;destroy:()=>void};
+export type XtermFit={fit:()=>void;dispose?:()=>void};
+export type XtermHandle={
  open:(element:HTMLElement)=>void;write:(data:string)=>void;writeln:(text:string)=>void;
  focus:()=>void;clear:()=>void;dispose:()=>void;
  onData:(callback:(data:string)=>void)=>{dispose:()=>void};
@@ -22,14 +22,14 @@ declare global{interface Window{
  Terminal?:new(opts:Record<string,unknown>)=>XtermHandle;
  FitAddon?:{FitAddon:new()=>XtermFit};
 }}
-const assets=import.meta.env.BASE_URL+"ctf-v86/";
+export const assets=import.meta.env.BASE_URL+"ctf-v86/";
 const reviewWordlist=["123456","admin2026","ufpa_itec","veropeso123","tacaca_quente","acai_com_peixe","mangal_das_garcas","ilha_do_marajo","boto_cor_de_rosa","maniwa_2026","castanha_do_para","paidegua2026","cirio_de_nazare","estacao_docas","guama_ufpa"];
 const reviewJohnScript="#!/bin/sh\n# Modo didatico, NAO John the Ripper original\nwordlist=/opt/evidencias/dicionario_paraense.txt\ntarget=/opt/evidencias/senha_cofre.md5\nfor arg in \"$@\"; do\n case \"$arg\" in\n --wordlist=*) wordlist=\"${arg#--wordlist=}\" ;;\n --format=raw-md5|--show) ;;\n --*) echo \"Opcao nao suportada: $arg\"; exit 2 ;;\n *) target=\"$arg\" ;;\n esac\ndone\nif [ ! -r \"$wordlist\" ] || [ ! -r \"$target\" ]; then echo \"Wordlist ou hash nao encontrado\"; exit 1; fi\nhash=$(head -n 1 \"$target\" | cut -d ' ' -f 1)\necho \"[Revisao didatica] Dicionario MD5 em Linux (nao e John original)\"\nwhile IFS= read -r candidate || [ -n \"$candidate\" ]; do\n digest=$(printf '%s' \"$candidate\" | md5sum | cut -d ' ' -f 1)\n if [ \"$digest\" = \"$hash\" ]; then echo \"$candidate (raw-md5)\"; exit 0; fi\ndone < \"$wordlist\"\necho \"Nenhuma correspondencia\"; exit 1";
 const quote=(v:string)=>"'"+v.replaceAll("'","'\\''")+"'";
 type EncryptedFixture={name:string;base64:string};
-type EncryptedBundle={sha256Evidence37:string;files:EncryptedFixture[]};
+export type EncryptedBundle={sha256Evidence37:string;files:EncryptedFixture[]};
 const evidenceSha256="3d3f540b1656b4f48c5db9e1fad13883c1b59ef7266c43879673ac4d332fe4b2";
-async function loadAula07Evidence():Promise<EncryptedBundle>{
+export async function loadAula07Evidence():Promise<EncryptedBundle>{
  let lastError="Erro desconhecido";
  for(let attempt=0;attempt<3;attempt++){
   try{
@@ -47,7 +47,7 @@ async function loadAula07Evidence():Promise<EncryptedBundle>{
  throw Error("Evidências da Aula 7 indisponíveis: "+lastError+". Atualize com Ctrl+Shift+R.");
 }
 const reviewMissionLines=["================================================================","HACKERS PAI D'EGUA  |  CTF 1 - REVISAO DO PROFESSOR","================================================================","Uma investigacao digital foi aberta apos tres ocorrencias","relacionadas a um servidor comprometido. Voce recebeu acesso","ao ambiente Linux para localizar evidencias e registrar","as descobertas no write-up de cada desafio.","","DESAFIO 1 - O RASTRO TRANCADO","HISTORIA:","Um agente escondeu um relatorio confidencial em um arquivo","oculto, iniciado por ponto, dentro de /var/tmp/. Antes de sair,","removeu todas as permissoes de leitura desse arquivo.","MISSAO:","Vasculhe /var/tmp/, encontre o relatorio, analise as permissoes,","restaure a leitura necessaria e capture a primeira flag.","COMANDO DE PARTIDA: ls -la /var/tmp/","","DESAFIO 2 - O INVASOR INSISTENTE","HISTORIA:","O servidor sofreu uma tempestade de tentativas de conexao SSH","com senhas incorretas. O registro das falhas foi preservado.","MISSAO:","Analise /var/log/auth_simulado.log e identifique o IP que","acumulou o maior numero de tentativas malsucedidas.","Entregue a flag no formato FLAG{ip_do_atacante}.","COMANDO DE PARTIDA: grep 'Failed password' /var/log/auth_simulado.log","","DESAFIO 3 - A IMPRESSAO DIGITAL, QUEBRA DE MD5 E O COFRE","HISTORIA:","Em /opt/evidencias/ ha 50 arquivos cifrados (.enc), um hash MD5","vazado (senha_cofre.md5) e a wordlist dicionario_paraense.txt.","Somente o arquivo autentico possui SHA-256 terminado em e4b2.","MISSAO:","Encontre o arquivo autentico pelo SHA-256, recupere a senha","a partir do hash MD5 e da wordlist e decifre o cofre AES-256-CBC.","COMANDO DE PARTIDA: ls -la /opt/evidencias/","","NOTAS DO LABORATORIO:","- Este ambiente e uma revisao demonstrativa, sem pontuacao.","- Use o botao Preencher write-up para registrar suas evidencias.","- O comando john nesta VM e didatico; nao e o programa oficial.","- O comando openssl desta revisao usa Web Crypto real do navegador.","  Nao e o programa OpenSSL original; suporta apenas AES/PBKDF2.","- O comando hashid e um identificador didatico de formatos.","  Para ferramentas oficiais use o Pacote Kali em outro Linux.","- Os desafios foram escritos para investigacao: nao ha gabarito","  nem sequencia completa de comandos neste arquivo.","================================================================"];
-const initCommands=(bundle:EncryptedBundle)=>[
+export const initCommands=(bundle:EncryptedBundle)=>[
  "mkdir -p /var/tmp/cache_sistema/logs_tmp /var/tmp/sessao_antiga/bkp_2026 /var/tmp/auditoria_boto/coleta_secreta /var/log /opt/evidencias /home/aluno /tmp/ctf-bin",
  "printf '%s\\n' 'Relatorio confidencial do CTF 1' 'FLAG{r4str0_0cult0_chm0d_p41_d3gu4}' > /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt; chmod 000 /var/tmp/auditoria_boto/coleta_secreta/.segredo_flag.txt",
  "printf '%s\\n' '# auth.log (simulacao da Aula 7)' > /var/log/auth_simulado.log",
@@ -85,7 +85,7 @@ function loadScript(name:string){
   document.head.append(script);
  });
 }
-function loadTerminal(){
+export function loadTerminal(){
  if(window.Terminal&&window.FitAddon?.FitAddon)return Promise.resolve();
  if(!terminalPromise)terminalPromise=(async()=>{
   const css=document.createElement("link");css.rel="stylesheet";css.href=assets+"xterm.css";
@@ -101,7 +101,7 @@ function loadTerminal(){
  })().catch(e=>{terminalPromise=undefined;throw e;});
  return terminalPromise;
 }
-function library(){
+export function library(){
  if(window.V86)return Promise.resolve();
  if(!scriptPromise)scriptPromise=new Promise<void>((resolve,reject)=>{
   const s=document.createElement("script");s.src=assets+"libv86.js";s.async=true;

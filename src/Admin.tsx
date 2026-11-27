@@ -5,6 +5,7 @@ import ClassManagement from "./ClassManagement";
 import AdminNavigation, { type AdminSection } from "./AdminNavigation";
 import CtfReviewBrowser from "./CtfReviewBrowser";
 import CtfReviewAudit from "./CtfReviewAudit";
+import CtfOfficialAdmin from "./CtfOfficialAdmin";
 import TeamManagement from "./TeamManagement";
 import AdminAccessManagement from "./AdminAccessManagement";
 import AttendanceManagement from "./AttendanceManagement";
@@ -666,6 +667,7 @@ export default function Admin({
                     <a href="#admin/duplas"><strong>Consultar duplas</strong><span>Cadastro permanente, participantes e credenciais.</span></a>
                     <a href="#admin/notas"><strong>Conferir entregas</strong><span>Resultados privados, correções e exportação.</span></a>
                     <a href="#admin/chamada"><strong>Registrar presença</strong><span>Chamada por aluno, turma e data da aula.</span></a>
+                    <a href="#admin/ctf-oficial"><strong>CTF 1 oficial</strong><span>Rodada de 1 hora, progresso por dupla e avaliação de 200 pontos.</span></a>
                     <a href="#admin/revisao-ctf"><strong>Revisão Pré-CTF</strong><span>Terminal Linux no navegador, somente professor, sem pontuação.</span></a>
                      <a href="#admin/auditoria-ctf"><strong>Auditoria do terminal do professor</strong><span>Histórico e relatórios formativos, fora do CTF oficial.</span></a>
                     {role === "admin" && <a href="#admin/ctf"><strong>Registrar pontos CTF</strong><span>Classificação pública independente das notas.</span></a>}
@@ -1542,6 +1544,7 @@ export default function Admin({
               {section === "usuarios" && role === "admin" && identity && (
                 <AdminAccessManagement currentUserId={identity} />
               )}
+              {section === "ctf-oficial" && <CtfOfficialAdmin classes={classes} />}
               {section === "revisao-ctf" && <CtfReviewBrowser />}
                {section === "auditoria-ctf" && <CtfReviewAudit canAccessOfficialCtf={role === "admin"} />}
               {section === "ctf" && role !== "admin" && (

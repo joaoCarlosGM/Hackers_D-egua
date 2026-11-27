@@ -12,6 +12,7 @@ import {
 } from "./api";
 import { download, safeFilenamePart } from "./utils";
 import Admin from "./Admin";
+import CtfOfficialStudent from "./CtfOfficialStudent";
 import Quiz from "./Quiz";
 import Brand, { brandAssets } from "./Brand";
 import { rankTeams } from "./ranking";
@@ -51,6 +52,7 @@ export default function App() {
         <nav>
           <a href="#">Minha dupla</a>
           <a href="#ranking">Ranking CTF</a>
+          <a href="#ctf-oficial">Terminal CTF 1</a>
           <a href="#admin">Administração</a>
         </nav>
       </header>
@@ -93,6 +95,7 @@ export default function App() {
                     : route === "admin/chamada" ? "chamada"
                     : route === "admin/revisao-ctf" ? "revisao-ctf"
                     : route === "admin/auditoria-ctf" ? "auditoria-ctf"
+                    : route === "admin/ctf-oficial" ? "ctf-oficial"
                     : route === "admin/ctf" ? "ctf"
                     : route === "admin/usuarios" ? "usuarios"
                     : "overview"
@@ -104,6 +107,7 @@ export default function App() {
             ) : (
               <TeamFlow
                 key={route}
+                officialCtf={route === "ctf-oficial"}
                 classes={classes}
                 sessionId={
                   route.startsWith("atividade/") ? route.slice(10) : undefined
@@ -267,9 +271,11 @@ function Leaderboard({ classes }: { classes: Class[] }) {
 function TeamFlow({
   classes,
   sessionId,
+  officialCtf = false,
 }: {
   classes: Class[];
   sessionId?: string;
+  officialCtf?: boolean;
 }) {
   // Keep the bearer only in memory; a reboot can always be recovered with code + credential.
   const [team, setTeam] = useState<Team | null>(null);
@@ -403,7 +409,7 @@ function TeamFlow({
           {error}
         </p>
       )}
-      {!sessionId && (
+      {!sessionId && !officialCtf && (
         <form className="card narrow" onSubmit={enterCode}>
           <h2>Entrar em uma atividade</h2>
           <label>
@@ -629,6 +635,7 @@ function TeamFlow({
               width={1500} height={1500} />
           </aside>
           </div>
+          {officialCtf && saved && <CtfOfficialStudent token={team.token} name={team.public_name} />}
           {activity &&
             saved &&
             !submitted &&
