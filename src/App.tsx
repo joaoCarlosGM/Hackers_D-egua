@@ -351,35 +351,16 @@ function TeamFlow({
     }
   }
   useEffect(() => {
+    // Older versions persisted a reusable bearer token in sessionStorage.
+    // In shared classroom browsers, remove that legacy credential and require
+    // code + private credential for every new page session. Authentication is
+    // now memory-only; never cache a token, password, or team identity.
     try {
-      const raw = sessionStorage.getItem("hpde:team");
-      if (raw) {
-        const cached = JSON.parse(raw) as Team;
-        if (
-          typeof cached.token === "string" &&
-          typeof cached.team_id === "string"
-        ) {
-          setTeam(cached);
-          setSaved(true);
-          void refresh(cached).catch((e) => setError(e.message));
-        }
-      }
+      sessionStorage.removeItem("hpde:team");
     } catch {
-      /* Start a fresh login if browser storage is unavailable. */
+      /* Browsers may block storage: in-memory login works independently. */
     }
   }, []);
-  useEffect(() => {
-    try {
-      if (team && saved)
-        sessionStorage.setItem(
-          "hpde:team",
-          JSON.stringify({ ...team, credential: undefined }),
-        );
-      else sessionStorage.removeItem("hpde:team");
-    } catch {
-      /* The in-memory session still works. */
-    }
-  }, [team, saved]);
   async function enterCode(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -445,7 +426,7 @@ function TeamFlow({
               Cadastrar minha dupla
             </button>
           </div>
-          <form onSubmit={identify}>
+          <form onSubmit={identify} autoComplete="off">
             {mode === "register" ? (
               <>
                 <label>
@@ -512,7 +493,7 @@ function TeamFlow({
                     minLength={8}
                     maxLength={16}
                     placeholder="8 ou 16 caracteres"
-                    autoComplete="username"
+                    autoComplete="off"
                     spellCheck={false}
                   />
                 </label>
