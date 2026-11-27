@@ -32,7 +32,6 @@ export default function CtfOfficialStudent({token,name}:Props){
  const pending=useRef(""),payload=useRef<string|null>(null),editing=useRef(false);
  const editor=useRef<HTMLDivElement>(null),input=useRef<HTMLTextAreaElement>(null);
  const inLine=useRef(""),commandHistory=useRef<string[]>([]);
- const inFlight=useRef(false);
  useEffect(()=>{
   if(!selected)return;
   void rpc<{solved:number[];writeups:Record<string,W>}>("ctf1_student_progress",{p_token:token,p_round:selected})
@@ -121,7 +120,7 @@ export default function CtfOfficialStudent({token,name}:Props){
    const a=new window.FitAddon.FitAddon();
    t.loadAddon(a);t.open(host.current!);fit.current=a;terminal.current=t;
    subscription.current=t.onData(onData);
-   resize.current=new ResizeObserver(()=>{try{a.fit();}catch{}});
+   resize.current=new ResizeObserver(()=>{try{a.fit();}catch{/* Resizing a detached terminal is safe to ignore. */}});
    resize.current.observe(host.current!);
    requestAnimationFrame(()=>{a.fit();t.focus();});
    t.writeln("HACKERS PAI D'EGUA · CTF 01 · LINUX REAL / MODO TESTE");
