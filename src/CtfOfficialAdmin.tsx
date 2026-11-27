@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mergeChallengeProgress, nextChallenge, type ChallengeProgress } from "./ctfOfficialProgress";
 import { rpc, type Class } from "./api";
 import { calculateOfficialCtf1Total, OFFICIAL_CTF1_CAPS, type OfficialCtf1Scores } from "./ctfOfficialScoring";
 import "./ctf-official-admin.css";
@@ -40,6 +41,10 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
  const [ready,setReady]=useState(false);
  const [discardTarget,setDiscardTarget]=useState("");
  const [discardReason,setDiscardReason]=useState("");
+ const [lastSync,setLastSync]=useState<number|null>(null);
+ const [syncWarning,setSyncWarning]=useState("");
+ const refreshSequence=useRef(0),refreshInFlight=useRef<string|null>(null);
+ const auditSequence=useRef(0);
  const load=useCallback(async()=>{
   const list=await rpc<Round[]>("ctf1_staff_list_rounds");
   setRounds(list);
@@ -47,30 +52,56 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
   setSelected(prev=>list.some(r=>r.id===prev)?prev:(list[0]?.id||""));
  },[]);
  const refresh=useCallback(async(id:string)=>{
-  if(!id)return;
-  const [value,progress]=await Promise.all([
-   rpc<Dashboard>("ctf1_staff_dashboard",{p_round:id}),
-   rpc<{team_id:string;delivered:number[];correct:number[];challenge_times:Team["challenge_times"];total_seconds:number|null}[]>("ctf1_staff_challenge_results",{p_round:id})
-  ]);
-  const byTeam=new Map((progress??[]).map(item=>[item.team_id,item]));
-  setDashboard({...value,teams:value.teams.map(team=>({...team,...byTeam.get(team.team_id)}))});
-  setTimeDelta(Date.parse(value.round.server_now)-Date.now());
+  if(!id||refreshInFlight.current===id)return;
+  const sequence=++refreshSequence.current;
+  refreshInFlight.current=id;
+  try{
+   const [base,detailed]=await Promise.allSettled([
+    rpc<Dashboard>("ctf1_staff_dashboard",{p_round:id}),
+    rpc<ChallengeProgress[]>("ctf1_staff_challenge_results",{p_round:id})
+   ]);
+   if(sequence!==refreshSequence.current)return;
+   if(base.status==="rejected")throw base.reason;
+   // An optional detail endpoint failure must never hide known write-up and
+   // accepted-flag progress already present in the main staff dashboard.
+   setDashboard({...base.value,teams:mergeChallengeProgress(
+    base.value.teams,detailed.status==="fulfilled"?detailed.value:null
+   )});
+   setTimeDelta(Date.parse(base.value.round.server_now)-Date.now());
+   setLastSync(Date.now());
+   setSyncWarning(detailed.status==="rejected"
+    ?"Tempos detalhados indisponíveis. Desafios e flags seguem atualizados pelo servidor.":"");
+  }catch(e){
+   if(sequence===refreshSequence.current)setSyncWarning("Falha na atualização do painel: "+(e as Error).message);
+   throw e;
+  }finally{
+   if(refreshInFlight.current===id)refreshInFlight.current=null;
+  }
  },[]);
  const refreshAudit=useCallback(async(id:string,team:string)=>{
   if(!id||!team)return;
+  const sequence=++auditSequence.current;
   const data=await rpc<Audit>("ctf1_staff_audit_team",{p_round:id,p_team:team});
+  if(sequence!==auditSequence.current)return;
   setAudit(data);setScores(data.score??{...zeroScores});setReason(data.score_reason??"");
+ },[]);
+ const refreshAuditReadOnly=useCallback(async(id:string,team:string)=>{
+  if(!id||!team)return;
+  const sequence=++auditSequence.current;
+  const data=await rpc<Audit>("ctf1_staff_audit_team",{p_round:id,p_team:team});
+  if(sequence===auditSequence.current)setAudit(data);
  },[]);
  useEffect(()=>{void load().catch((e:Error)=>setError(e.message));},[load]);
  useEffect(()=>{void refresh(selected).catch((e:Error)=>setError(e.message));},[selected,refresh]);
  useEffect(()=>{const timer=setInterval(()=>{
   setClock(Date.now());
   if(selected)void refresh(selected).catch(()=>{});
- },5000);return()=>clearInterval(timer);},[selected,refresh]);
+  if(selected&&teamSelected)void refreshAuditReadOnly(selected,teamSelected).catch(()=>{});
+ },4000);return()=>clearInterval(timer);},[selected,teamSelected,refresh,refreshAuditReadOnly]);
  const selectedRound=dashboard?.round.id===selected?dashboard:null;
  const currentTeam=useMemo(()=>selectedRound?.teams.find(t=>t.team_id===teamSelected),[selectedRound,teamSelected]);
  const investigating=useMemo(()=>selectedRound?.teams.filter(t=>!t.excluded_at&&!!t.first_activity_at)??[],[selectedRound]);
- function closeAudit(){setTeamSelected("");setAudit(null);setScores({...zeroScores});setReason("");}
+ function closeAudit(){auditSequence.current++;setTeamSelected("");setAudit(null);setScores({...zeroScores});setReason("");}
  async function discardRound(id:string){
   if(busy||!id||discardTarget!==id||discardReason.trim().length<10)return;
   setBusy(true);setError("");setNotice("");
@@ -104,13 +135,15 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
      <span>{display?.state==="running"?"Em andamento":display?.state==="draft"?"Aguardando professor":display?.state==="ended"?"Encerrada":"Não iniciada"}</span></div>
   </header>
   {error&&<p className="ctf-official-error" role="alert">{error}</p>}
+  {syncWarning&&<p className="ctf-official-sync-warning" role="status">{syncWarning}</p>}
   {notice&&<p className="ctf-official-success" role="status">{notice}</p>}
   {!ready&&<p>Verificando disponibilidade das RPCs do CTF oficial…</p>}
   {ready&&<div className="ctf-official-toolbar">
    <label>Rodada <select value={selected} onChange={e=>{setSelected(e.target.value);setTeamSelected("");setAudit(null);setDiscardTarget("");setDiscardReason("");}}>
     <option value="">Selecionar rodada</option>{rounds.map(r=><option key={r.id} value={r.id}>{r.title} · {r.state}</option>)}
    </select></label>
-   <button disabled={busy} onClick={()=>void action(async()=>{await load();if(selected)await refresh(selected);})}>Atualizar</button>
+   <button disabled={busy} onClick={()=>void action(async()=>{await load();if(selected)await refresh(selected);})}>Atualizar agora</button>
+   <span className="ctf-official-sync" role="status">Atualização automática a cada 4 s · {lastSync?("Última leitura: "+new Date(lastSync).toLocaleTimeString("pt-BR")):"Aguardando dados"}</span>
   </div>}
   <details className="ctf-official-new">
    <summary>Preparar nova rodada (não inicia automaticamente)</summary>
@@ -168,9 +201,10 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
    <summary>Duplas que iniciaram o laboratório <span>{investigating.length} duplas</span></summary>
    <p className="ctf-official-footnote">Atualização a cada 5 segundos. <code>cat missao.txt</code> é identificado quando o comando completo foi registrado. Atividade registrada não garante conexão ativa neste instante.</p>
    {investigating.length===0?<p>Aguardando os primeiros comandos das duplas.</p>:<div className="ctf-official-table-wrap"><table>
-    <thead><tr><th>Dupla</th><th>Primeira atividade</th><th>Missão</th><th>Última atividade</th><th>Ação</th></tr></thead>
+    <thead><tr><th>Dupla</th><th>Desafio atual</th><th>Primeira atividade</th><th>Missão</th><th>Última atividade</th><th>Ação</th></tr></thead>
     <tbody>{investigating.map(t=><tr key={t.team_id}>
      <td><strong>{t.public_name}</strong></td>
+     <td>{nextChallenge(t.delivered)===null?"Todos entregues":`Desafio ${nextChallenge(t.delivered)}`}</td>
      <td>{new Date(t.first_activity_at!).toLocaleTimeString("pt-BR")}</td>
      <td>{t.mission_opened_at?"missao.txt consultado":"Terminal em uso"}</td>
      <td>{new Date(t.last_activity_at!).toLocaleTimeString("pt-BR")}</td>
@@ -179,12 +213,12 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
    </table></div>}
   </details>
   <div className={teamSelected?"ctf-official-grid":"ctf-official-grid ctf-official-grid--single"}><details className="ctf-official-panel ctf-official-collapsible" open>
-   <summary>Progresso por dupla <span>{selectedRound.teams.length} duplas</span></summary>
+   <summary>Progresso por dupla <span>{selectedRound.teams.length} duplas · sincronizado com entregas no Supabase</span></summary>
    <div className="ctf-official-table-wrap"><table><thead><tr><th>Dupla</th><th>Turma</th><th>Desafio atual</th><th>Flags corretas</th><th>Entregues</th><th>Tempo total</th><th>Atividade</th><th>Avaliação</th><th>Ação</th></tr></thead><tbody>
    {selectedRound.teams.map(t=><tr key={t.team_id}>
     <td><strong>{t.public_name}</strong>{t.excluded_at&&<small> · Participação excluída</small>}</td>
     <td>{classes.find(c=>c.id===t.class_id)?.name??"—"}</td>
-    <td>{t.delivered?.length===3?"Concluído":`Desafio ${[1,2,3].find(n=>!t.delivered?.includes(n))??1}`}</td><td><strong>{t.correct?.length??0}/3</strong></td><td>{t.delivered?.length??0}/3</td><td>{duration(t.total_seconds)}</td><td>{t.mission_opened_at?"Missão lida":t.first_activity_at?"Investigando":"Aguardando"}</td>
+    <td><strong>{nextChallenge(t.delivered)===null?"3/3 entregues":`Desafio ${nextChallenge(t.delivered)}`}</strong></td><td><strong>{t.correct?.length??0}/3</strong></td><td>{t.delivered?.length??0}/3</td><td>{duration(t.total_seconds)}</td><td>{t.mission_opened_at?"Missão lida":t.first_activity_at?"Investigando":"Aguardando"}</td>
     <td>{t.audited_at?"Avaliada":"Pendente"}</td>
     <td><button disabled={busy} onClick={()=>{setTeamSelected(t.team_id);setAudit(null);void refreshAudit(selected,t.team_id).catch(e=>setError((e as Error).message));}}>Auditar</button></td>
    </tr>)}</tbody></table></div>
