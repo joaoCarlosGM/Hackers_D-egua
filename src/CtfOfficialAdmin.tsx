@@ -192,7 +192,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
       if(!window.confirm("Encerrar antecipadamente a rodada? Novas flags e write-ups serão bloqueados."))return;
       void action(async()=>{await rpc("ctf1_staff_end_round",{p_round:selected});setNotice("Rodada encerrada.");});
     }}>Encerrar rodada</button>}
-    {rounds.some(r=>r.id===display.id&&r.mode==="test")&&(display.state==="draft"||display.state==="running"||display.state==="ended")&&
+    {rounds.some(r=>r.id===display.id&&r.assessment_kind!=="official"&&r.mode==="test")&&(display.state==="draft"||display.state==="running"||display.state==="ended")&&
       <button className="ctf-official-discard" type="button" disabled={busy}
        aria-expanded={discardTarget===display.id}
        onClick={()=>{setDiscardTarget(previous=>previous===display.id?"":display.id);setDiscardReason("");}}>
