@@ -5,6 +5,7 @@ import ClassManagement from "./ClassManagement";
 import AdminNavigation, { type AdminSection } from "./AdminNavigation";
 import CtfReviewBrowser from "./CtfReviewBrowser";
 import CtfReviewAudit from "./CtfReviewAudit";
+import CtfAuditedScoresPreview from "./CtfAuditedScoresPreview";
 import CtfOfficialAdmin from "./CtfOfficialAdmin";
 import TeamManagement from "./TeamManagement";
 import AdminAccessManagement from "./AdminAccessManagement";
@@ -1550,6 +1551,7 @@ export default function Admin({
               {section === "ctf" && role !== "admin" && (
                 <p role="alert" className="card">Somente administradores podem ajustar a pontuação do CTF.</p>
               )}
+              {section === "ctf" && role === "admin" && <CtfAuditedScoresPreview />}
               {section === "ctf" && role === "admin" && (
                 <form
                   className="card"
@@ -1578,7 +1580,7 @@ export default function Admin({
                   }}
                 >
                   <h2>Registrar CTF por módulo</h2>
-                   <p><a href="#admin/auditoria-ctf">Consultar auditoria das demonstrações do terminal do professor</a> · Esses registros não alteram a pontuação oficial.</p>
+                   <p>A prévia acima mostra somente notas auditadas da competição. O lançamento abaixo é uma operação administrativa independente; não ocorre automaticamente.</p>
                   <p className="muted">Cada módulo tem um CTF. O tempo é usado somente no desempate, sem acrescentar ou retirar pontos.</p>
                   <label>Módulo do CTF
                     <select name="module" required defaultValue="">

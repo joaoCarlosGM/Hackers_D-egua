@@ -11,6 +11,12 @@ describe("administrative module navigation", () => {
     const navigation = screen.getByRole("navigation", { name: "Seções da administração" });
     const links = within(navigation).getAllByRole("link");
     expect(links).toHaveLength(12);
+    expect(links.map(link => link.querySelector(".admin-menu-number")?.textContent)).toEqual(
+      Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")),
+    );
+    expect(within(navigation).getByRole("link", { name: /Pontuação/ }).getAttribute("href")).toBe("#admin/ctf");
+    expect(within(navigation).getByRole("link", { name: /Rodadas/ }).getAttribute("href")).toBe("#admin/ctf-oficial");
+
     expect(links.some(link => link.getAttribute("href") === "#admin/ctf-oficial")).toBe(true);
     expect(links.some(link => link.getAttribute("href") === "#admin/revisao-ctf")).toBe(true);
     expect(links.some(link => link.getAttribute("href") === "#admin/auditoria-ctf")).toBe(true);
