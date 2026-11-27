@@ -31,6 +31,7 @@ psql_test < supabase/tests/quiz_answer_security.sql
 psql_test < supabase/tests/class_management.sql
 psql_test < supabase/tests/team_management.sql
 psql_test < supabase/tests/short_team_credentials.sql
+psql_test < supabase/tests/ctf1_official.sql
 psql_test < supabase/tests/admin_access_management.sql
 psql_test < supabase/tests/attendance.sql
 psql_test < supabase/tests/ranking_weighted.sql
