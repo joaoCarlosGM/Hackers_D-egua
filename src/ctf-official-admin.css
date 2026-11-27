@@ -2,3 +2,5 @@
 .ctf-official-admin .ctf-official-discard{background:#4b2533;color:#ffe6e9;border-color:#a55d67}.ctf-official-admin .ctf-official-discard:hover:not(:disabled){background:#662d3c}
 
 .ctf-official-grid--single{grid-template-columns:minmax(0,1fr)}.ctf-official-audit-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.ctf-official-audit-heading h3{margin:0}.ctf-official-audit-heading button{white-space:nowrap}.ctf-official-panel code{font-family:monospace}
+
+.ctf-finish-screen{position:fixed;inset:0;z-index:20000;background:radial-gradient(circle at 50% 35%,#154a43 0%,#07151e 72%);color:#eefef7;display:grid;place-items:center;text-align:center;padding:24px}.ctf-finish-screen>div{max-width:720px}.ctf-finish-icon{font-size:clamp(76px,15vw,140px);margin-bottom:22px}.ctf-finish-screen h2{font-size:clamp(40px,7vw,76px);margin:0 0 16px}.ctf-finish-screen p{font-size:clamp(17px,2.4vw,25px);line-height:1.5}.ctf-finish-screen strong{display:block;margin-top:30px;font-size:clamp(16px,2vw,24px);color:#86ebbb}
