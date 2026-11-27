@@ -4,7 +4,7 @@ import { calculateOfficialCtf1Total, OFFICIAL_CTF1_CAPS, type OfficialCtf1Scores
 import "./ctf-official-admin.css";
 
 type Round = { id:string; title:string; state:string; class_ids?:string[]; started_at:string|null; ends_at:string|null; created_at?:string;teams?:number };
-type Team = { team_id:string; public_name:string; class_id:string; status:string; excluded_at:string|null; score:OfficialCtf1Scores|null; audited_at:string|null; last_submission:string|null; solved:number[]; writeups:number[] };
+type Team = { team_id:string; public_name:string; class_id:string; status:string; excluded_at:string|null; score:OfficialCtf1Scores|null; audited_at:string|null; last_submission:string|null; first_activity_at:string|null; last_activity_at:string|null; mission_opened_at:string|null; solved:number[]; writeups:number[] };
 type Dashboard={round:Round&{server_now:string;duration_seconds:number};teams:Team[]};
 type Audit={team_id:string;round_id:string;score:OfficialCtf1Scores|null;score_reason:string|null;audited_at:string|null;excluded_at:string|null;excluded_reason:string|null;submissions:{challenge:number;accepted:boolean;submitted_at:string}[];writeups:Record<string,Record<string,string>>;events:{at:string;kind:string;detail:unknown}[]};
 const zeroScores:OfficialCtf1Scores={mission1:0,mission2:0,mission3:0,writeup1:0,writeup2:0,writeup3:0};
@@ -62,6 +62,8 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
  },5000);return()=>clearInterval(timer);},[selected,refresh]);
  const selectedRound=dashboard?.round.id===selected?dashboard:null;
  const currentTeam=useMemo(()=>selectedRound?.teams.find(t=>t.team_id===teamSelected),[selectedRound,teamSelected]);
+ const investigating=useMemo(()=>selectedRound?.teams.filter(t=>!t.excluded_at&&!!t.first_activity_at)??[],[selectedRound]);
+ function closeAudit(){setTeamSelected("");setAudit(null);setScores({...zeroScores});setReason("");}
  const total=useMemo(()=>{try{return calculateOfficialCtf1Total(scores);}catch{return 0;}},[scores]);
  async function action(work:()=>Promise<void>){
   setBusy(true);setError("");setNotice("");
@@ -135,21 +137,35 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
   {selectedRound&&<><div className="ctf-official-kpis">
    <div><small>Duplas na rodada</small><strong>{selectedRound.teams.filter(t=>!t.excluded_at).length}</strong></div>
    <div><small>Três desafios concluídos</small><strong>{selectedRound.teams.filter(t=>t.solved.length===3&&!t.excluded_at).length}</strong></div>
-   <div><small>Em investigação</small><strong>{selectedRound.teams.filter(t=>t.solved.length>0&&t.solved.length<3&&!t.excluded_at).length}</strong></div>
+   <div><small>Iniciaram o laboratório</small><strong>{investigating.length}</strong><small>Atividade registrada no terminal</small></div>
    <div><small>Auditorias avaliadas</small><strong>{selectedRound.teams.filter(t=>t.audited_at&&!t.excluded_at).length}</strong></div>
   </div>
-  <div className="ctf-official-grid"><section className="ctf-official-panel">
+  <section className="ctf-official-panel" aria-label="Duplas que iniciaram o laboratório">
+   <h3>Duplas que iniciaram o laboratório</h3>
+   <p className="ctf-official-footnote">Atualização a cada 5 segundos. <code>cat missao.txt</code> é identificado quando o comando completo foi registrado. Atividade registrada não garante conexão ativa neste instante.</p>
+   {investigating.length===0?<p>Aguardando os primeiros comandos das duplas.</p>:<div className="ctf-official-table-wrap"><table>
+    <thead><tr><th>Dupla</th><th>Primeira atividade</th><th>Missão</th><th>Última atividade</th><th>Ação</th></tr></thead>
+    <tbody>{investigating.map(t=><tr key={t.team_id}>
+     <td><strong>{t.public_name}</strong></td>
+     <td>{new Date(t.first_activity_at!).toLocaleTimeString("pt-BR")}</td>
+     <td>{t.mission_opened_at?"missao.txt consultado":"Terminal em uso"}</td>
+     <td>{new Date(t.last_activity_at!).toLocaleTimeString("pt-BR")}</td>
+     <td><button type="button" disabled={busy} onClick={()=>{setTeamSelected(t.team_id);setAudit(null);void refreshAudit(selected,t.team_id).catch(e=>setError((e as Error).message));}}>Auditar</button></td>
+    </tr>)}</tbody>
+   </table></div>}
+  </section>
+  <div className={teamSelected?"ctf-official-grid":"ctf-official-grid ctf-official-grid--single"}><section className="ctf-official-panel">
    <h3>Progresso por dupla</h3>
-   <div className="ctf-official-table-wrap"><table><thead><tr><th>Dupla</th><th>Turma</th><th>Missões</th><th>Write-ups</th><th>Avaliação</th><th>Ação</th></tr></thead><tbody>
+   <div className="ctf-official-table-wrap"><table><thead><tr><th>Dupla</th><th>Turma</th><th>Missões</th><th>Write-ups</th><th>Atividade</th><th>Avaliação</th><th>Ação</th></tr></thead><tbody>
    {selectedRound.teams.map(t=><tr key={t.team_id}>
     <td><strong>{t.public_name}</strong>{t.excluded_at&&<small> · Participação excluída</small>}</td>
     <td>{classes.find(c=>c.id===t.class_id)?.name??"—"}</td>
-    <td>{t.solved.length}/3</td><td>{t.writeups.length}/3</td>
+    <td>{t.solved.length}/3</td><td>{t.writeups.length}/3</td><td>{t.mission_opened_at?"Missão lida":t.first_activity_at?"Investigando":"Aguardando"}</td>
     <td>{t.audited_at?"Avaliada":"Pendente"}</td>
-    <td><button disabled={busy} onClick={()=>{setTeamSelected(t.team_id);void refreshAudit(selected,t.team_id).catch(e=>setError((e as Error).message));}}>Auditar</button></td>
+    <td><button disabled={busy} onClick={()=>{setTeamSelected(t.team_id);setAudit(null);void refreshAudit(selected,t.team_id).catch(e=>setError((e as Error).message));}}>Auditar</button></td>
    </tr>)}</tbody></table></div>
-  </section><section className="ctf-official-panel">
-   <h3>Auditoria individual</h3>
+  </section>{teamSelected&&<section className="ctf-official-panel">
+   <div className="ctf-official-audit-heading"><h3>Auditoria individual</h3><button type="button" onClick={closeAudit} aria-label="Fechar auditoria individual">✕ Fechar auditoria</button></div>
    {!currentTeam&&<p>Selecione uma dupla para conferir entregas, write-ups e notas.</p>}
    {currentTeam&&<><h4>{currentTeam.public_name}</h4>
     <p>{currentTeam.excluded_at?"Excluída desta rodada":"Participação ativa"} · {currentTeam.solved.length}/3 flags confirmadas</p>
@@ -193,7 +209,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
      </div>
     </>}
    </>}
-  </section></div></>}
+  </section>}</div></>}
   <p className="ctf-official-footnote">As notas deste painel ficam separadas do ranking legado até homologação e publicação administrativa. O histórico enviado pelo navegador é telemetria não confiável: a validação de flags e o horário precisam ser conferidos no servidor.</p>
  </section>;
 }
