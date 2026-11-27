@@ -452,9 +452,9 @@ begin
   command_text:=left(btrim(item#>>'{}'),200);
   if command_text<>'' then
    -- Never persist flags, passwords, hashes or untrusted crypto protocol.
-   command_text:=regexp_replace(command_text,'FLAG\\{[^}]*\\}','FLAG{REDACTED}','g');
-   command_text:=regexp_replace(command_text,'(-pass[[:space:]]+pass:)[^[:space:]]+','\\1[REDACTED]','gi');
-   command_text:=regexp_replace(command_text,'(password|senha|token|credential)=([^[:space:]]+)','\\1=[REDACTED]','gi');
+   command_text:=regexp_replace(command_text,'FLAG[{][^}]*[}]','[FLAG REDACTED]','g');
+   command_text:=regexp_replace(command_text,'-pass[[:space:]]+pass:[^[:space:]]+','[PASS REDACTED]','gi');
+   command_text:=regexp_replace(command_text,'(password|senha|token|credential)=[^[:space:]]+','[CREDENTIAL REDACTED]','gi');
    command_text:=regexp_replace(command_text,'[a-fA-F0-9]{32,}','[HASH REDACTED]','g');
    insert into public.ctf1_official_audit(round_id,team_id,kind,detail)
    values(p_round,tid,'terminal_event',jsonb_build_object('command',command_text));
