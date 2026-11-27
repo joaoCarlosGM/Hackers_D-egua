@@ -112,6 +112,22 @@ select test_ctf1.ok((select (public.ctf1_student_complete_challenge(
  (select v from test_ctf1.state where k='correct1'),
  '{"command":"ls","reason":"Investigacao DAC","evidence":"Permissoes registradas"}'::jsonb)->>'accepted')::boolean=false),
  'team 2 cannot reuse team 1 flag');
+-- Incorrect D1 is nevertheless a final delivery, so the team may advance.
+select test_ctf1.ok((select (public.ctf1_student_progress(
+ (select (v::jsonb)->>'token' from test_ctf1.state where k='team2'),
+ (select v::uuid from test_ctf1.state where k='round'))->'completed')='[1]'::jsonb),
+ 'incorrect flag counts as delivered, not correct');
+select test_ctf1.ok((select (public.ctf1_student_progress(
+ (select (v::jsonb)->>'token' from test_ctf1.state where k='team2'),
+ (select v::uuid from test_ctf1.state where k='round'))->'solved')='[]'::jsonb),
+ 'wrong flag cannot increase correct count');
+select test_ctf1.denied($q$select public.ctf1_student_complete_challenge(
+ (select (v::jsonb)->>'token' from test_ctf1.state where k='team2'),
+ (select v::uuid from test_ctf1.state where k='round'),1::smallint,
+ (select v from test_ctf1.state where k='correct1'),
+ '{"command":"ls","reason":"teste","evidence":"teste"}'::jsonb)$q$,
+ 'wrong submitted flag cannot be retried after delivery');
+
 select test_ctf1.ok((select (public.ctf1_student_complete_challenge(
  (select (v::jsonb)->>'token' from test_ctf1.state where k='team1'),
  (select v::uuid from test_ctf1.state where k='round'),1::smallint,
@@ -129,6 +145,47 @@ select test_ctf1.ok((select public.ctf1_student_append_challenge_commands(
  (select v::uuid from test_ctf1.state where k='round'),2::smallint,
  '["cat missao.txt","ls -la"]'::jsonb)=2),
  'new challenge command audit captures commands');
+reset role;
+insert into test_ctf1.state values ('correct2team2',app_private.ctf1_flag_value(
+ (select v::uuid from test_ctf1.state where k='round'),
+ (select ((v::jsonb)->>'team_id')::uuid from test_ctf1.state where k='team2'),2::smallint));
+insert into test_ctf1.state values ('correct3team2',app_private.ctf1_flag_value(
+ (select v::uuid from test_ctf1.state where k='round'),
+ (select ((v::jsonb)->>'team_id')::uuid from test_ctf1.state where k='team2'),3::smallint));
+set local role anon;
+select test_ctf1.ok((select (public.ctf1_student_complete_challenge(
+ (select (v::jsonb)->>'token' from test_ctf1.state where k='team2'),
+ (select v::uuid from test_ctf1.state where k='round'),2::smallint,
+ (select v from test_ctf1.state where k='correct2team2'),
+ '{"command":"grep","reason":"Log SSH","evidence":"IP confirmado"}'::jsonb)->>'accepted')::boolean=true),
+ 'second challenge advances after first wrong flag');
+select test_ctf1.ok((select (public.ctf1_student_complete_challenge(
+ (select (v::jsonb)->>'token' from test_ctf1.state where k='team2'),
+ (select v::uuid from test_ctf1.state where k='round'),3::smallint,
+ (select v from test_ctf1.state where k='correct3team2'),
+ '{"command":"sha256sum","reason":"Hash verificado","evidence":"Cofre resolvido"}'::jsonb)->>'next_challenge') is null),
+ 'third write-up closes progress');
+select test_ctf1.ok((select (public.ctf1_student_progress(
+ (select (v::jsonb)->>'token' from test_ctf1.state where k='team2'),
+ (select v::uuid from test_ctf1.state where k='round'))->'solved')='[2,3]'::jsonb),
+ 'finished team has exactly 2 of 3 correct flags');
+reset role;
+select test_ctf1.ok((select count(*)=3 and bool_and(elapsed_seconds is not null and elapsed_seconds>=0)
+ from public.ctf1_official_writeups
+ where round_id=(select v::uuid from test_ctf1.state where k='round')
+  and team_id=(select ((v::jsonb)->>'team_id')::uuid from test_ctf1.state where k='team2')),
+ 'all three durations persisted by server');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
+select test_ctf1.ok((select exists(
+ select 1 from jsonb_array_elements(public.ctf1_staff_challenge_results(
+ (select v::uuid from test_ctf1.state where k='round'))) x
+ where x->>'team_id'=(select (v::jsonb)->>'team_id' from test_ctf1.state where k='team2')
+  and x->'correct'='[2,3]'::jsonb and x->'delivered'='[1,2,3]'::jsonb
+  and (x->>'total_seconds')::integer>=0)),
+ 'teacher sees 2/3 flags, 3/3 delivered and elapsed time');
+reset role;
+
 
 reset role;
 select test_ctf1.ok((select count(*)=1 from public.ctf1_official_writeups

@@ -23,6 +23,7 @@ export default function CtfOfficialStudent({token,name}:Props){
  const [finished,setFinished]=useState(false);
  const [showChallenges,setShowChallenges]=useState(false);
  const [completed,setCompleted]=useState<number[]>([]);
+ const [correctFlags,setCorrectFlags]=useState<number[]>([]);
  const [writeupOpen,setWriteupOpen]=useState(false);
  const [writeups,setWriteups]=useState<Record<number,W>>({});
  const [saveState,setSaveState]=useState("");
@@ -37,16 +38,18 @@ export default function CtfOfficialStudent({token,name}:Props){
  const auditQueue=useRef<{challenge:number;command:string}[]>([]),auditBusy=useRef(false);
  useEffect(()=>{
   if(!selected)return;
-  void rpc<{solved:number[];writeups:Record<string,W>}>("ctf1_student_progress",{p_token:token,p_round:selected})
+  void rpc<{completed:number[];solved:number[];writeups:Record<string,W>}>("ctf1_student_progress",{p_token:token,p_round:selected})
    .then(result=>{
     if(!mounted.current)return;
     const accepted=(result.solved??[]).map(n=>n-1).filter(n=>n>=0&&n<3);
+    const delivered=(result.completed??[]).map(n=>n-1).filter(n=>n>=0&&n<3);
+    setCorrectFlags(accepted);
     const drafts:Record<number,W>={};
     for(const [key,value] of Object.entries(result.writeups??{})){
      const k=Number(key)-1;if(k>=0&&k<3)drafts[k]=value;
     }
     setWriteups(drafts);
-    const done=[0,1,2].filter(i=>accepted.includes(i)&&Boolean(drafts[i]?.command?.trim())&&Boolean(drafts[i]?.reason?.trim())&&Boolean(drafts[i]?.evidence?.trim()));
+    const done=[0,1,2].filter(i=>delivered.includes(i)&&Boolean(drafts[i]?.command?.trim())&&Boolean(drafts[i]?.reason?.trim())&&Boolean(drafts[i]?.evidence?.trim()));
     setCompleted(done);
     setChallenge(([0,1,2].find(i=>!done.includes(i))??2));
    }).catch(()=>{});
@@ -222,13 +225,13 @@ export default function CtfOfficialStudent({token,name}:Props){
   try{
    const result=await rpc<{accepted:boolean;completed:number[];next_challenge:number|null}>("ctf1_student_complete_challenge",
     {p_token:token,p_round:selected,p_challenge:target+1,p_flag:flag.trim(),p_content:current});
-   if(!result.accepted){setError("Flag incorreta. Revise a investigação antes de entregar.");return;}
    const done=(result.completed??[]).map(n=>n-1);
    setCompleted(done);
+   if(result.accepted)setCorrectFlags(previous=>previous.includes(target)?previous:[...previous,target]);
    setWriteupOpen(false);editing.current=false;setFlag("");
-   setSaveState("Write-up entregue e bloqueado para edição");
-   if(result.next_challenge){setChallenge(result.next_challenge-1);setStatus("Desafio "+(target+1)+" concluído. Avance para o desafio "+result.next_challenge+".");}
-   else{setChallenge(2);setStatus("Você concluiu os 3 desafios! Clique em Finalizar abaixo do terminal.");}
+   setSaveState("Entrega registrada e bloqueada para edição");
+   if(result.next_challenge){setChallenge(result.next_challenge-1);setStatus("Write-up "+(target+1)+" entregue. Próximo: desafio "+result.next_challenge+".");}
+   else{setChallenge(2);setStatus("Você entregou os 3 desafios! Clique em Finalizar abaixo do terminal.");}
    requestAnimationFrame(()=>terminal.current?.focus());
   }catch(e){setError((e as Error).message);}
   finally{setLoading(false);}
@@ -249,12 +252,12 @@ export default function CtfOfficialStudent({token,name}:Props){
   {!active&&<div className="ctf-official-hero"><div><h3>{running?"CTF autorizado pelo professor":"Aguardando autorização"}</h3>
     <p>{running?"A rodada já está em andamento; você pode iniciar o Linux e investigar.":"O professor ainda não iniciou esta rodada ou ela já foi encerrada."}</p></div>
     <button disabled={!running||loading} onClick={()=>void start()}>{loading?"Preparando...":"Iniciar meu laboratório Linux"}</button></div>}
-  {finished&&<div className="ctf-finish-screen" role="dialog" aria-modal="true" aria-label="CTF concluído"><div><div className="ctf-finish-icon">🏆</div><h2>Parabéns, {name}!</h2><p>Vocês concluíram os três desafios e entregaram todos os write-ups.</p><strong>CTF finalizado com sucesso!</strong></div></div>}
+  {finished&&<div className="ctf-finish-screen" role="dialog" aria-modal="true" aria-label="CTF concluído"><div><div className="ctf-finish-icon">🏆</div><h2>Parabéns, {name}!</h2><p>Vocês entregaram os três desafios e registraram {correctFlags.length} de 3 flags corretas.</p><strong>CTF finalizado com sucesso!</strong></div></div>}
   {active&&<>
    <div className="ctf-challenge-toggle"><strong>Desafio {challenge+1} de 3 · {allCompleted?"Todos concluídos":"Em andamento"}</strong><button type="button" aria-expanded={showChallenges} onClick={()=>setShowChallenges(v=>!v)}>{showChallenges?"▴ Ocultar todos":"▾ Mostrar todos os desafios"}</button></div>
    {showChallenges&&<nav className="ctf-browser-tabs" aria-label="Desafios">
     {reviewMissions.map((m,i)=><button key={m.id} type="button" className={challenge===i?"selected":""} onClick={()=>{if(i===challenge)return;}} disabled={i!==challenge}>
-      <small>DESAFIO {i+1} {completed.includes(i)?"· CONCLUÍDO":i===challenge?"· EM ANDAMENTO":"· BLOQUEADO"}</small><strong>{m.subtitle}</strong>
+      <small>DESAFIO {i+1} {completed.includes(i)?"· ENTREGUE":i===challenge?"· EM ANDAMENTO":"· BLOQUEADO"}</small><strong>{m.subtitle}</strong>
     </button>)}
    </nav>}
    <section className="ctf-mission-brief"><h3>{reviewMissions[challenge].subtitle}</h3>
@@ -267,7 +270,7 @@ export default function CtfOfficialStudent({token,name}:Props){
     <div className="ctf-terminal-display" ref={host} aria-label="Terminal Linux v86 real"/>
     <div className="ctf-terminal-footer">Linux real no navegador · digite cat missao.txt · o relógio é controlado pelo servidor</div>
    </section>
-   {allCompleted&&<div className="ctf-official-panel"><h3>Você encerrou os três desafios!</h3><p>Todos os write-ups foram entregues. Finalize a atividade para visualizar sua conclusão.</p><button type="button" onClick={()=>{setFinished(true);stop();}}>Finalizar</button></div>}
+   {allCompleted&&<div className="ctf-official-panel"><h3>Você entregou os três desafios!</h3><p>Todos os write-ups foram registrados. Resultado: {correctFlags.length}/3 flags corretas. Finalize a atividade para visualizar sua conclusão.</p><button type="button" onClick={()=>{setFinished(true);stop();}}>Finalizar</button></div>}
   </>}
   {writeupOpen&&<div className="ctf-writeup-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setWriteupOpen(false);}}>
     <section className="ctf-browser-card ctf-evidence-panel ctf-writeup-open" ref={editor} role="dialog" aria-modal="true" aria-labelledby="official-writeup-title"
@@ -275,13 +278,13 @@ export default function CtfOfficialStudent({token,name}:Props){
       onBlurCapture={e=>{if(!e.currentTarget.contains(e.relatedTarget as Node|null))editing.current=false;}}>
      <div className="ctf-evidence-header"><h3 id="official-writeup-title">Write-up · Desafio {challenge+1}</h3>
       <button onClick={()=>setWriteupOpen(false)}>✕ Fechar</button></div>
-     <p>Preencha todas as informações. A flag será validada e o write-up entregue em uma única operação. Após a entrega, não será possível refazer este desafio.</p>
+     <p>Preencha todas as informações. A flag será verificada pelo servidor. Você avançará após entregar o write-up mesmo se a flag estiver incorreta. O desafio não poderá ser refeito.</p>
      <label>Flag descoberta<input value={flag} onChange={e=>setFlag(e.target.value)} placeholder="FLAG{...}" autoComplete="off" spellCheck={false}/></label>
      <label>Comandos executados<textarea ref={input} value={current.command} onChange={e=>edit("command",e.target.value)}/></label>
      <label>Justificativa técnica<textarea value={current.reason} onChange={e=>edit("reason",e.target.value)}/></label>
      <label>Evidências e conclusão<textarea value={current.evidence} onChange={e=>edit("evidence",e.target.value)}/></label>
      <p role="status">{saveState}</p>
-     <button disabled={!running||!ready||loading||!flag.trim()||!current.command.trim()||!current.reason.trim()||!current.evidence.trim()} onClick={()=>void saveWriteup()}>{loading?"Validando...":"Entregar write-up e avançar"}</button>
+     <button disabled={!running||!ready||loading||!flag.trim()||!current.command.trim()||!current.reason.trim()||!current.evidence.trim()} onClick={()=>void saveWriteup()}>{loading?"Registrando...":"Entregar write-up e avançar"}</button>
      <button onClick={()=>{setWriteupOpen(false);editing.current=false;requestAnimationFrame(()=>terminal.current?.focus());}}>Voltar ao terminal</button>
     </section>
    </div>}
