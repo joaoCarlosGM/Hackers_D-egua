@@ -404,6 +404,24 @@ end $;
 revoke all on function public.ctf1_student_fixture(text,uuid) from public,anon,authenticated;
 grant execute on function public.ctf1_student_fixture(text,uuid) to anon,authenticated;
 
+create function public.ctf1_student_progress(p_token text,p_round uuid)
+returns jsonb language plpgsql security definer set search_path='' as $
+declare tid uuid:=app_private.team_for_token(p_token);
+begin
+ if not exists(select 1 from public.ctf1_official_participations p
+  join public.ctf1_official_rounds r on r.id=p.round_id
+  where p.round_id=p_round and p.team_id=tid and p.excluded_at is null and r.mode='test'
+  and r.state<>'draft') then raise exception 'Participação indisponível' using errcode='42501';end if;
+ return jsonb_build_object(
+ 'solved',coalesce((select jsonb_agg(challenge_no order by challenge_no) from (
+ select distinct challenge_no from public.ctf1_official_submissions
+ where round_id=p_round and team_id=tid and accepted) q),'[]'::jsonb),
+ 'writeups',coalesce((select jsonb_object_agg(challenge_no::text,content)
+ from public.ctf1_official_writeups where round_id=p_round and team_id=tid),'{}'::jsonb));
+end $;
+revoke all on function public.ctf1_student_progress(text,uuid) from public,anon,authenticated;
+grant execute on function public.ctf1_student_progress(text,uuid) to anon,authenticated;
+
 -- Restrict all functions to their intended roles.
 revoke all on function public.ctf1_staff_create_round(uuid[],text,text),
  public.ctf1_staff_start_round(uuid),public.ctf1_staff_end_round(uuid),
