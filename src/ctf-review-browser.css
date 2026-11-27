@@ -437,3 +437,29 @@
  text-decoration:none;padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap; }
 .ctf-terminal-controls .ctf-aula07-download:hover {background:#24546a;color:#fff;}
 .ctf-terminal-controls .ctf-aula07-download:focus-visible {outline:2px solid #7fefc6;outline-offset:2px;}
+
+/* Student-facing clock: always legible above the terminal and synchronized
+   against server_now by the existing five-second polling loop. */
+.ctf-browser:has(.ctf-student-timer)>.ctf-browser-head{
+ position:sticky;top:0;z-index:18;background:#0d1b28;
+ border:1px solid #294b58;border-radius:12px;padding:10px 14px;
+ box-shadow:0 4px 18px #0004;
+}
+.ctf-student-timer{min-width:150px;display:flex;flex-direction:column;
+ align-items:center;gap:2px;padding:9px 15px;background:#153a35;
+ border:1px solid #4a9a83;border-radius:10px;color:#edfff7;
+ font-variant-numeric:tabular-nums;
+}
+.ctf-student-timer-label{font-size:11px;letter-spacing:.05em;
+ text-transform:uppercase;color:#c4e9d9;font-weight:800}
+.ctf-student-timer-value{font-size:clamp(1.5rem,3vw,2.1rem);
+ line-height:1.15;font-weight:900;letter-spacing:.04em}
+.ctf-student-timer small{font-size:10px;text-align:center;color:#c5e4d9}
+.ctf-student-timer--urgent{background:#582825;border-color:#f0907d}
+.ctf-student-timer--urgent .ctf-student-timer-label,
+.ctf-student-timer--urgent small{color:#ffded7}
+@media(max-width:650px){
+ .ctf-browser:has(.ctf-student-timer)>.ctf-browser-head{padding:9px;gap:7px}
+ .ctf-session-controls{width:100%;justify-content:space-between}
+ .ctf-student-timer{min-width:125px;flex:1}
+}
