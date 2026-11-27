@@ -203,4 +203,46 @@ select test_ctf1.ok((select state='running' and ends_at-started_at=interval '60 
  where id=(select v::uuid from test_ctf1.state where k='nine')),
  'second class independently gets exactly one hour');
 
+
+-- Discard the previously started Poraque rehearsal; do not delete any
+-- participation, submission or audit row. Pitiu must remain independent.
+set local role anon;
+select test_ctf1.denied($q$select public.ctf1_staff_discard_round(
+ (select v::uuid from test_ctf1.state where k='seven'),
+ 'Sem permissao para descartar rodada')$q$,
+ 'student cannot discard a rehearsal');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000192',true);
+select test_ctf1.denied($q$select public.ctf1_staff_discard_round(
+ (select v::uuid from test_ctf1.state where k='seven'),
+ 'Usuario sem acesso de professor')$q$,
+ 'non-staff cannot discard a rehearsal');
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
+select public.ctf1_staff_discard_round(
+ (select v::uuid from test_ctf1.state where k='seven'),
+ 'Reinicio de testes da turma Poraque');
+select test_ctf1.denied($q$select public.ctf1_staff_discard_round(
+ (select v::uuid from test_ctf1.state where k='seven'),
+ 'Tentativa de descartar novamente')$q$,
+ 'same round cannot be discarded again');
+reset role;
+select test_ctf1.ok((select state='discarded' and discarded_at is not null
+ from public.ctf1_official_rounds where id=(select v::uuid from test_ctf1.state where k='seven')),
+ 'discarded round persists with time marker');
+select test_ctf1.ok((select count(*)=7 from public.ctf1_official_participations
+ where round_id=(select v::uuid from test_ctf1.state where k='seven')),
+ 'discard preserves all seven team participation records');
+select test_ctf1.ok((select count(*)=1 from public.ctf1_official_audit
+ where round_id=(select v::uuid from test_ctf1.state where k='seven') and kind='round_discard'),
+ 'discard reason and event retained in audit log');
+select test_ctf1.ok((select state='running' from public.ctf1_official_rounds
+ where id=(select v::uuid from test_ctf1.state where k='nine')),
+ 'Pitiu round unaffected by Poraque discard');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
+select test_ctf1.ok(not exists(
+ select 1 from jsonb_array_elements(public.ctf1_staff_list_rounds()) x
+ where (x->>'id')::uuid=(select v::uuid from test_ctf1.state where k='seven')),
+ 'discard removed from active teacher round list');
+
 rollback;
