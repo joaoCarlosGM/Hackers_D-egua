@@ -93,6 +93,7 @@ export default function CtfOfficialStudent({token,name}:Props){
   const frame=requestAnimationFrame(()=>input.current?.focus({preventScroll:true}));
   return()=>{document.body.style.overflow=previous;document.removeEventListener("keydown",handler,true);cancelAnimationFrame(frame);};
  },[writeupOpen,challenge]);
+ useEffect(()=>{if(!writeupOpen){editing.current=false;if(active&&ready)requestAnimationFrame(()=>terminal.current?.focus());}},[writeupOpen,active,ready]);
  function focus(){
   if(editing.current||writeupOpen)return;
   terminal.current?.focus();
