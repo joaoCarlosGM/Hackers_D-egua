@@ -16,14 +16,27 @@ export async function generateCtf1TestCommands(
  if(fixture.mode!=="test"||!/^FLAG\{[^}]{4,128}\}$/.test(fixture.first_flag)||
  !/^FLAG\{(?:\d{1,3}\.){3}\d{1,3}\}$/.test(fixture.second_flag)||
  !/^FLAG\{[^}]{4,128}\}$/.test(fixture.third_flag))throw Error("Fixture de teste inválida");
- const ip=fixture.second_flag.slice(5,-1),salt=crypto.getRandomValues(new Uint8Array(8));
- const material=await crypto.subtle.importKey("raw",new TextEncoder().encode("paidegua2026"),"PBKDF2",false,["deriveBits"]);
- const bits=new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations:10000},material,384));
- const key=await crypto.subtle.importKey("raw",bits.slice(0,32),{name:"AES-CBC"},false,["encrypt"]);
- const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-CBC",iv:bits.slice(32,48)},key,new TextEncoder().encode(fixture.third_flag+"\n")));
+ // Web Crypto requires a secure browsing context (HTTPS or localhost).
+ // On HTTP/LAN IPs, crypto.subtle can be missing and calling importKey fails
+ // before the terminal is even mounted. Fail with a non-sensitive diagnosis.
+ const webCrypto=globalThis.crypto;
+ if(!webCrypto?.subtle || typeof webCrypto.subtle.importKey!=="function" ||
+    typeof webCrypto.subtle.deriveBits!=="function"){
+  const secure=typeof window==="undefined"?"unknown":String(window.isSecureContext);
+  const protocol=typeof window==="undefined"?"unknown":window.location.protocol;
+  throw new Error("Web Crypto (importKey) indisponível neste navegador. "+
+   "Acesse o CTF pelo endereço oficial HTTPS (não por HTTP/IP local), "+
+   "utilize Chrome/Edge/Firefox atualizado e recarregue a página. "+
+   "Contexto seguro: "+secure+"; protocolo: "+protocol+".");
+ }
+ const ip=fixture.second_flag.slice(5,-1),salt=webCrypto.getRandomValues(new Uint8Array(8));
+ const material=await webCrypto.subtle.importKey("raw",new TextEncoder().encode("paidegua2026"),"PBKDF2",false,["deriveBits"]);
+ const bits=new Uint8Array(await webCrypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations:10000},material,384));
+ const key=await webCrypto.subtle.importKey("raw",bits.slice(0,32),{name:"AES-CBC"},false,["encrypt"]);
+ const encrypted=new Uint8Array(await webCrypto.subtle.encrypt({name:"AES-CBC",iv:bits.slice(32,48)},key,new TextEncoder().encode(fixture.third_flag+"\n")));
  const content=new Uint8Array(16+encrypted.length);
  content.set(new TextEncoder().encode("Salted__"));content.set(salt,8);content.set(encrypted,16);
- const checksum=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",content)),b=>b.toString(16).padStart(2,"0")).join("");
+ const checksum=Array.from(new Uint8Array(await webCrypto.subtle.digest("SHA-256",content)),b=>b.toString(16).padStart(2,"0")).join("");
  const modified:EncryptedBundle={sha256Evidence37:bundle.sha256Evidence37,files:bundle.files.map((f,i)=>i===36?{...f,base64:base64(content)}:f)};
  const commands=initCommands(modified);
  const originalIp="185.220.101.42";
