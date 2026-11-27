@@ -245,4 +245,31 @@ select test_ctf1.ok(not exists(
  where (x->>'id')::uuid=(select v::uuid from test_ctf1.state where k='seven')),
  'discard removed from active teacher round list');
 
+
+-- Live staff monitoring must identify terminal activity even before any flag.
+-- This is a read-only projection of pre-existing student telemetry.
+reset role;
+insert into public.ctf1_official_audit(round_id,team_id,kind,detail)
+ values(
+  (select v::uuid from test_ctf1.state where k='nine'),
+  (select p.team_id from public.ctf1_official_participations p
+   where p.round_id=(select v::uuid from test_ctf1.state where k='nine') limit 1),
+  'terminal_event','{"command":"ls -la"}'::jsonb);
+insert into public.ctf1_official_audit(round_id,team_id,kind,detail)
+ values(
+  (select v::uuid from test_ctf1.state where k='nine'),
+  (select p.team_id from public.ctf1_official_participations p
+   where p.round_id=(select v::uuid from test_ctf1.state where k='nine') limit 1),
+  'terminal_event','{"command":"cat missao.txt"}'::jsonb);
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000191',true);
+select test_ctf1.ok(
+ exists (select 1 from jsonb_array_elements(
+ public.ctf1_staff_dashboard((select v::uuid from test_ctf1.state where k='nine'))->'teams') x
+ where x->>'first_activity_at' is not null
+ and x->>'last_activity_at' is not null
+ and x->>'mission_opened_at' is not null
+ and x->'solved'='[]'::jsonb),
+ 'staff sees start and missao.txt before flags, with zero missions solved');
+
 rollback;
