@@ -137,7 +137,10 @@ try{
  // Regression: reproduce the *exact* Aula 7 guest provisioner from the React
  // component, not an independent approximation that can pass while UI fails.
  const componentSource=await readFile(path.resolve("src/CtfReviewBrowser.tsx"),"utf8");
+ const guestTools=await readFile(path.resolve("src/ctfReviewGuestScripts.ts"),"utf8");
  const constants=[
+  guestTools.match(/^export const reviewHashidScript=.*;$/m)?.[0]?.replace("export const","const"),
+  guestTools.match(/^export const reviewOpensslCompatScript=.*;$/m)?.[0]?.replace("export const","const"),
   componentSource.match(/^const reviewWordlist=.*;$/m)?.[0],
   componentSource.match(/^const reviewJohnScript=.*;$/m)?.[0],
   componentSource.match(/^const reviewMissionLines=.*;$/m)?.[0],
@@ -160,6 +163,10 @@ try{
    throw Error("REAL Aula 7 boot FAILED in guest at final validation: "+output.slice(-1000));
  }
  const final=await execute("find /opt/evidencias -name '*.enc' | wc -l; sha256sum /opt/evidencias/evidencia_37.enc; cat /home/aluno/missao.txt","HPDE_REAL_SCENARIO_CHECK");
+ const toolOutput=await execute("hashid /opt/evidencias/senha_cofre.md5; hashid -m /opt/evidencias/senha_cofre.md5; openssl version","HPDE_CRYPTO_TOOLS");
+ if(!toolOutput.includes("Possivel MD5")||!toolOutput.includes("Hashcat: 0")||
+    !toolOutput.includes("OpenSSL compat"))
+  throw Error("Hash identifier or OpenSSL-compatible command not operational: "+toolOutput.slice(-1000));
  if(!final.includes(aula07.sha256Evidence37)||!final.includes("CTF 1 - REVISAO DO PROFESSOR")||
      !final.includes("DESAFIO 1 - O RASTRO TRANCADO")||
      !final.includes("DESAFIO 2 - O INVASOR INSISTENTE")||
