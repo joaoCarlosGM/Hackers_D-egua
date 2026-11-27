@@ -32,6 +32,7 @@ export default function CtfOfficialStudent({token,name}:Props){
  const pending=useRef(""),payload=useRef<string|null>(null),editing=useRef(false);
  const editor=useRef<HTMLDivElement>(null),input=useRef<HTMLTextAreaElement>(null);
  const inLine=useRef(""),commandHistory=useRef<string[]>([]);
+ const auditQueue=useRef<string[]>([]),auditBusy=useRef(false);
  useEffect(()=>{
   if(!selected)return;
   void rpc<{solved:number[];writeups:Record<string,W>}>("ctf1_student_progress",{p_token:token,p_round:selected})
@@ -45,6 +46,15 @@ export default function CtfOfficialStudent({token,name}:Props){
     setWriteups(drafts);
    }).catch(()=>{});
  },[selected,token]);
+ const flushAudit=useCallback(async()=>{
+  if(auditBusy.current||!auditQueue.current.length||!selected)return;
+  auditBusy.current=true;
+  const batch=auditQueue.current.splice(0,12);
+  try{await rpc("ctf1_student_append_commands",{p_token:token,p_round:selected,p_commands:batch});}
+  catch{auditQueue.current.unshift(...batch);auditQueue.current=auditQueue.current.slice(0,48);}
+  finally{auditBusy.current=false;}
+ },[token,selected]);
+ useEffect(()=>{if(!active)return;const id=setInterval(()=>{void flushAudit();},2500);return()=>clearInterval(id);},[active,flushAudit]);
  const round=rounds.find(r=>r.round_id===selected);
  const endsAt=round?.ends_at?Date.parse(round.ends_at):0;
  const seconds=Math.max(0,Math.ceil((endsAt-clock-offset)/1000));
@@ -89,6 +99,8 @@ export default function CtfOfficialStudent({token,name}:Props){
    if(ch==="\r"||ch==="\n"){
     if(inLine.current.trim()){
      commandHistory.current.push(inLine.current.slice(0,220));
+     auditQueue.current.push(inLine.current.slice(0,200));
+     if(auditQueue.current.length>48)auditQueue.current.shift();
      // Terminal commands are client telemetry, not a trusted proof of progress.
     }inLine.current="";
    }else if(ch==="\u007f"||ch==="\b")inLine.current=inLine.current.slice(0,-1);
