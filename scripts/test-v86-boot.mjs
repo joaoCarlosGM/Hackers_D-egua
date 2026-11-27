@@ -190,10 +190,10 @@ try{
       name:"AES-CBC",iv:bits.slice(32,48)
      },key,file.slice(16)));
      const result=btoa(String.fromCharCode(...plain));
-     window.__vm.serial0_send("HPDE_CRYPT_OK:"+result+"\\n");
+     window.__vm.serial0_send("HPDE_CRYPT_OK:"+result+"\n");
     }catch(e){
      window.__cryptoBridgeError=String(e);
-     window.__vm.serial0_send("HPDE_CRYPT_ERR\\n");
+     window.__vm.serial0_send("HPDE_CRYPT_ERR\n");
     }
    })();
   });
