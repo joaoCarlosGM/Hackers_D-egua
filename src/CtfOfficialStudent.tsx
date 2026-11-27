@@ -21,6 +21,7 @@ export default function CtfOfficialStudent({token,name}:Props){
  const [offset,setOffset]=useState(0),[active,setActive]=useState(false);
  const [challenge,setChallenge]=useState(0),[flag,setFlag]=useState("");
  const [finished,setFinished]=useState(false);
+ const [showChallenges,setShowChallenges]=useState(false);
  const [completed,setCompleted]=useState<number[]>([]);
  const [writeupOpen,setWriteupOpen]=useState(false);
  const [writeups,setWriteups]=useState<Record<number,W>>({});
@@ -33,7 +34,7 @@ export default function CtfOfficialStudent({token,name}:Props){
  const pending=useRef(""),payload=useRef<string|null>(null),editing=useRef(false);
  const editor=useRef<HTMLDivElement>(null),input=useRef<HTMLTextAreaElement>(null);
  const inLine=useRef(""),commandHistory=useRef<string[]>([]);
- const auditQueue=useRef<string[]>([]),auditBusy=useRef(false);
+ const auditQueue=useRef<{challenge:number;command:string}[]>([]),auditBusy=useRef(false);
  useEffect(()=>{
   if(!selected)return;
   void rpc<{solved:number[];writeups:Record<string,W>}>("ctf1_student_progress",{p_token:token,p_round:selected})
@@ -53,9 +54,13 @@ export default function CtfOfficialStudent({token,name}:Props){
  const flushAudit=useCallback(async()=>{
   if(auditBusy.current||!auditQueue.current.length||!selected)return;
   auditBusy.current=true;
+  const challengeNo=auditQueue.current[0].challenge;
   const batch=auditQueue.current.splice(0,12);
-  try{await rpc("ctf1_student_append_commands",{p_token:token,p_round:selected,p_commands:batch});}
-  catch{auditQueue.current.unshift(...batch);auditQueue.current=auditQueue.current.slice(0,48);}
+  const currentBatch=batch.filter(item=>item.challenge===challengeNo);
+  const deferred=batch.filter(item=>item.challenge!==challengeNo);
+  if(deferred.length)auditQueue.current.unshift(...deferred);
+  try{await rpc("ctf1_student_append_challenge_commands",{p_token:token,p_round:selected,p_challenge:challengeNo,p_commands:currentBatch.map(item=>item.command)});}
+  catch{auditQueue.current.unshift(...currentBatch);auditQueue.current=auditQueue.current.slice(0,48);}
   finally{auditBusy.current=false;}
  },[token,selected]);
  useEffect(()=>{if(!active)return;const id=setInterval(()=>{void flushAudit();},2500);return()=>clearInterval(id);},[active,flushAudit]);
@@ -105,7 +110,7 @@ export default function CtfOfficialStudent({token,name}:Props){
    if(ch==="\r"||ch==="\n"){
     if(inLine.current.trim()){
      commandHistory.current.push(inLine.current.slice(0,220));
-     auditQueue.current.push(inLine.current.slice(0,200));
+     auditQueue.current.push({challenge:challenge+1,command:inLine.current.slice(0,200)});
      if(auditQueue.current.length>48)auditQueue.current.shift();
      // Terminal commands are client telemetry, not a trusted proof of progress.
     }inLine.current="";
@@ -246,11 +251,12 @@ export default function CtfOfficialStudent({token,name}:Props){
     <button disabled={!running||loading} onClick={()=>void start()}>{loading?"Preparando...":"Iniciar meu laboratório Linux"}</button></div>}
   {finished&&<div className="ctf-finish-screen" role="dialog" aria-modal="true" aria-label="CTF concluído"><div><div className="ctf-finish-icon">🏆</div><h2>Parabéns, {name}!</h2><p>Vocês concluíram os três desafios e entregaram todos os write-ups.</p><strong>CTF finalizado com sucesso!</strong></div></div>}
   {active&&<>
-   <nav className="ctf-browser-tabs" aria-label="Desafios">
+   <div className="ctf-challenge-toggle"><strong>Desafio {challenge+1} de 3 · {allCompleted?"Todos concluídos":"Em andamento"}</strong><button type="button" aria-expanded={showChallenges} onClick={()=>setShowChallenges(v=>!v)}>{showChallenges?"▴ Ocultar todos":"▾ Mostrar todos os desafios"}</button></div>
+   {showChallenges&&<nav className="ctf-browser-tabs" aria-label="Desafios">
     {reviewMissions.map((m,i)=><button key={m.id} type="button" className={challenge===i?"selected":""} onClick={()=>{if(i===challenge)return;}} disabled={i!==challenge}>
       <small>DESAFIO {i+1} {completed.includes(i)?"· CONCLUÍDO":i===challenge?"· EM ANDAMENTO":"· BLOQUEADO"}</small><strong>{m.subtitle}</strong>
     </button>)}
-   </nav>
+   </nav>}
    <section className="ctf-mission-brief"><h3>{reviewMissions[challenge].subtitle}</h3>
     <p>{reviewMissions[challenge].incident}</p><p>{reviewMissions[challenge].objective}</p></section>
    <section className="ctf-browser-terminal"><div className="ctf-window-head">
