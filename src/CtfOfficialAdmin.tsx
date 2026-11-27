@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { rpc, type Class } from "./api";
+import { rpc, type Class, type ManagedTeam } from "./api";
 import { calculateOfficialCtf1Total, OFFICIAL_CTF1_CAPS, type OfficialCtf1Scores } from "./ctfOfficialScoring";
 import "./ctf-official-admin.css";
 
@@ -23,6 +23,8 @@ function leftTime(round:Dashboard["round"],now:number){
 }
 export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
  const [rounds,setRounds]=useState<Round[]>([]);
+ const [availableTeams,setAvailableTeams]=useState<ManagedTeam[]>([]);
+ const [selectedTeams,setSelectedTeams]=useState<string[]>([]);
  const [selected,setSelected]=useState("");
  const [dashboard,setDashboard]=useState<Dashboard|null>(null);
  const [teamSelected,setTeamSelected]=useState("");
@@ -40,6 +42,12 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
  const load=useCallback(async()=>{
   const list=await rpc<Round[]>("ctf1_staff_list_rounds");
   setRounds(list);
+  const collected:ManagedTeam[]=[];
+  for(let offset=0;offset<2000;offset+=500){
+   const page=await rpc<ManagedTeam[]>("list_teams_admin",{p_offset:offset,p_limit:500});
+   collected.push(...page);if(page.length<500)break;
+  }
+  setAvailableTeams(collected.filter(team=>team.status==="active"));
   setReady(true);
   setSelected(prev=>prev||list[0]?.id||"");
  },[]);
@@ -93,8 +101,14 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
     <label>Título<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={100}/></label>
     <fieldset><legend>Turmas participantes (até duas)</legend>
     {classes.map(c=><label key={c.id}><input type="checkbox" checked={classIds.includes(c.id)} onChange={e=>setClassIds(prev=>e.target.checked?[...prev,c.id].slice(0,2):prev.filter(x=>x!==c.id))}/>{c.name}</label>)}</fieldset>
-    <button disabled={busy||classIds.length===0} onClick={()=>void action(async()=>{
-      const id=await rpc<string>("ctf1_staff_create_round",{p_class_ids:classIds,p_title:title});
+    <fieldset><legend>Selecione as duplas desta rodada ({selectedTeams.length} selecionadas)</legend>
+     {availableTeams.filter(t=>classIds.includes(t.class_id)).map(t=><label key={t.id}>
+      <input type="checkbox" checked={selectedTeams.includes(t.id)} onChange={e=>setSelectedTeams(prev=>e.target.checked?[...prev,t.id]:prev.filter(id=>id!==t.id))}/>
+      {t.public_name} · {classes.find(cl=>cl.id===t.class_id)?.name}
+     </label>)}
+    </fieldset>
+    <button disabled={busy||classIds.length===0||selectedTeams.length===0||selectedTeams.length>30} onClick={()=>void action(async()=>{
+      const id=await rpc<string>("ctf1_staff_create_round",{p_class_ids:classIds,p_title:title,p_mode:"test",p_team_ids:selectedTeams});
       setSelected(id);setNotice("Rodada criada em rascunho. Nenhuma dupla foi iniciada.");await refresh(id);
     })}>Criar rascunho</button>
    </div>
