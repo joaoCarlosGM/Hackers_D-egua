@@ -126,11 +126,10 @@ async function fixtures(
   role: "guest" | "team" | "staff" | "admin",
 ) {
   await page.addInitScript(
-    ({ role, team }) => {
+    ({ role }) => {
       sessionStorage.clear();
-      // LocalStorage intentionally survives reloads within one isolated test context.
-      if (role === "team")
-        sessionStorage.setItem("hpde:team", JSON.stringify(team));
+      // No team credentials or bearer tokens are injected into browser storage.
+      // Student login is intentionally exercised through the normal form.
       if (role === "staff" || role === "admin") {
         const user = {
           id: "staff1",
@@ -156,7 +155,7 @@ async function fixtures(
         );
       }
     },
-    { role, team },
+    { role },
   );
   await page.route(`${host}/**`, async (route) => {
     const url = new URL(route.request().url());
@@ -232,6 +231,7 @@ async function fixtures(
     };
     const rpc: Record<string, unknown> = {
       public_activity: activity,
+      login_team: team,
       team_history: { team, attempts: [] },
       join_activity: {
         attempt_id: "attempt1",
@@ -412,6 +412,9 @@ for (const viewport of [
     }) => {
       await fixtures(page, "team");
       await page.goto("./#atividade/s1");
+      await page.getByRole("textbox", { name: "Código da dupla" }).fill("ABCDEF1234567890");
+      await page.getByLabel("Código privado de recuperação").fill("not-persisted-123");
+      await page.getByRole("button", { name: "Entrar com minha dupla" }).click();
       await page
         .getByRole("button", { name: "Participar desta atividade" })
         .click();
@@ -420,6 +423,18 @@ for (const viewport of [
       ).toBeVisible();
       await page.getByRole("button", { name: "ls" }).click();
       await shot(page, `${viewport.name}-quiz`);
+    });
+    test("credentials are never restored from browser storage after reload", async ({page}) => {
+      await fixtures(page, "team");
+      await page.goto("./#atividade/s1");
+      await page.getByRole("textbox", {name:"Código da dupla"}).fill("ABCDEF1234567890");
+      await page.getByLabel("Código privado de recuperação").fill("not-persisted-123");
+      await page.getByRole("button", {name:"Entrar com minha dupla"}).click();
+      await expect(page.getByRole("button", {name:"Sair da dupla"})).toBeVisible();
+      expect(await page.evaluate(()=>sessionStorage.getItem("hpde:team"))).toBeNull();
+      await page.reload();
+      await expect(page.getByRole("button", {name:"Entrar com minha dupla"})).toBeVisible();
+      expect(await page.evaluate(()=>sessionStorage.getItem("hpde:team"))).toBeNull();
     });
     test("ranking follows the supplied podium and table", async ({ page }) => {
       await fixtures(page, "guest");
