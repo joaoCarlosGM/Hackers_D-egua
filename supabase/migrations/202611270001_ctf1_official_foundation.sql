@@ -391,7 +391,7 @@ end $$;
 -- receives the flags to embed in its local image, therefore this is NOT a
 -- cheating-resistant competition design. Official-mode start remains blocked.
 create function public.ctf1_student_fixture(p_token text,p_round uuid)
-returns jsonb language plpgsql security definer set search_path='' as $
+returns jsonb language plpgsql security definer set search_path='' as $ctf1$
 declare tid uuid:=app_private.team_for_token(p_token);
  r public.ctf1_official_rounds; p public.ctf1_official_participations;
 begin
@@ -407,12 +407,12 @@ begin
    'second_flag',app_private.ctf1_flag_value(p_round,tid,2::smallint),
    'third_flag',app_private.ctf1_flag_value(p_round,tid,3::smallint),
    'ends_at',r.ends_at,'server_now',clock_timestamp());
-end $;
+end $ctf1$;
 revoke all on function public.ctf1_student_fixture(text,uuid) from public,anon,authenticated;
 grant execute on function public.ctf1_student_fixture(text,uuid) to anon,authenticated;
 
 create function public.ctf1_student_progress(p_token text,p_round uuid)
-returns jsonb language plpgsql security definer set search_path='' as $
+returns jsonb language plpgsql security definer set search_path='' as $ctf1$
 declare tid uuid:=app_private.team_for_token(p_token);
 begin
  if not exists(select 1 from public.ctf1_official_participations p
@@ -425,7 +425,7 @@ begin
  where round_id=p_round and team_id=tid and accepted) q),'[]'::jsonb),
  'writeups',coalesce((select jsonb_object_agg(challenge_no::text,content)
  from public.ctf1_official_writeups where round_id=p_round and team_id=tid),'{}'::jsonb));
-end $;
+end $ctf1$;
 revoke all on function public.ctf1_student_progress(text,uuid) from public,anon,authenticated;
 grant execute on function public.ctf1_student_progress(text,uuid) to anon,authenticated;
 
