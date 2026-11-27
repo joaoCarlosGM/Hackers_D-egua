@@ -140,8 +140,8 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
    <div><small>Iniciaram o laboratório</small><strong>{investigating.length}</strong><small>Atividade registrada no terminal</small></div>
    <div><small>Auditorias avaliadas</small><strong>{selectedRound.teams.filter(t=>t.audited_at&&!t.excluded_at).length}</strong></div>
   </div>
-  <section className="ctf-official-panel" aria-label="Duplas que iniciaram o laboratório">
-   <h3>Duplas que iniciaram o laboratório</h3>
+  <details className="ctf-official-panel ctf-official-collapsible" aria-label="Duplas que iniciaram o laboratório">
+   <summary>Duplas que iniciaram o laboratório <span>{investigating.length} duplas</span></summary>
    <p className="ctf-official-footnote">Atualização a cada 5 segundos. <code>cat missao.txt</code> é identificado quando o comando completo foi registrado. Atividade registrada não garante conexão ativa neste instante.</p>
    {investigating.length===0?<p>Aguardando os primeiros comandos das duplas.</p>:<div className="ctf-official-table-wrap"><table>
     <thead><tr><th>Dupla</th><th>Primeira atividade</th><th>Missão</th><th>Última atividade</th><th>Ação</th></tr></thead>
@@ -153,9 +153,9 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
      <td><button type="button" disabled={busy} onClick={()=>{setTeamSelected(t.team_id);setAudit(null);void refreshAudit(selected,t.team_id).catch(e=>setError((e as Error).message));}}>Auditar</button></td>
     </tr>)}</tbody>
    </table></div>}
-  </section>
-  <div className={teamSelected?"ctf-official-grid":"ctf-official-grid ctf-official-grid--single"}><section className="ctf-official-panel">
-   <h3>Progresso por dupla</h3>
+  </details>
+  <div className={teamSelected?"ctf-official-grid":"ctf-official-grid ctf-official-grid--single"}><details className="ctf-official-panel ctf-official-collapsible" open>
+   <summary>Progresso por dupla <span>{selectedRound.teams.length} duplas</span></summary>
    <div className="ctf-official-table-wrap"><table><thead><tr><th>Dupla</th><th>Turma</th><th>Desafio atual</th><th>Missões</th><th>Write-ups</th><th>Atividade</th><th>Avaliação</th><th>Ação</th></tr></thead><tbody>
    {selectedRound.teams.map(t=><tr key={t.team_id}>
     <td><strong>{t.public_name}</strong>{t.excluded_at&&<small> · Participação excluída</small>}</td>
@@ -164,7 +164,7 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
     <td>{t.audited_at?"Avaliada":"Pendente"}</td>
     <td><button disabled={busy} onClick={()=>{setTeamSelected(t.team_id);setAudit(null);void refreshAudit(selected,t.team_id).catch(e=>setError((e as Error).message));}}>Auditar</button></td>
    </tr>)}</tbody></table></div>
-  </section>{teamSelected&&<section className="ctf-official-panel">
+  </details>{teamSelected&&<section className="ctf-official-panel">
    <div className="ctf-official-audit-heading"><h3>Auditoria individual</h3><button type="button" onClick={closeAudit} aria-label="Fechar auditoria individual">✕ Fechar auditoria</button></div>
    {!currentTeam&&<p>Selecione uma dupla para conferir entregas, write-ups e notas.</p>}
    {currentTeam&&<><h4>{currentTeam.public_name}</h4>
@@ -178,8 +178,20 @@ export default function CtfOfficialAdmin({classes}:{classes:Class[]}){
       {[1,2,3].map(n=><div key={n}><h5>Desafio {n}</h5>
        <pre>{JSON.stringify(audit.writeups[String(n)]??{},null,2)}</pre></div>)}
      </details>
-     <details><summary>Eventos de auditoria</summary><div className="ctf-official-scroll">
-      {audit.events.map((event,i)=><p key={i}><b>{event.kind}</b> · {new Date(event.at).toLocaleString("pt-BR")} · {JSON.stringify(event.detail)}</p>)}
+     <details className="ctf-audit-history"><summary>Histórico de comandos por desafio</summary>
+      <p className="ctf-official-footnote">Somente comandos recebidos pelo servidor. Os comandos anteriores à classificação por desafio permanecem em "Sem classificação", sem atribuição presumida.</p>
+      {[1,2,3,0].map(n=>{
+       const entries=audit.events.filter(e=>e.kind==="terminal_event"&&(typeof e.detail==="object"&&e.detail!==null&&"challenge_no" in e.detail&&Number((e.detail as {challenge_no?:unknown}).challenge_no)===n || n===0&&!(typeof e.detail==="object"&&e.detail!==null&&"challenge_no" in e.detail)));
+       return <details key={n} className="ctf-audit-command-group">
+        <summary>{n===0?"Sem classificação (histórico anterior)":"Desafio "+n} <span>{entries.length} comandos</span></summary>
+        {entries.length===0?<p>Nenhum comando registrado.</p>:<ol className="ctf-audit-command-list">
+         {entries.map((e,i)=><li key={i}><time>{new Date(e.at).toLocaleTimeString("pt-BR")}</time><code>{String((e.detail as {command?:unknown})?.command??"")}</code></li>)}
+        </ol>}
+       </details>;
+      })}
+     </details>
+     <details><summary>Demais eventos de auditoria</summary><div className="ctf-official-scroll">
+      {audit.events.filter(e=>e.kind!=="terminal_event").map((event,i)=><p key={i}><b>{event.kind}</b> · {new Date(event.at).toLocaleString("pt-BR")} · {JSON.stringify(event.detail)}</p>)}
      </div></details>
      <fieldset><legend>Sugerir pontuação para lançamento (máx. 200 pontos)</legend>
       {(Object.keys(OFFICIAL_CTF1_CAPS) as (keyof OfficialCtf1Scores)[]).map(key=><label key={key}>
